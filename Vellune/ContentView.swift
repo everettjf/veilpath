@@ -277,6 +277,18 @@ private struct BrowserView: View {
         VStack(spacing: 0) {
             if !model.path.isEmpty {
                 HStack(spacing: 10) {
+                    Button("Back", systemImage: "chevron.backward") {
+                        Task { await model.goBack() }
+                    }
+                    .labelStyle(.iconOnly)
+                    .disabled(!model.canGoBack)
+
+                    Button("Forward", systemImage: "chevron.forward") {
+                        Task { await model.goForward() }
+                    }
+                    .labelStyle(.iconOnly)
+                    .disabled(!model.canGoForward)
+
                     Button("Up", systemImage: "chevron.up") {
                         Task { await model.goUp() }
                     }
@@ -288,11 +300,11 @@ private struct BrowserView: View {
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
                         .focused($pathFocused)
-                        .onSubmit { Task { await model.acquireAndLoad() } }
+                        .onSubmit { Task { await model.openEnteredPath() } }
 
                     Button("Open", systemImage: "arrow.right.circle.fill") {
                         pathFocused = false
-                        Task { await model.acquireAndLoad() }
+                        Task { await model.openEnteredPath() }
                     }
                     .labelStyle(.iconOnly)
                     .disabled(model.isWorking)

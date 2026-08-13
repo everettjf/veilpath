@@ -1,6 +1,8 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Back": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "后退" } } } },
+    "Forward": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "前进" } } } },
     "Architectures": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "架构" } } } },
     "Binary File": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "二进制文件" } } } },
     "Clear Export Cache": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "清理导出缓存" } } } },

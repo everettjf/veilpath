@@ -6,6 +6,9 @@ import Observation
 final class VelluneModel {
     var path = ""
     var currentContainerRoot = ""
+    private(set) var backHistory: [String] = []
+    private(set) var forwardHistory: [String] = []
+    private var loadedPath = ""
     var items: [FileItem] = []
     var selectedItem: FileItem?
     var selectedPreview: FilePreview?
@@ -24,6 +27,8 @@ final class VelluneModel {
 
     var containers: [ContainerDescriptor] { containerIndexes[.application, default: []] }
     var systemContainers: [ContainerDescriptor] { containerIndexes[.systemData, default: []] }
+    var canGoBack: Bool { !backHistory.isEmpty && !isWorking }
+    var canGoForward: Bool { !forwardHistory.isEmpty && !isWorking }
 
     struct LogEntry: Identifiable, Equatable {
         let id = UUID()
@@ -78,6 +83,9 @@ final class VelluneModel {
 
     func open(_ container: ContainerDescriptor) async {
         currentContainerRoot = container.path
+        backHistory = []
+        forwardHistory = []
+        loadedPath = ""
         path = container.path
         await acquireAndLoad()
     }
@@ -96,6 +104,7 @@ final class VelluneModel {
             defer { BadQueryClient.release(grant) }
             log("Access granted with handle \(grant.handle)")
             try loadCurrentDirectory()
+            loadedPath = normalized
         } catch {
             report(error)
         }
@@ -139,15 +148,51 @@ final class VelluneModel {
             }
             return
         }
-        path = item.url.path
-        await acquireAndLoad()
+        await navigate(to: item.url.path)
     }
 
     func goUp() async {
         let parent = URL(fileURLWithPath: path).deletingLastPathComponent().path
         guard parent != path else { return }
-        path = parent
+        await navigate(to: parent)
+    }
+
+    func openEnteredPath() async {
+        await navigate(to: path)
+    }
+
+    func goBack() async {
+        guard let destination = backHistory.last else { return }
+        let source = loadedPath
+        path = destination
         await acquireAndLoad()
+        guard loadedPath == destination else { path = source; return }
+        backHistory.removeLast()
+        if !source.isEmpty { forwardHistory.append(source) }
+    }
+
+    func goForward() async {
+        guard let destination = forwardHistory.last else { return }
+        let source = loadedPath
+        path = destination
+        await acquireAndLoad()
+        guard loadedPath == destination else { path = source; return }
+        forwardHistory.removeLast()
+        if !source.isEmpty { backHistory.append(source) }
+    }
+
+    private func navigate(to destination: String) async {
+        let normalized = URL(fileURLWithPath: destination).standardizedFileURL.path
+        guard normalized != loadedPath else {
+            path = normalized
+            return
+        }
+        let source = loadedPath
+        path = normalized
+        await acquireAndLoad()
+        guard loadedPath == normalized else { path = source; return }
+        if !source.isEmpty { backHistory.append(source) }
+        forwardHistory = []
     }
 
     func searchCurrentContainer(for query: String) async {
