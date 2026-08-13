@@ -4,7 +4,7 @@ import Observation
 @Observable
 @MainActor
 final class VelluneModel {
-    var path = "/var/mobile/Containers/Data/Application"
+    var path = ""
     var items: [FileItem] = []
     var selectedItem: FileItem?
     var selectedPreview: FilePreview?
@@ -103,8 +103,9 @@ final class VelluneModel {
         log("Listed \(items.count) items at \(path)")
     }
 
-    func refresh() {
-        do { try loadCurrentDirectory() } catch { report(error) }
+    func refresh() async {
+        guard !path.isEmpty else { return }
+        await acquireAndLoad()
     }
 
     func open(_ item: FileItem) async {
