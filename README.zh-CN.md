@@ -20,6 +20,12 @@
   <a href="#致谢">致谢</a>
 </p>
 
+> [!IMPORTANT]
+> **支持版本：iOS / iPadOS 26 至 27 beta 3。** 完整的 `bad_query` 访问路径
+> 已在运行 **iPadOS 27 beta 3（`24A5380l`）** 的 iPad Air 真机上验证。
+> 实际功能必须使用真机，模拟器只能验证编译和界面。上游概念验证项目标注支持
+> 至 iOS 26.6.1 和 iOS 27 beta 4，但这些额外版本尚未全部经过 Vellune 验证。
+
 ![Vellune 在 iPad 上运行](docs/assets/ipad-ui.png)
 
 ## Vellune 是什么？
@@ -46,6 +52,10 @@ Vellune 将 `bad_query` 概念验证项目转化为一个专注于文件探索�
 
 ## 兼容性
 
+Vellune 只对已经完成适配和测试的系统范围作出支持声明。**不能因为项目可以编译，
+就认为更新的 beta 或正式版同样兼容。** 安装后应运行 App 内置的真机自检；
+Container Manager 的私有行为可能在不同系统构建版本之间发生变化。
+
 | 平台 | 目标版本 | 验证情况 |
 | --- | --- | --- |
 | iPadOS | 27 beta 3（`24A5380l`） | 已在 iPad Air（`iPad15,3`）真机完整测试 |
@@ -54,7 +64,8 @@ Vellune 将 `bad_query` 概念验证项目转化为一个专注于文件探索�
 | 模拟器 | 26–27 | 仅验证界面；`bad_query` 需要真机 |
 
 上游项目目前说明支持至 iOS 26.6.1 和 iOS 27 beta 4。Vellune 在此有意只记录
-已经实现并验证的较窄范围：**iOS/iPadOS 26 至 27 beta 3**。
+已经实现并验证的较窄范围：**iOS/iPadOS 26 至 27 beta 3**。超出这个范围的版本，
+在完成真机测试之前均视为不受支持。
 
 ### 真机回归结果
 

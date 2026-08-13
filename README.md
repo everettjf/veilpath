@@ -20,6 +20,14 @@
   <a href="#acknowledgements">Acknowledgements</a>
 </p>
 
+> [!IMPORTANT]
+> **Supported versions: iOS / iPadOS 26 through 27 beta 3.** The complete
+> `bad_query` access path has been validated on a physical iPad Air running
+> **iPadOS 27 beta 3 (`24A5380l`)**. A physical device is required; Simulator
+> builds validate only compilation and UI. The upstream proof of concept lists
+> support through iOS 26.6.1 and iOS 27 beta 4, but those additional versions
+> have not all been validated in Vellune.
+
 ![Vellune running on iPad](docs/assets/ipad-ui.png)
 
 ## What is Vellune?
@@ -52,6 +60,12 @@ sandbox boundary.
 
 ## Compatibility
 
+Vellune's stated support range is intentionally limited to versions covered by
+its implementation and testing. **Do not assume that a newer beta or release is
+compatible solely because the app builds.** Run the on-device self-test after
+installing Vellune; private Container Manager behavior may change between OS
+builds.
+
 | Platform | Target | Validation |
 | --- | --- | --- |
 | iPadOS | 27 beta 3 (`24A5380l`) | Fully tested on physical iPad Air (`iPad15,3`) |
@@ -61,7 +75,8 @@ sandbox boundary.
 
 The upstream project currently describes support through iOS 26.6.1 and iOS
 27 beta 4. Vellune deliberately documents the narrower range that has been
-implemented and validated here: **iOS/iPadOS 26 through 27 beta 3**.
+implemented and validated here: **iOS/iPadOS 26 through 27 beta 3**. Versions
+outside this range are unsupported until confirmed by physical-device testing.
 
 ### Physical-device regression results
 
