@@ -49,6 +49,9 @@ final class VelluneModel {
         log("Vellune started on \(ProcessInfo.processInfo.operatingSystemVersionString)")
         #if targetEnvironment(simulator)
         log("bad_query self-test skipped in Simulator")
+        if ProcessInfo.processInfo.arguments.contains("--ui-testing") {
+            seedUITestContainers()
+        }
         #else
         let currentVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
         if selfTestReport?.schemaVersion != 9
@@ -61,6 +64,19 @@ final class VelluneModel {
         }
         #endif
     }
+
+    #if targetEnvironment(simulator)
+    private func seedUITestContainers() {
+        containerIndexes[.application] = [
+            .init(path: "/var/mobile/Containers/Data/Application/A111", identifier: "com.example.DocumentsResearchWorkspace", uuid: "A1111111-2222-3333-4444-555555555555", kind: .application, metadataDiagnostic: nil),
+            .init(path: "/var/mobile/Containers/Data/Application/B222", identifier: "com.example.MediaCatalog", uuid: "B2222222-3333-4444-5555-666666666666", kind: .application, metadataDiagnostic: nil),
+            .init(path: "/var/mobile/Containers/Data/Application/C333", identifier: "com.example.DeveloperTools", uuid: "C3333333-4444-5555-6666-777777777777", kind: .application, metadataDiagnostic: nil)
+        ]
+        containerIndexes[.appGroup] = [
+            .init(path: "/var/mobile/Containers/Shared/AppGroup/G111", identifier: "group.com.example.SharedWorkspace", uuid: "G1111111-2222-3333-4444-555555555555", kind: .appGroup, metadataDiagnostic: nil)
+        ]
+    }
+    #endif
 
     func runSelfTest() async {
         guard !isRunningDiagnostics else { return }

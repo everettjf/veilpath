@@ -59,24 +59,8 @@ private struct SidebarView: View {
                 }
             }
 
-            Section("Locations") {
-                ForEach(ContainerKind.allCases, id: \.self) { kind in
-                    Button {
-                        selectedKind = kind
-                    } label: {
-                        HStack {
-                            Label(kind.localizedName, systemImage: kind.systemImage)
-                            Spacer()
-                            Text(model.containerIndexes[kind, default: []].count, format: .number)
-                                .font(.caption.monospacedDigit())
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                    .buttonStyle(.plain)
-                    .fontWeight(selectedKind == kind ? .semibold : .regular)
-                    .listRowBackground(selectedKind == kind ? Color.accentColor.opacity(0.12) : Color.clear)
-                    .accessibilityAddTraits(selectedKind == kind ? .isSelected : [])
-                }
+            if horizontalSizeClass != .compact {
+                locationsSection
             }
 
             Section {
@@ -106,7 +90,12 @@ private struct SidebarView: View {
                     }
                 }
             } header: {
-                Text(selectedKind.localizedContainerTitle)
+                HStack {
+                    Label(selectedKind.localizedContainerTitle, systemImage: selectedKind.systemImage)
+                    Spacer()
+                    Text(filteredContainers(for: selectedKind).count, format: .number)
+                        .monospacedDigit()
+                }
             }
 
         }
@@ -115,14 +104,68 @@ private struct SidebarView: View {
         .navigationTitle("Vellune")
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
-                Button("Settings", systemImage: "gearshape") {
-                    showSettings = true
+                HStack(spacing: 8) {
+                    Button("Settings", systemImage: "gearshape") {
+                        showSettings = true
+                    }
+                    .labelStyle(.iconOnly)
+                    if horizontalSizeClass == .compact {
+                        locationsMenu
+                            .labelStyle(.titleAndIcon)
+                    }
                 }
             }
         }
         .fullScreenCover(isPresented: $showSettings) {
             SettingsView(model: model)
         }
+    }
+
+    @ViewBuilder private var locationsSection: some View {
+        Section("Locations") {
+            ForEach(ContainerKind.allCases, id: \.self) { kind in
+                locationButton(kind)
+            }
+        }
+    }
+
+    private var locationsMenu: some View {
+        Menu("Locations", systemImage: "square.grid.2x2") {
+            ForEach(ContainerKind.allCases, id: \.self) { kind in
+                Button {
+                    selectedKind = kind
+                    searchText = ""
+                } label: {
+                    Label {
+                        HStack {
+                            Text(kind.localizedName)
+                            Text(model.containerIndexes[kind, default: []].count, format: .number)
+                        }
+                    } icon: {
+                        Image(systemName: selectedKind == kind ? "checkmark" : kind.systemImage)
+                    }
+                }
+            }
+        }
+        .accessibilityValue(selectedKind.localizedName)
+    }
+
+    private func locationButton(_ kind: ContainerKind) -> some View {
+        Button {
+            selectedKind = kind
+        } label: {
+            HStack {
+                Label(kind.localizedName, systemImage: kind.systemImage)
+                Spacer()
+                Text(model.containerIndexes[kind, default: []].count, format: .number)
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .buttonStyle(.plain)
+        .fontWeight(selectedKind == kind ? .semibold : .regular)
+        .listRowBackground(selectedKind == kind ? Color.accentColor.opacity(0.12) : Color.clear)
+        .accessibilityAddTraits(selectedKind == kind ? .isSelected : [])
     }
 
     private func filteredContainers(for kind: ContainerKind) -> [ContainerDescriptor] {
