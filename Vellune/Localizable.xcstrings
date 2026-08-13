@@ -41,6 +41,26 @@
         }
       }
     },
+    "Access not verified": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "访问尚未验证"
+          }
+        }
+      }
+    },
+    "Access verification failed": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "访问验证失败"
+          }
+        }
+      }
+    },
     "Access verified": {
       "localizations": {
         "zh-Hans": {
@@ -441,6 +461,16 @@
         }
       }
     },
+    "Not verified": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未验证"
+          }
+        }
+      }
+    },
     "Open": {
       "localizations": {
         "zh-Hans": {
@@ -457,6 +487,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "打开位于 %1$@ 的容器"
+          }
+        }
+      }
+    },
+    "Open Settings to review diagnostics": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "打开设置以查看诊断信息"
           }
         }
       }
@@ -571,6 +611,16 @@
         }
       }
     },
+    "Run the self-test from Settings": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请在设置中运行自检"
+          }
+        }
+      }
+    },
     "Run Self-Test": {
       "localizations": {
         "zh-Hans": {
@@ -587,6 +637,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "运行中"
+          }
+        }
+      }
+    },
+    "Running on-device compatibility checks": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在运行设备兼容性检查"
           }
         }
       }
@@ -667,6 +727,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "源代码"
+          }
+        }
+      }
+    },
+    "Status": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "状态"
           }
         }
       }
@@ -827,6 +897,36 @@
           "stringUnit": {
             "state": "translated",
             "value": "Vellune 官方网站"
+          }
+        }
+      }
+    },
+    "Verified": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已验证"
+          }
+        }
+      }
+    },
+    "Verifying access…": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在验证访问能力…"
+          }
+        }
+      }
+    },
+    "Verifying…": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在验证…"
           }
         }
       }

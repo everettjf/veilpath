@@ -47,8 +47,10 @@ private struct SidebarView: View {
 
     var body: some View {
         List {
-            Section {
-                AccessStatusView(model: model)
+            if model.selfTestReport?.passed != true {
+                Section {
+                    AccessStatusView(model: model)
+                }
             }
 
             Section("Locations") {
@@ -141,13 +143,11 @@ private struct SettingsView: View {
                 }
 
                 Section("Access") {
+                    LabeledContent("Status") {
+                        AccessStateLabel(model: model)
+                    }
                     LabeledContent("Grant policy", value: "Per operation")
                     LabeledContent("Mode", value: "Read only")
-                    if let report = model.selfTestReport {
-                        LabeledContent("Self-test") {
-                            TestResultText(passed: report.passed)
-                        }
-                    }
                 }
 
                 Section("About") {
@@ -178,19 +178,42 @@ private struct AccessStatusView: View {
 
     var body: some View {
         HStack(spacing: 10) {
-            Image(systemName: model.selfTestReport?.passed == true ? "checkmark.shield.fill" : "shield.lefthalf.filled")
-                .foregroundStyle(model.selfTestReport?.passed == true ? .green : .secondary)
+            Image(systemName: statusIcon)
+                .foregroundStyle(statusColor)
             VStack(alignment: .leading, spacing: 2) {
-                Text(model.selfTestReport?.passed == true
-                    ? LocalizedStringResource("Access verified")
-                    : LocalizedStringResource("Per-operation access"))
+                Text(statusTitle)
                     .font(.callout.weight(.medium))
-                Text("Grants are released after each operation")
+                Text(statusDetail)
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
         }
+        .padding(.vertical, 2)
         .accessibilityElement(children: .combine)
+    }
+
+    private var statusIcon: String {
+        if model.isWorking { return "shield.lefthalf.filled.badge.checkmark" }
+        if model.selfTestReport == nil { return "shield.slash" }
+        return "exclamationmark.shield.fill"
+    }
+
+    private var statusColor: Color {
+        if model.isWorking { return .secondary }
+        if model.selfTestReport == nil { return .secondary }
+        return .orange
+    }
+
+    private var statusTitle: LocalizedStringResource {
+        if model.isWorking { return "Verifying access…" }
+        if model.selfTestReport == nil { return "Access not verified" }
+        return "Access verification failed"
+    }
+
+    private var statusDetail: LocalizedStringResource {
+        if model.isWorking { return "Running on-device compatibility checks" }
+        if model.selfTestReport == nil { return "Run the self-test from Settings" }
+        return "Open Settings to review diagnostics"
     }
 }
 
@@ -512,6 +535,28 @@ private struct TestResultText: View {
 
     var body: some View {
         Text(passed ? LocalizedStringResource("Passed") : LocalizedStringResource("Failed"))
+    }
+}
+
+private struct AccessStateLabel: View {
+    let model: VelluneModel
+
+    var body: some View {
+        if model.isWorking {
+            Label("Verifying…", systemImage: "progress.indicator")
+                .foregroundStyle(.secondary)
+        } else if let report = model.selfTestReport {
+            if report.passed {
+                Label("Verified", systemImage: "checkmark.circle.fill")
+                    .foregroundStyle(.green)
+            } else {
+                Label("Failed", systemImage: "exclamationmark.circle.fill")
+                    .foregroundStyle(.orange)
+            }
+        } else {
+            Label("Not verified", systemImage: "minus.circle")
+                .foregroundStyle(.secondary)
+        }
     }
 }
 
