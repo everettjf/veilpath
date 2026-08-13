@@ -5,12 +5,17 @@ struct ContentView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var showInspector = false
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
+    @State private var preferredCompactColumn: NavigationSplitViewColumn = .sidebar
 
     var body: some View {
-        NavigationSplitView(columnVisibility: $columnVisibility) {
+        NavigationSplitView(
+            columnVisibility: $columnVisibility,
+            preferredCompactColumn: $preferredCompactColumn
+        ) {
             SidebarView(
                 model: model,
                 columnVisibility: $columnVisibility,
+                preferredCompactColumn: $preferredCompactColumn,
                 usesCompactNavigation: horizontalSizeClass == .compact
             )
                 .navigationSplitViewColumnWidth(min: 290, ideal: 340, max: 430)
@@ -30,6 +35,13 @@ struct ContentView: View {
                 }
         }
         .navigationSplitViewStyle(.balanced)
+        .onAppear {
+            #if targetEnvironment(simulator)
+            if ProcessInfo.processInfo.arguments.contains("--ui-testing-browser") {
+                preferredCompactColumn = .detail
+            }
+            #endif
+        }
         .onChange(of: model.selectedItem) { _, item in
             if item != nil { showInspector = true }
         }
@@ -51,6 +63,7 @@ struct ContentView: View {
 private struct SidebarView: View {
     @Bindable var model: VelluneModel
     @Binding var columnVisibility: NavigationSplitViewVisibility
+    @Binding var preferredCompactColumn: NavigationSplitViewColumn
     let usesCompactNavigation: Bool
     @State private var searchText = ""
     @State private var selectedKind: ContainerKind = .application
@@ -83,9 +96,11 @@ private struct SidebarView: View {
                 } else {
                     ForEach(containers) { container in
                         Button {
+                            if usesCompactNavigation {
+                                preferredCompactColumn = .detail
+                            }
                             Task {
                                 await model.open(container)
-                                if usesCompactNavigation { columnVisibility = .detailOnly }
                             }
                         } label: {
                             ContainerRow(container: container)
@@ -325,10 +340,12 @@ private struct ContainerRow: View {
 private struct BrowserView: View {
     @Bindable var model: VelluneModel
     @Binding var showInspector: Bool
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @FocusState private var pathFocused: Bool
     @State private var showFileSearch = false
     @State private var fileFilter = ""
     @State private var pathInput = ""
+    @State private var isEditingPath = false
 
     private var visibleItems: [FileItem] {
         guard !fileFilter.isEmpty else { return model.items }
@@ -338,23 +355,30 @@ private struct BrowserView: View {
     var body: some View {
         VStack(spacing: 0) {
             if !model.path.isEmpty {
-                ViewThatFits(in: .horizontal) {
-                    HStack(spacing: 10) {
-                        navigationButtons
-                        pathEntry
-                    }
-                    VStack(spacing: 10) {
-                        HStack(spacing: 10) {
-                            navigationButtons
-                            Spacer()
-                            Text("\(visibleItems.count) items")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                Group {
+                    if horizontalSizeClass == .compact {
+                        compactNavigationHeader
+                    } else {
+                        ViewThatFits(in: .horizontal) {
+                            HStack(spacing: 10) {
+                                navigationButtons
+                                pathEntry
+                            }
+                            VStack(spacing: 10) {
+                                HStack(spacing: 10) {
+                                    navigationButtons
+                                    Spacer()
+                                    Text("\(visibleItems.count) items")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                pathEntry
+                            }
                         }
-                        pathEntry
                     }
                 }
-                .padding()
+                .padding(.horizontal)
+                .padding(.vertical, horizontalSizeClass == .compact ? 8 : 16)
 
                 Divider()
             }
@@ -396,7 +420,8 @@ private struct BrowserView: View {
                 }
             }
         }
-        .navigationTitle(model.path.isEmpty ? String(localized: "Files") : URL(fileURLWithPath: model.path).lastPathComponent)
+        .navigationTitle(navigationTitle)
+        .navigationBarTitleDisplayMode(horizontalSizeClass == .compact ? .inline : .automatic)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 if model.path.isEmpty {
@@ -435,6 +460,81 @@ private struct BrowserView: View {
         .onChange(of: model.path, initial: true) { _, newPath in
             if !pathFocused { pathInput = newPath }
         }
+    }
+
+    private var navigationTitle: String {
+        guard !model.path.isEmpty else { return String(localized: "Files") }
+        if horizontalSizeClass == .compact {
+            guard model.path != model.currentContainerRoot else { return String(localized: "Files") }
+        }
+        return URL(fileURLWithPath: model.path).lastPathComponent
+    }
+
+    private var compactNavigationHeader: some View {
+        VStack(spacing: 8) {
+            HStack(spacing: 10) {
+                compactNavigationButton("Back", systemImage: "chevron.backward", disabled: !model.canGoBack) {
+                    await model.goBack()
+                }
+                compactNavigationButton("Forward", systemImage: "chevron.forward", disabled: !model.canGoForward) {
+                    await model.goForward()
+                }
+                compactNavigationButton("Up", systemImage: "arrow.up", disabled: model.isWorking || model.path == "/") {
+                    await model.goUp()
+                }
+                Spacer()
+                Text("\(visibleItems.count) items")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            if isEditingPath {
+                HStack(spacing: 10) {
+                    pathEntry
+                }
+            } else {
+                Button {
+                    isEditingPath = true
+                    pathFocused = true
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "folder")
+                            .foregroundStyle(.secondary)
+                        Text(model.path)
+                            .font(.caption.monospaced())
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                        Spacer(minLength: 4)
+                        Image(systemName: "pencil")
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(minHeight: 32)
+                    .contentShape(.rect)
+                }
+                .buttonStyle(.plain)
+                .accessibilityHint("Edit the absolute path")
+            }
+        }
+    }
+
+    private func compactNavigationButton(
+        _ title: LocalizedStringKey,
+        systemImage: String,
+        disabled: Bool,
+        action: @escaping @MainActor () async -> Void
+    ) -> some View {
+        Button {
+            Task { await action() }
+        } label: {
+            Label(title, systemImage: systemImage)
+                .labelStyle(.iconOnly)
+                .font(.body.weight(.semibold))
+                .frame(width: 44, height: 44)
+                .contentShape(.circle)
+        }
+        .buttonStyle(.bordered)
+        .buttonBorderShape(.circle)
+        .disabled(disabled)
     }
 
     @ViewBuilder private var navigationButtons: some View {
@@ -478,6 +578,7 @@ private struct BrowserView: View {
         Task {
             await model.openEnteredPath(pathInput)
             pathInput = model.path
+            isEditingPath = false
         }
     }
 }

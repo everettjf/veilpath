@@ -55,6 +55,9 @@ final class VelluneModel {
         if ProcessInfo.processInfo.arguments.contains("--ui-testing") {
             seedUITestContainers()
         }
+        if ProcessInfo.processInfo.arguments.contains("--ui-testing-browser") {
+            seedUITestBrowser()
+        }
         #else
         let currentVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
         if selfTestReport?.schemaVersion != 9
@@ -81,6 +84,18 @@ final class VelluneModel {
         ]
         containerIndexes[.appGroup] = [
             .init(path: "/var/mobile/Containers/Shared/AppGroup/G111", identifier: "group.com.example.SharedWorkspace", uuid: "G1111111-2222-3333-4444-555555555555", kind: .appGroup, metadataDiagnostic: nil)
+        ]
+    }
+
+    private func seedUITestBrowser() {
+        currentContainerRoot = "/var/mobile/Containers/Data/Application/A111"
+        path = currentContainerRoot
+        loadedPath = path
+        items = [
+            .init(url: URL(fileURLWithPath: path).appending(path: "Documents"), isDirectory: true, isSymbolicLink: false, size: nil, modifiedAt: .now),
+            .init(url: URL(fileURLWithPath: path).appending(path: "Library"), isDirectory: true, isSymbolicLink: false, size: nil, modifiedAt: .now),
+            .init(url: URL(fileURLWithPath: path).appending(path: "SystemData"), isDirectory: true, isSymbolicLink: false, size: nil, modifiedAt: .now),
+            .init(url: URL(fileURLWithPath: path).appending(path: ".com.apple.mobile_container_manager.metadata.plist"), isDirectory: false, isSymbolicLink: false, size: 585, modifiedAt: .now)
         ]
     }
     #endif
@@ -139,10 +154,20 @@ final class VelluneModel {
             let normalized = URL(fileURLWithPath: path).standardizedFileURL.path
             path = normalized
             log("Requesting access: \(normalized)")
-            let grant = try BadQueryClient.acquire(.forPath(normalized))
-            defer { BadQueryClient.release(grant) }
-            log("Access granted with handle \(grant.handle)")
-            try loadCurrentDirectory()
+            let showHiddenFiles = showHiddenFiles
+            let fileSortOrder = fileSortOrder
+            let result = try await Task.detached(priority: .userInitiated) {
+                let grant = try BadQueryClient.acquire(.forPath(normalized))
+                defer { BadQueryClient.release(grant) }
+                let items = try FileSystemReader.contents(
+                    at: normalized,
+                    showHidden: showHiddenFiles,
+                    sortOrder: fileSortOrder
+                )
+                return (grant.handle, items)
+            }.value
+            log("Access granted with handle \(result.0)")
+            applyLoadedItems(result.1)
             loadedPath = normalized
         } catch {
             report(error)
@@ -150,7 +175,12 @@ final class VelluneModel {
     }
 
     func loadCurrentDirectory() throws {
-        items = try FileSystemReader.contents(at: path, showHidden: showHiddenFiles, sortOrder: fileSortOrder)
+        let loadedItems = try FileSystemReader.contents(at: path, showHidden: showHiddenFiles, sortOrder: fileSortOrder)
+        applyLoadedItems(loadedItems)
+    }
+
+    private func applyLoadedItems(_ loadedItems: [FileItem]) {
+        items = loadedItems
         selectedItem = nil
         selectedPreview = nil
         selectedProperties = nil
@@ -158,7 +188,7 @@ final class VelluneModel {
         previewError = nil
         selectedExportURL = nil
         isLoadingPreview = false
-        log("Listed \(items.count) items at \(path)")
+        log("Listed \(loadedItems.count) items at \(path)")
     }
 
     func refresh() async {
