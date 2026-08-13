@@ -1,6 +1,70 @@
+# macOS
 .DS_Store
-DerivedData/
-*.xcuserstate
+.AppleDouble
+.LSOverride
+
+# Xcode user state
 xcuserdata/
-*.ipa
+*.xcuserstate
+*.xccheckout
+*.xcscmblueprint
+*.moved-aside
+
+# Xcode build products
+DerivedData/
+build/
+Build/
+*.xcarchive
+*.dSYM
 *.dSYM.zip
+*.ipa
+
+# Swift Package Manager
+.build/
+.swiftpm/configuration/
+.swiftpm/xcode/package.xcworkspace/xcuserdata/
+
+# Playgrounds
+timeline.xctimeline
+playground.xcworkspace
+
+# Test and coverage output
+*.xcresult
+*.profdata
+*.profraw
+coverage/
+
+# Signing credentials and provisioning artifacts
+*.mobileprovision
+*.provisionprofile
+*.p12
+*.cer
+*.key
+
+# Local environment and developer overrides
+.env
+.env.*
+!.env.example
+*.local
+*.local.*
+Local.xcconfig
+Secrets.xcconfig
+
+# Logs, temporary files, and editor backups
+*.log
+*.tmp
+*.swp
+*.swo
+*~
+.tmp/
+tmp/
+
+# Common editor metadata
+.idea/
+.vscode/
+
+# Fastlane generated output (if Fastlane is added later)
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/
+fastlane/test_output/

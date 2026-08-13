@@ -27,7 +27,7 @@ struct ContentView: View {
         .alert("Access Failed", isPresented: errorPresented) {
             Button("OK") { model.lastError = nil }
         } message: {
-            Text(model.lastError ?? "Unknown error")
+            Text(model.lastError ?? String(localized: "Unknown error"))
         }
     }
 
@@ -57,7 +57,7 @@ private struct SidebarView: View {
                         selectedKind = kind
                     } label: {
                         HStack {
-                            Label(kind.rawValue, systemImage: kind.systemImage)
+                            Label(kind.localizedName, systemImage: kind.systemImage)
                             Spacer()
                             Text(model.containerIndexes[kind, default: []].count, format: .number)
                                 .font(.caption.monospacedDigit())
@@ -71,12 +71,18 @@ private struct SidebarView: View {
                 }
             }
 
-            Section("\(selectedKind.rawValue) Containers") {
+            Section {
                 let containers = filteredContainers(for: selectedKind)
                 if containers.isEmpty {
-                    Text(searchText.isEmpty ? "No containers indexed" : "No matches")
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
+                    if searchText.isEmpty {
+                        Text("No containers indexed")
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        Text("No matches")
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                    }
                 } else {
                     ForEach(containers) { container in
                         Button {
@@ -88,6 +94,8 @@ private struct SidebarView: View {
                         .accessibilityHint("Opens the container at \(container.path)")
                     }
                 }
+            } header: {
+                Text(selectedKind.localizedContainerTitle)
             }
 
         }
@@ -136,7 +144,9 @@ private struct SettingsView: View {
                     LabeledContent("Grant policy", value: "Per operation")
                     LabeledContent("Mode", value: "Read only")
                     if let report = model.selfTestReport {
-                        LabeledContent("Self-test", value: report.passed ? "Passed" : "Failed")
+                        LabeledContent("Self-test") {
+                            TestResultText(passed: report.passed)
+                        }
                     }
                 }
 
@@ -171,7 +181,9 @@ private struct AccessStatusView: View {
             Image(systemName: model.selfTestReport?.passed == true ? "checkmark.shield.fill" : "shield.lefthalf.filled")
                 .foregroundStyle(model.selfTestReport?.passed == true ? .green : .secondary)
             VStack(alignment: .leading, spacing: 2) {
-                Text(model.selfTestReport?.passed == true ? "Access verified" : "Per-operation access")
+                Text(model.selfTestReport?.passed == true
+                    ? LocalizedStringResource("Access verified")
+                    : LocalizedStringResource("Per-operation access"))
                     .font(.callout.weight(.medium))
                 Text("Grants are released after each operation")
                     .font(.caption)
@@ -248,13 +260,19 @@ private struct BrowserView: View {
                 ProgressView("Requesting access…")
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if model.items.isEmpty {
-                ContentUnavailableView(
-                    model.path.isEmpty ? "Choose a Container" : "Empty Directory",
-                    systemImage: model.path.isEmpty ? "sidebar.left" : "folder",
-                    description: Text(model.path.isEmpty
-                        ? "Select a container in the sidebar to browse its files."
-                        : "This directory does not contain any visible items.")
-                )
+                if model.path.isEmpty {
+                    ContentUnavailableView(
+                        "Choose a Container",
+                        systemImage: "sidebar.left",
+                        description: Text("Select a container in the sidebar to browse its files.")
+                    )
+                } else {
+                    ContentUnavailableView(
+                        "Empty Directory",
+                        systemImage: "folder",
+                        description: Text("This directory does not contain any visible items.")
+                    )
+                }
             } else {
                 List(model.items, selection: $model.selectedItem) { item in
                     Button {
@@ -269,7 +287,7 @@ private struct BrowserView: View {
                 .refreshable { await model.refresh() }
             }
         }
-        .navigationTitle(model.path.isEmpty ? "Files" : URL(fileURLWithPath: model.path).lastPathComponent)
+        .navigationTitle(model.path.isEmpty ? String(localized: "Files") : URL(fileURLWithPath: model.path).lastPathComponent)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 if model.path.isEmpty {
@@ -343,7 +361,9 @@ private struct InspectorView: View {
                     Section("File") {
                         LabeledContent("Name", value: item.name)
                         LabeledContent("Path", value: item.url.path)
-                        LabeledContent("Kind", value: item.isDirectory ? "Directory" : "File")
+                        LabeledContent("Kind") {
+                            Text(item.isDirectory ? LocalizedStringResource("Directory") : LocalizedStringResource("File"))
+                        }
                         if let size = item.size {
                             LabeledContent(
                                 "Size",
@@ -428,7 +448,9 @@ private struct DiagnosticsView: View {
                 LabeledContent("System", value: ProcessInfo.processInfo.operatingSystemVersionString)
                 LabeledContent("Grant policy", value: "Per operation")
                 if let report = model.selfTestReport {
-                    LabeledContent("Self-test", value: report.passed ? "Passed" : "Failed")
+                    LabeledContent("Self-test") {
+                        TestResultText(passed: report.passed)
+                    }
                 } else {
                     LabeledContent("Self-test", value: "Running")
                 }
@@ -447,7 +469,7 @@ private struct DiagnosticsView: View {
                                 Text("Unsupported").foregroundStyle(.secondary)
                             }
                         } label: {
-                            Text(check.name)
+                            Text(check.localizedName)
                         }
                     }
                 }
@@ -481,6 +503,30 @@ private struct DiagnosticsView: View {
                 .disabled(model.isWorking)
             }
 
+        }
+    }
+}
+
+private struct TestResultText: View {
+    let passed: Bool
+
+    var body: some View {
+        Text(passed ? LocalizedStringResource("Passed") : LocalizedStringResource("Failed"))
+    }
+}
+
+private extension SelfTestReport.Check {
+    var localizedName: LocalizedStringResource {
+        switch name {
+        case "MobileGestalt file access": "MobileGestalt File Access"
+        case "Preview and safe export": "Preview and Safe Export"
+        case "Application container discovery": "Application Container Discovery"
+        case "System data containers": "System Data Containers"
+        case "Plugin containers": "Plugin Containers"
+        case "Internal daemon containers": "Internal Daemon Containers"
+        case "App Group containers": "App Group Containers"
+        case "System Group containers": "System Group Containers"
+        default: "Unknown Check"
         }
     }
 }

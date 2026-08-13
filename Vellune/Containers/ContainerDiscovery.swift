@@ -8,6 +8,28 @@ enum ContainerKind: String, Codable, CaseIterable, Sendable {
     case systemData = "System Data"
     case systemGroup = "System Group"
 
+    var localizedName: LocalizedStringResource {
+        switch self {
+        case .application: "Application"
+        case .appGroup: "App Group"
+        case .plugin: "Plugin"
+        case .internalDaemon: "Internal Daemon"
+        case .systemData: "System Data"
+        case .systemGroup: "System Group"
+        }
+    }
+
+    var localizedContainerTitle: LocalizedStringResource {
+        switch self {
+        case .application: "Application Containers"
+        case .appGroup: "App Group Containers"
+        case .plugin: "Plugin Containers"
+        case .internalDaemon: "Internal Daemon Containers"
+        case .systemData: "System Data Containers"
+        case .systemGroup: "System Group Containers"
+        }
+    }
+
     var systemImage: String {
         switch self {
         case .application: "app.dashed"

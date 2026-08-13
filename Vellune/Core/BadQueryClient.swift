@@ -26,14 +26,14 @@ enum BadQueryError: LocalizedError, Equatable {
 
     var errorDescription: String? {
         switch self {
-        case .dynamicSymbolsUnavailable: "Required private symbols are unavailable."
-        case .queryCreationFailed: "Container Manager query creation failed."
-        case .outsideContainerManagerSandbox: "Container Manager rejected the requested path."
-        case .kernelRejectedExtension: "The kernel refused to issue a sandbox extension."
-        case .allocationFailed: "The access query could not allocate required memory."
-        case .missingPath: "The target path does not exist."
-        case .invalidAbsolutePath: "The target must be an absolute path."
-        case .extensionConsumptionFailed(let code): "Consuming the sandbox extension failed (\(code))."
+        case .dynamicSymbolsUnavailable: String(localized: "Required private symbols are unavailable.")
+        case .queryCreationFailed: String(localized: "Container Manager query creation failed.")
+        case .outsideContainerManagerSandbox: String(localized: "Container Manager rejected the requested path.")
+        case .kernelRejectedExtension: String(localized: "The kernel refused to issue a sandbox extension.")
+        case .allocationFailed: String(localized: "The access query could not allocate required memory.")
+        case .missingPath: String(localized: "The target path does not exist.")
+        case .invalidAbsolutePath: String(localized: "The target must be an absolute path.")
+        case .extensionConsumptionFailed(let code): String(localized: "Consuming the sandbox extension failed (\(code)).")
         }
     }
 }
