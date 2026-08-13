@@ -73,6 +73,13 @@ enum SelfTestRunner {
         return report
     }
 
+    nonisolated static func verifyAccess() -> SelfTestReport.Check {
+        testDiscoveredApplicationContainer(
+            rootPath: "/var/mobile/Containers/Data/Application",
+            maximumInode: 5_000_000
+        )
+    }
+
     nonisolated static func loadPersistedReport() -> SelfTestReport? {
         guard let data = try? Data(contentsOf: reportURL) else { return nil }
         let decoder = JSONDecoder()

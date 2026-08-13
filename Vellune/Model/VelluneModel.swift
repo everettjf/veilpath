@@ -21,9 +21,11 @@ final class VelluneModel {
     var showHiddenFiles = true
     var fileSortOrder: FileSortOrder = .name
     var isWorking = false
+    var isVerifyingAccess = false
     var isRunningDiagnostics = false
     var lastError: String?
     var selfTestReport: SelfTestReport?
+    var accessVerification: SelfTestReport.Check?
     var containerIndexes: [ContainerKind: [ContainerDescriptor]] = [:]
     var searchResults: [FileItem] = []
     var isSearching = false
@@ -45,6 +47,7 @@ final class VelluneModel {
             containerIndexes[kind] = ContainerDiscoveryService.loadCached(kind)
         }
         selfTestReport = SelfTestRunner.loadPersistedReport()
+        accessVerification = selfTestReport?.checks.first { $0.name == "Application container discovery" }
         ExportCache.removeExpired()
         log("Vellune started on \(ProcessInfo.processInfo.operatingSystemVersionString)")
         #if targetEnvironment(simulator)
@@ -58,8 +61,12 @@ final class VelluneModel {
             || selfTestReport?.appVersion != currentVersion
             || containers.isEmpty
             || systemContainers.isEmpty {
-            Task { await runSelfTest() }
+            Task {
+                await verifyAccess()
+                await runSelfTest()
+            }
         } else {
+            Task { await verifyAccess() }
             log("Loaded cached self-test and container indexes")
         }
         #endif
@@ -77,6 +84,19 @@ final class VelluneModel {
         ]
     }
     #endif
+
+    func verifyAccess() async {
+        guard !isVerifyingAccess else { return }
+        isVerifyingAccess = true
+        log("Verifying application container access")
+        let check = await Task.detached(priority: .userInitiated) {
+            SelfTestRunner.verifyAccess()
+        }.value
+        accessVerification = check
+        containerIndexes[.application] = ContainerDiscoveryService.loadCached(.application)
+        log("\(check.passed ? "PASS" : "FAIL") \(check.name): \(check.detail)", isError: !check.passed)
+        isVerifyingAccess = false
+    }
 
     func runSelfTest() async {
         guard !isRunningDiagnostics else { return }

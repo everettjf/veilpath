@@ -58,7 +58,7 @@ private struct SidebarView: View {
 
     var body: some View {
         List {
-            if model.selfTestReport?.passed != true {
+            if model.accessVerification?.status != .passed {
                 Section {
                     AccessStatusView(model: model)
                 }
@@ -270,26 +270,26 @@ private struct AccessStatusView: View {
     }
 
     private var statusIcon: String {
-        if model.isRunningDiagnostics { return "shield.lefthalf.filled.badge.checkmark" }
-        if model.selfTestReport == nil { return "shield.slash" }
+        if model.isVerifyingAccess { return "shield.lefthalf.filled.badge.checkmark" }
+        if model.accessVerification == nil { return "shield.slash" }
         return "exclamationmark.shield.fill"
     }
 
     private var statusColor: Color {
-        if model.isRunningDiagnostics { return .secondary }
-        if model.selfTestReport == nil { return .secondary }
+        if model.isVerifyingAccess { return .secondary }
+        if model.accessVerification == nil { return .secondary }
         return .orange
     }
 
     private var statusTitle: LocalizedStringResource {
-        if model.isRunningDiagnostics { return "Verifying access…" }
-        if model.selfTestReport == nil { return "Access not verified" }
+        if model.isVerifyingAccess { return "Verifying access…" }
+        if model.accessVerification == nil { return "Access not verified" }
         return "Access verification failed"
     }
 
     private var statusDetail: LocalizedStringResource {
-        if model.isRunningDiagnostics { return "Running on-device compatibility checks" }
-        if model.selfTestReport == nil { return "Run the self-test from Settings" }
+        if model.isVerifyingAccess { return "Testing application container access" }
+        if model.accessVerification == nil { return "Run the access check from Settings" }
         return "Open Settings to review diagnostics"
     }
 }
@@ -839,11 +839,11 @@ private struct AccessStateLabel: View {
     let model: VelluneModel
 
     var body: some View {
-        if model.isRunningDiagnostics {
+        if model.isVerifyingAccess {
             Label("Verifying…", systemImage: "progress.indicator")
                 .foregroundStyle(.secondary)
-        } else if let report = model.selfTestReport {
-            if report.passed {
+        } else if let check = model.accessVerification {
+            if check.passed {
                 Label("Verified", systemImage: "checkmark.circle.fill")
                     .foregroundStyle(.green)
             } else {
