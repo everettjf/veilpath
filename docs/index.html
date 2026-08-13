@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#080a22">
+  <title>Vellune — Beyond the sandbox</title>
+  <meta name="description" content="A native container explorer for iOS and iPadOS, built around bad_query.">
+  <meta property="og:title" content="Vellune — Beyond the sandbox">
+  <meta property="og:description" content="A precise, native container explorer for iOS and iPadOS 26–27 beta 3.">
+  <meta property="og:image" content="https://everettjf.github.io/vellune/assets/og.png">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://everettjf.github.io/vellune/">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="assets/icon.png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="ambient ambient-one"></div><div class="ambient ambient-two"></div>
+  <header class="nav shell">
+    <a class="brand" href="#top"><img src="assets/icon.png" alt="" width="38" height="38"><span>Vellune</span></a>
+    <nav aria-label="Primary navigation"><a href="#capabilities">Capabilities</a><a href="#compatibility">Compatibility</a><a href="#build">Build</a><a class="nav-cta" href="https://github.com/everettjf/vellune">GitHub</a></nav>
+  </header>
+  <main id="top">
+    <section class="hero shell">
+      <div class="hero-copy">
+        <p class="eyebrow"><span></span> Native on iPhone &amp; iPad</p>
+        <h1>Look beyond<br><em>the sandbox.</em></h1>
+        <p class="lede">Vellune is a focused container explorer built for <code>bad_query</code>—precise, transparent, and designed around the paths iOS normally keeps out of reach.</p>
+        <div class="actions"><a class="primary" href="https://github.com/everettjf/vellune">View source <span>↗</span></a><a class="secondary" href="#build">Build Vellune <span>↓</span></a></div>
+        <div class="proof"><div><strong>296/296</strong><span>App containers identified</span></div><div><strong>21</strong><span>System containers indexed</span></div><div><strong>~8s</strong><span>Full on-device scan</span></div></div>
+      </div>
+      <div class="device-stage" aria-label="Vellune running on iPad">
+        <div class="orbit orbit-a"></div><div class="orbit orbit-b"></div>
+        <div class="device"><div class="camera"></div><img src="assets/ipad.png" alt="Vellune showing application containers on iPad"></div>
+        <div class="status-card status-one"><i></i><span>Sandbox extension</span><b>Granted</b></div><div class="status-card status-two"><i></i><span>Metadata mapping</span><b>296 / 296</b></div>
+      </div>
+    </section>
+    <section class="marquee"><div><span>APP CONTAINERS</span><b>✦</b><span>SYSTEM DATA</span><b>✦</b><span>PLIST PREVIEW</span><b>✦</b><span>SAFE EXPORT</span><b>✦</b><span>SHORT-LIVED GRANTS</span><b>✦</b><span>APP CONTAINERS</span><b>✦</b><span>SYSTEM DATA</span><b>✦</b><span>PLIST PREVIEW</span><b>✦</b><span>SAFE EXPORT</span><b>✦</b></div></section>
+    <section id="capabilities" class="section shell">
+      <div class="section-heading"><p class="eyebrow"><span></span> Designed from the exploit outward</p><h2>Not a generic file browser<br><em>with an exploit bolted on.</em></h2><p>Every layer—from container discovery to preview and export—is designed around the real access behavior of <code>bad_query</code>.</p></div>
+      <div class="feature-grid">
+        <article class="feature featured"><div class="feature-number">01</div><div class="glyph layers"><i></i><i></i><i></i></div><h3>Container discovery</h3><p>Indexes application, App Group, plugin, internal daemon, system data, and System Group paths with direct access or <code>fsgetpath</code> fallback.</p><small>Capability-aware · No computer-side mapping</small></article>
+        <article class="feature"><div class="feature-number">02</div><div class="glyph pulse"><i></i></div><h3>Per-operation access</h3><p>Acquires the narrow sandbox extension needed for an operation and releases it immediately afterward.</p><small>Explicit lifetime · Diagnostic logging</small></article>
+        <article class="feature"><div class="feature-number">03</div><div class="glyph eye">◉</div><h3>Native preview</h3><p>Inspect text, JSON, property lists, and images with an adaptive three-column interface on iPad.</p><small>Mapped reads · Large-file limits</small></article>
+        <article class="feature"><div class="feature-number">04</div><div class="glyph export">↗</div><h3>Safe export</h3><p>Stages accessed files inside Vellune before opening the share sheet, so access remains valid throughout export.</p><small>Cache-backed · Original remains untouched</small></article>
+      </div>
+    </section>
+    <section id="compatibility" class="section compatibility shell">
+      <div class="compat-copy"><p class="eyebrow"><span></span> Compatibility</p><h2>Built for the<br><em>narrow window.</em></h2><p>Vellune deliberately targets the versions where this technique matters. Capability checks and diagnostics expose failure instead of hiding it.</p></div>
+      <div class="matrix"><div class="matrix-head"><span>Platform</span><span>Target</span><span>Status</span></div><div><strong>iPadOS</strong><span>27 beta 3</span><mark>Verified</mark></div><div><strong>iOS / iPadOS</strong><span>26.x</span><mark class="pending">Build target</mark></div><div><strong>iPhone</strong><span>27.x</span><mark class="pending">Adaptive UI</mark></div><div><strong>Simulator</strong><span>26–27</span><mark class="neutral">UI only</mark></div><p>Physical-device behavior depends on the exact OS build. Always consult Diagnostics before relying on an access path.</p></div>
+    </section>
+    <section class="section evidence shell">
+      <div class="terminal"><div class="terminal-bar"><span></span><span></span><span></span><b>vellune-self-test.json</b></div><pre><code><i>PASS</i> MobileGestalt file access
+     handle=1 · bytes=10446
+
+<i>PASS</i> Preview and safe export
+     plist → XML · 15723 characters
+
+<i>PASS</i> Application container discovery
+     discovered=296 · identified=296
+
+<i>PASS</i> System data containers
+     childCount=21 · indexed=21</code></pre></div>
+      <div class="evidence-copy"><p class="eyebrow"><span></span> Evidence, not assumptions</p><h2>Tested where it<br><em>actually runs.</em></h2><p>Vellune carries an on-device regression suite. It verifies access, discovery, metadata resolution, preview, export, and timings against a physical device.</p><ul><li>Structured JSON test reports</li><li>Raw error-code mapping</li><li>Simulator self-test isolation</li><li>Debug and Release builds</li></ul></div>
+    </section>
+    <section id="build" class="section build shell">
+      <div><p class="eyebrow"><span></span> Build it yourself</p><h2>Open the project.<br><em>Know what runs.</em></h2></div>
+      <div class="steps"><article><b>1</b><div><h3>Clone</h3><code>git clone https://github.com/everettjf/vellune</code></div></article><article><b>2</b><div><h3>Open</h3><p>Open <code>Vellune.xcodeproj</code> in Xcode 27 beta.</p></div></article><article><b>3</b><div><h3>Run</h3><p>Select a physical iPhone or iPad, configure signing, then launch.</p></div></article></div>
+    </section>
+    <section class="cta shell"><img src="assets/icon.png" alt="" width="100" height="100"><p class="eyebrow">Vellune 1.0</p><h2>There is more beneath<br><em>the surface.</em></h2><a class="primary" href="https://github.com/everettjf/vellune">Explore on GitHub <span>↗</span></a></section>
+  </main>
+  <footer class="shell"><div class="brand"><img src="assets/icon.png" alt="" width="32" height="32"><span>Vellune</span></div><p>Built around <a href="https://github.com/forcequitOS/bad_query">bad_query</a>. Experimental software for research and development.</p><a href="#top">Back to top ↑</a></footer>
+</body>
+</html>
