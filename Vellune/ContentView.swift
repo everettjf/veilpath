@@ -2,12 +2,17 @@ import SwiftUI
 
 struct ContentView: View {
     @Bindable var model: VelluneModel
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var showInspector = false
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
 
     var body: some View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
-            SidebarView(model: model, columnVisibility: $columnVisibility)
+            SidebarView(
+                model: model,
+                columnVisibility: $columnVisibility,
+                usesCompactNavigation: horizontalSizeClass == .compact
+            )
                 .navigationSplitViewColumnWidth(min: 290, ideal: 340, max: 430)
         } detail: {
             BrowserView(model: model, showInspector: $showInspector)
@@ -46,7 +51,7 @@ struct ContentView: View {
 private struct SidebarView: View {
     @Bindable var model: VelluneModel
     @Binding var columnVisibility: NavigationSplitViewVisibility
-    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    let usesCompactNavigation: Bool
     @State private var searchText = ""
     @State private var selectedKind: ContainerKind = .application
     @State private var showSettings = false
@@ -59,7 +64,7 @@ private struct SidebarView: View {
                 }
             }
 
-            if horizontalSizeClass != .compact {
+            if !usesCompactNavigation {
                 locationsSection
             }
 
@@ -80,7 +85,7 @@ private struct SidebarView: View {
                         Button {
                             Task {
                                 await model.open(container)
-                                if horizontalSizeClass == .compact { columnVisibility = .detailOnly }
+                                if usesCompactNavigation { columnVisibility = .detailOnly }
                             }
                         } label: {
                             ContainerRow(container: container)
@@ -109,7 +114,7 @@ private struct SidebarView: View {
                         showSettings = true
                     }
                     .labelStyle(.iconOnly)
-                    if horizontalSizeClass == .compact {
+                    if usesCompactNavigation {
                         locationsMenu
                             .labelStyle(.titleAndIcon)
                     }
