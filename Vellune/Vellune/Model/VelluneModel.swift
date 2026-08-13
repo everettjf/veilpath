@@ -36,7 +36,11 @@ final class VelluneModel {
         #if targetEnvironment(simulator)
         log("bad_query self-test skipped in Simulator")
         #else
-        if selfTestReport?.schemaVersion != 7 || containers.isEmpty || systemContainers.isEmpty {
+        let currentVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
+        if selfTestReport?.schemaVersion != 7
+            || selfTestReport?.appVersion != currentVersion
+            || containers.isEmpty
+            || systemContainers.isEmpty {
             Task { await runSelfTest() }
         } else {
             log("Loaded cached self-test and container indexes")
