@@ -24,6 +24,19 @@ struct FileItem: Identifiable, Hashable, Sendable {
     }
 }
 
+enum FileSortOrder: String, CaseIterable, Identifiable, Sendable {
+    case name, date, size
+
+    var id: Self { self }
+    var localizedName: LocalizedStringResource {
+        switch self {
+        case .name: "Name"
+        case .date: "Date Modified"
+        case .size: "Size"
+        }
+    }
+}
+
 enum FileSystemReader {
     static let resourceKeys: Set<URLResourceKey> = [
         .isDirectoryKey,
@@ -33,7 +46,7 @@ enum FileSystemReader {
         .isHiddenKey
     ]
 
-    static func contents(at path: String, showHidden: Bool) throws -> [FileItem] {
+    static func contents(at path: String, showHidden: Bool, sortOrder: FileSortOrder = .name) throws -> [FileItem] {
         let url = URL(fileURLWithPath: path, isDirectory: true)
         var options: FileManager.DirectoryEnumerationOptions = [.skipsPackageDescendants]
         if !showHidden { options.insert(.skipsHiddenFiles) }
@@ -49,9 +62,17 @@ enum FileSystemReader {
                     modifiedAt: values.contentModificationDate
                 )
             }
-            .sorted {
-                if $0.isDirectory != $1.isDirectory { return $0.isDirectory }
-                return $0.name.localizedStandardCompare($1.name) == .orderedAscending
+            .sorted { lhs, rhs in
+                if lhs.isDirectory != rhs.isDirectory { return lhs.isDirectory }
+                switch sortOrder {
+                case .name:
+                    return lhs.name.localizedStandardCompare(rhs.name) == .orderedAscending
+                case .date:
+                    if lhs.modifiedAt != rhs.modifiedAt { return (lhs.modifiedAt ?? .distantPast) > (rhs.modifiedAt ?? .distantPast) }
+                case .size:
+                    if lhs.size != rhs.size { return (lhs.size ?? 0) > (rhs.size ?? 0) }
+                }
+                return lhs.name.localizedStandardCompare(rhs.name) == .orderedAscending
             }
     }
 

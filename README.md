@@ -53,7 +53,11 @@ sandbox boundary.
   opened directly.
 - Acquires a sandbox extension for each operation and releases it immediately
   afterward.
-- Previews text, JSON, property lists, and images.
+- Browses with directory history, back/forward/up navigation, local filtering,
+  recursive container search, and name/date/size sorting.
+- Previews searchable plist and JSON trees, XML, text, images, hexadecimal data,
+  and Mach-O architecture, dependency, signature, and entitlement details.
+- Shows file metadata and SHA-256 hashes before export.
 - Stages files inside Vellune's cache before presenting the system share sheet.
 - Includes an on-device diagnostics suite with a structured JSON report.
 - Intentionally read-only: destructive container operations are not exposed.

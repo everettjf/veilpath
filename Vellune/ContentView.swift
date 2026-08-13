@@ -3,10 +3,11 @@ import SwiftUI
 struct ContentView: View {
     @Bindable var model: VelluneModel
     @State private var showInspector = false
+    @State private var columnVisibility: NavigationSplitViewVisibility = .all
 
     var body: some View {
-        NavigationSplitView {
-            SidebarView(model: model)
+        NavigationSplitView(columnVisibility: $columnVisibility) {
+            SidebarView(model: model, columnVisibility: $columnVisibility)
                 .navigationSplitViewColumnWidth(min: 290, ideal: 340, max: 430)
         } detail: {
             BrowserView(model: model, showInspector: $showInspector)
@@ -17,7 +18,8 @@ struct ContentView: View {
                         previewError: model.previewError,
                         exportURL: model.selectedExportURL,
                         properties: model.selectedProperties,
-                        hexDump: model.selectedHexDump
+                        hexDump: model.selectedHexDump,
+                        isLoading: model.isLoadingPreview
                     )
                     .inspectorColumnWidth(min: 300, ideal: 380, max: 520)
                 }
@@ -43,6 +45,8 @@ struct ContentView: View {
 
 private struct SidebarView: View {
     @Bindable var model: VelluneModel
+    @Binding var columnVisibility: NavigationSplitViewVisibility
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var searchText = ""
     @State private var selectedKind: ContainerKind = .application
     @State private var showSettings = false
@@ -90,7 +94,10 @@ private struct SidebarView: View {
                 } else {
                     ForEach(containers) { container in
                         Button {
-                            Task { await model.open(container) }
+                            Task {
+                                await model.open(container)
+                                if horizontalSizeClass == .compact { columnVisibility = .detailOnly }
+                            }
                         } label: {
                             ContainerRow(container: container)
                         }
@@ -215,25 +222,25 @@ private struct AccessStatusView: View {
     }
 
     private var statusIcon: String {
-        if model.isWorking { return "shield.lefthalf.filled.badge.checkmark" }
+        if model.isRunningDiagnostics { return "shield.lefthalf.filled.badge.checkmark" }
         if model.selfTestReport == nil { return "shield.slash" }
         return "exclamationmark.shield.fill"
     }
 
     private var statusColor: Color {
-        if model.isWorking { return .secondary }
+        if model.isRunningDiagnostics { return .secondary }
         if model.selfTestReport == nil { return .secondary }
         return .orange
     }
 
     private var statusTitle: LocalizedStringResource {
-        if model.isWorking { return "Verifying access…" }
+        if model.isRunningDiagnostics { return "Verifying access…" }
         if model.selfTestReport == nil { return "Access not verified" }
         return "Access verification failed"
     }
 
     private var statusDetail: LocalizedStringResource {
-        if model.isWorking { return "Running on-device compatibility checks" }
+        if model.isRunningDiagnostics { return "Running on-device compatibility checks" }
         if model.selfTestReport == nil { return "Run the self-test from Settings" }
         return "Open Settings to review diagnostics"
     }
@@ -272,42 +279,32 @@ private struct BrowserView: View {
     @Binding var showInspector: Bool
     @FocusState private var pathFocused: Bool
     @State private var showFileSearch = false
+    @State private var fileFilter = ""
+    @State private var pathInput = ""
+
+    private var visibleItems: [FileItem] {
+        guard !fileFilter.isEmpty else { return model.items }
+        return model.items.filter { $0.name.localizedCaseInsensitiveContains(fileFilter) }
+    }
 
     var body: some View {
         VStack(spacing: 0) {
             if !model.path.isEmpty {
-                HStack(spacing: 10) {
-                    Button("Back", systemImage: "chevron.backward") {
-                        Task { await model.goBack() }
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 10) {
+                        navigationButtons
+                        pathEntry
                     }
-                    .labelStyle(.iconOnly)
-                    .disabled(!model.canGoBack)
-
-                    Button("Forward", systemImage: "chevron.forward") {
-                        Task { await model.goForward() }
+                    VStack(spacing: 10) {
+                        HStack(spacing: 10) {
+                            navigationButtons
+                            Spacer()
+                            Text("\(visibleItems.count) items")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        pathEntry
                     }
-                    .labelStyle(.iconOnly)
-                    .disabled(!model.canGoForward)
-
-                    Button("Up", systemImage: "chevron.up") {
-                        Task { await model.goUp() }
-                    }
-                    .labelStyle(.iconOnly)
-                    .disabled(model.isWorking || model.path == "/")
-
-                    TextField("Absolute path", text: $model.path)
-                        .font(.system(.callout, design: .monospaced))
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                        .focused($pathFocused)
-                        .onSubmit { Task { await model.openEnteredPath() } }
-
-                    Button("Open", systemImage: "arrow.right.circle.fill") {
-                        pathFocused = false
-                        Task { await model.openEnteredPath() }
-                    }
-                    .labelStyle(.iconOnly)
-                    .disabled(model.isWorking)
                 }
                 .padding()
 
@@ -332,17 +329,23 @@ private struct BrowserView: View {
                     )
                 }
             } else {
-                List(model.items, selection: $model.selectedItem) { item in
+                List(visibleItems) { item in
                     Button {
                         Task { await model.open(item) }
                     } label: {
                         FileRow(item: item)
                     }
                     .buttonStyle(.plain)
-                    .tag(item)
+                    .listRowBackground(model.selectedItem == item ? Color.accentColor.opacity(0.12) : Color.clear)
+                    .accessibilityAddTraits(model.selectedItem == item ? .isSelected : [])
                 }
                 .listStyle(.plain)
                 .refreshable { await model.refresh() }
+                .overlay {
+                    if visibleItems.isEmpty {
+                        ContentUnavailableView.search(text: fileFilter)
+                    }
+                }
             }
         }
         .navigationTitle(model.path.isEmpty ? String(localized: "Files") : URL(fileURLWithPath: model.path).lastPathComponent)
@@ -352,7 +355,16 @@ private struct BrowserView: View {
                     if model.isWorking { ProgressView() }
                 } else {
                     Menu("View Options", systemImage: "ellipsis.circle") {
+                        Label("\(visibleItems.count) items", systemImage: "doc.on.doc")
+                        Divider()
                         Button("Search This Container", systemImage: "magnifyingglass") { showFileSearch = true }
+                        Menu("Sort By", systemImage: "arrow.up.arrow.down") {
+                            Picker("Sort By", selection: $model.fileSortOrder) {
+                                ForEach(FileSortOrder.allCases) { order in
+                                    Text(order.localizedName).tag(order)
+                                }
+                            }
+                        }
                         Toggle("Show Hidden Files", isOn: $model.showHiddenFiles)
                         if model.selectedItem != nil {
                             Button("File Info", systemImage: "info.circle") {
@@ -363,10 +375,62 @@ private struct BrowserView: View {
                     .onChange(of: model.showHiddenFiles) {
                         Task { await model.refresh() }
                     }
+                    .onChange(of: model.fileSortOrder) {
+                        Task { await model.refresh() }
+                    }
                 }
             }
         }
+        .searchable(text: $fileFilter, placement: .toolbar, prompt: "Filter Current Directory")
+        .searchToolbarBehavior(.minimize)
         .sheet(isPresented: $showFileSearch) { ContainerSearchView(model: model) }
+        .onChange(of: model.path, initial: true) { _, newPath in
+            if !pathFocused { pathInput = newPath }
+        }
+    }
+
+    @ViewBuilder private var navigationButtons: some View {
+                    Button("Back", systemImage: "chevron.backward") {
+                        Task { await model.goBack() }
+                    }
+                    .labelStyle(.iconOnly)
+                    .disabled(!model.canGoBack)
+
+                    Button("Forward", systemImage: "chevron.forward") {
+                        Task { await model.goForward() }
+                    }
+                    .labelStyle(.iconOnly)
+                    .disabled(!model.canGoForward)
+
+                    Button("Up", systemImage: "chevron.up") {
+                        Task { await model.goUp() }
+                    }
+                    .labelStyle(.iconOnly)
+                    .disabled(model.isWorking || model.path == "/")
+    }
+
+    @ViewBuilder private var pathEntry: some View {
+                    TextField("Absolute path", text: $pathInput)
+                        .font(.system(.callout, design: .monospaced))
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .focused($pathFocused)
+                        .onSubmit { openPathInput() }
+
+                    Button("Open", systemImage: "arrow.right.circle.fill") {
+                        pathFocused = false
+                        openPathInput()
+                    }
+                    .labelStyle(.iconOnly)
+                    .disabled(model.isWorking)
+    }
+
+    private func openPathInput() {
+        pathFocused = false
+        Task {
+            await model.openEnteredPath(pathInput)
+            pathInput = model.path
+        }
     }
 }
 
@@ -412,6 +476,7 @@ private struct InspectorView: View {
     let exportURL: URL?
     let properties: FileProperties?
     let hexDump: String
+    let isLoading: Bool
     @State private var selection: InspectorSection = .preview
     @State private var confirmWebSearch = false
     @Environment(\.openURL) private var openURL
@@ -426,7 +491,7 @@ private struct InspectorView: View {
                 .padding()
                 Group {
                     switch selection {
-                    case .preview: PreviewContent(preview: preview, error: previewError)
+                    case .preview: PreviewContent(preview: preview, error: previewError, isLoading: isLoading)
                     case .properties: FilePropertiesView(item: item, properties: properties)
                     case .hex: TextViewer(text: hexDump, format: "Hex")
                     }
@@ -463,6 +528,7 @@ private struct InspectorView: View {
 private struct PreviewContent: View {
     let preview: FilePreview?
     let error: String?
+    let isLoading: Bool
 
     var body: some View {
         Group {
@@ -486,8 +552,10 @@ private struct PreviewContent: View {
                         description: Text(ByteCountFormatter.string(fromByteCount: size, countStyle: .file))
                     )
                 }
-            } else {
+            } else if isLoading {
                 ProgressView("Loading preview…")
+            } else {
+                ContentUnavailableView("Preview Unavailable", systemImage: "eye.slash")
             }
         }
     }
@@ -704,7 +772,7 @@ private struct DiagnosticsView: View {
                 Button("Run Self-Test", systemImage: "checkmark.shield") {
                     Task { await model.runSelfTest() }
                 }
-                .disabled(model.isWorking)
+                .disabled(model.isRunningDiagnostics)
             }
 
         }
@@ -723,7 +791,7 @@ private struct AccessStateLabel: View {
     let model: VelluneModel
 
     var body: some View {
-        if model.isWorking {
+        if model.isRunningDiagnostics {
             Label("Verifying…", systemImage: "progress.indicator")
                 .foregroundStyle(.secondary)
         } else if let report = model.selfTestReport {
@@ -752,6 +820,12 @@ private extension SelfTestReport.Check {
         case "Internal daemon containers": "Internal Daemon Containers"
         case "App Group containers": "App Group Containers"
         case "System Group containers": "System Group Containers"
+        case "Structured plist and JSON": "Structured Plist and JSON"
+        case "File properties SHA-256 and hex": "File Properties, SHA-256, and Hex"
+        case "Mach-O and code signature analysis": "Mach-O and Code Signature Analysis"
+        case "Export cache lifecycle": "Export Cache Lifecycle"
+        case "Recursive container search": "Recursive Container Search"
+        case "Directory filtering and sorting": "Directory Filtering and Sorting"
         default: "Unknown Check"
         }
     }

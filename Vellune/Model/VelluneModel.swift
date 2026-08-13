@@ -16,9 +16,12 @@ final class VelluneModel {
     var selectedHexDump = ""
     var previewError: String?
     var selectedExportURL: URL?
+    var isLoadingPreview = false
     var logs: [LogEntry] = []
     var showHiddenFiles = true
+    var fileSortOrder: FileSortOrder = .name
     var isWorking = false
+    var isRunningDiagnostics = false
     var lastError: String?
     var selfTestReport: SelfTestReport?
     var containerIndexes: [ContainerKind: [ContainerDescriptor]] = [:]
@@ -48,7 +51,7 @@ final class VelluneModel {
         log("bad_query self-test skipped in Simulator")
         #else
         let currentVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
-        if selfTestReport?.schemaVersion != 8
+        if selfTestReport?.schemaVersion != 9
             || selfTestReport?.appVersion != currentVersion
             || containers.isEmpty
             || systemContainers.isEmpty {
@@ -60,8 +63,8 @@ final class VelluneModel {
     }
 
     func runSelfTest() async {
-        guard !isWorking else { return }
-        isWorking = true
+        guard !isRunningDiagnostics else { return }
+        isRunningDiagnostics = true
         log("Starting bad_query self-test")
         let report = await Task.detached(priority: .userInitiated) {
             SelfTestRunner.run()
@@ -78,7 +81,7 @@ final class VelluneModel {
             log("\(check.passed ? "PASS" : "FAIL") \(check.name): \(check.detail)", isError: !check.passed)
         }
         log("Self-test \(report.passed ? "passed" : "failed")")
-        isWorking = false
+        isRunningDiagnostics = false
     }
 
     func open(_ container: ContainerDescriptor) async {
@@ -111,13 +114,14 @@ final class VelluneModel {
     }
 
     func loadCurrentDirectory() throws {
-        items = try FileSystemReader.contents(at: path, showHidden: showHiddenFiles)
+        items = try FileSystemReader.contents(at: path, showHidden: showHiddenFiles, sortOrder: fileSortOrder)
         selectedItem = nil
         selectedPreview = nil
         selectedProperties = nil
         selectedHexDump = ""
         previewError = nil
         selectedExportURL = nil
+        isLoadingPreview = false
         log("Listed \(items.count) items at \(path)")
     }
 
@@ -134,15 +138,21 @@ final class VelluneModel {
             selectedHexDump = ""
             previewError = nil
             selectedExportURL = nil
+            isLoadingPreview = true
+            defer {
+                if selectedItem == item { isLoadingPreview = false }
+            }
             do {
                 let result = try await Task.detached(priority: .userInitiated) {
                     try FilePreviewLoader.load(item)
                 }.value
+                guard selectedItem == item else { return }
                 selectedPreview = result.preview
                 selectedProperties = result.properties
                 selectedHexDump = result.hexDump
                 selectedExportURL = result.exportURL
             } catch {
+                guard selectedItem == item else { return }
                 previewError = error.localizedDescription
                 log("Preview failed for \(item.url.path): \(error.localizedDescription)", isError: true)
             }
@@ -157,8 +167,8 @@ final class VelluneModel {
         await navigate(to: parent)
     }
 
-    func openEnteredPath() async {
-        await navigate(to: path)
+    func openEnteredPath(_ enteredPath: String) async {
+        await navigate(to: enteredPath)
     }
 
     func goBack() async {

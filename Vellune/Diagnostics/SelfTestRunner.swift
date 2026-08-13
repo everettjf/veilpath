@@ -58,9 +58,10 @@ enum SelfTestRunner {
         checks.append(testMachOAnalysis())
         checks.append(testExportCache())
         checks.append(testLocalSearch())
+        checks.append(testDirectorySorting())
 
         let report = SelfTestReport(
-            schemaVersion: 8,
+            schemaVersion: 9,
             appVersion: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "unknown",
             systemVersion: ProcessInfo.processInfo.operatingSystemVersionString,
             startedAt: startedAt,
@@ -188,6 +189,21 @@ enum SelfTestRunner {
             let results = FileSystemReader.search(at: root.path, query: "needle", showHidden: true)
             guard results.count == 1, results[0].name == "UniqueNeedle.plist" else { throw SelfTestFailure("Recursive search failed") }
             return "matches=\(results.count)"
+        }
+    }
+
+    nonisolated private static func testDirectorySorting() -> SelfTestReport.Check {
+        timedCheck(name: "Directory filtering and sorting", path: FileManager.default.temporaryDirectory.path) {
+            let root = FileManager.default.temporaryDirectory.appending(path: "vellune-sort-\(UUID().uuidString)", directoryHint: .isDirectory)
+            defer { try? FileManager.default.removeItem(at: root) }
+            try FileManager.default.createDirectory(at: root.appending(path: "Folder", directoryHint: .isDirectory), withIntermediateDirectories: true)
+            try Data(repeating: 1, count: 4).write(to: root.appending(path: "small.txt"))
+            try Data(repeating: 2, count: 16).write(to: root.appending(path: "large.txt"))
+            let bySize = try FileSystemReader.contents(at: root.path, showHidden: true, sortOrder: .size)
+            guard bySize.map(\.name) == ["Folder", "large.txt", "small.txt"] else { throw SelfTestFailure("Size sorting or directories-first policy failed") }
+            let byName = try FileSystemReader.contents(at: root.path, showHidden: true, sortOrder: .name)
+            guard byName.map(\.name) == ["Folder", "large.txt", "small.txt"] else { throw SelfTestFailure("Name sorting failed") }
+            return "orders=name,size; directoriesFirst=true"
         }
     }
 
