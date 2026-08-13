@@ -359,22 +359,7 @@ private struct BrowserView: View {
                     if horizontalSizeClass == .compact {
                         compactNavigationHeader
                     } else {
-                        ViewThatFits(in: .horizontal) {
-                            HStack(spacing: 10) {
-                                navigationButtons
-                                pathEntry
-                            }
-                            VStack(spacing: 10) {
-                                HStack(spacing: 10) {
-                                    navigationButtons
-                                    Spacer()
-                                    Text("\(visibleItems.count) items")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                }
-                                pathEntry
-                            }
-                        }
+                        regularPathHeader
                     }
                 }
                 .padding(.horizontal)
@@ -421,8 +406,21 @@ private struct BrowserView: View {
             }
         }
         .navigationTitle(navigationTitle)
-        .navigationBarTitleDisplayMode(horizontalSizeClass == .compact ? .inline : .automatic)
+        .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            if horizontalSizeClass != .compact && !model.path.isEmpty {
+                ToolbarItemGroup(placement: .topBarLeading) {
+                    toolbarNavigationButton("Back", systemImage: "chevron.backward", disabled: !model.canGoBack) {
+                        await model.goBack()
+                    }
+                    toolbarNavigationButton("Forward", systemImage: "chevron.forward", disabled: !model.canGoForward) {
+                        await model.goForward()
+                    }
+                    toolbarNavigationButton("Up", systemImage: "arrow.up", disabled: model.isWorking || model.path == "/") {
+                        await model.goUp()
+                    }
+                }
+            }
             ToolbarItem(placement: .topBarTrailing) {
                 if model.path.isEmpty {
                     if model.isWorking { ProgressView() }
@@ -464,10 +462,20 @@ private struct BrowserView: View {
 
     private var navigationTitle: String {
         guard !model.path.isEmpty else { return String(localized: "Files") }
-        if horizontalSizeClass == .compact {
-            guard model.path != model.currentContainerRoot else { return String(localized: "Files") }
-        }
+        guard model.path != model.currentContainerRoot else { return String(localized: "Files") }
         return URL(fileURLWithPath: model.path).lastPathComponent
+    }
+
+    private var regularPathHeader: some View {
+        Group {
+            if isEditingPath {
+                HStack(spacing: 10) {
+                    pathEntry
+                }
+            } else {
+                pathDisplay
+            }
+        }
     }
 
     private var compactNavigationHeader: some View {
@@ -493,28 +501,35 @@ private struct BrowserView: View {
                     pathEntry
                 }
             } else {
-                Button {
-                    isEditingPath = true
-                    pathFocused = true
-                } label: {
-                    HStack(spacing: 8) {
-                        Image(systemName: "folder")
-                            .foregroundStyle(.secondary)
-                        Text(model.path)
-                            .font(.caption.monospaced())
-                            .lineLimit(1)
-                            .truncationMode(.middle)
-                        Spacer(minLength: 4)
-                        Image(systemName: "pencil")
-                            .foregroundStyle(.secondary)
-                    }
-                    .frame(minHeight: 32)
-                    .contentShape(.rect)
-                }
-                .buttonStyle(.plain)
-                .accessibilityHint("Edit the absolute path")
+                pathDisplay
             }
         }
+    }
+
+    private var pathDisplay: some View {
+        Button {
+            isEditingPath = true
+            pathFocused = true
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "folder")
+                    .foregroundStyle(.secondary)
+                Text(model.path)
+                    .font(.caption.monospaced())
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                Spacer(minLength: 4)
+                Text("\(visibleItems.count) items")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Image(systemName: "pencil")
+                    .foregroundStyle(.secondary)
+            }
+            .frame(minHeight: 32)
+            .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+        .accessibilityHint("Edit the absolute path")
     }
 
     private func compactNavigationButton(
@@ -537,24 +552,19 @@ private struct BrowserView: View {
         .disabled(disabled)
     }
 
-    @ViewBuilder private var navigationButtons: some View {
-                    Button("Back", systemImage: "chevron.backward") {
-                        Task { await model.goBack() }
-                    }
-                    .labelStyle(.iconOnly)
-                    .disabled(!model.canGoBack)
-
-                    Button("Forward", systemImage: "chevron.forward") {
-                        Task { await model.goForward() }
-                    }
-                    .labelStyle(.iconOnly)
-                    .disabled(!model.canGoForward)
-
-                    Button("Up", systemImage: "chevron.up") {
-                        Task { await model.goUp() }
-                    }
-                    .labelStyle(.iconOnly)
-                    .disabled(model.isWorking || model.path == "/")
+    private func toolbarNavigationButton(
+        _ title: LocalizedStringKey,
+        systemImage: String,
+        disabled: Bool,
+        action: @escaping @MainActor () async -> Void
+    ) -> some View {
+        Button {
+            Task { await action() }
+        } label: {
+            Label(title, systemImage: systemImage)
+        }
+        .labelStyle(.iconOnly)
+        .disabled(disabled)
     }
 
     @ViewBuilder private var pathEntry: some View {
@@ -654,7 +664,7 @@ private struct InspectorView: View {
                         Label("Export", systemImage: "square.and.arrow.up")
                     }
                 }
-                Menu("More", systemImage: "ellipsis.circle") {
+                Menu("File Actions", systemImage: "doc.badge.gearshape") {
                     Button("Search Filename on Web", systemImage: "safari") { confirmWebSearch = true }
                     if let hash = properties?.sha256 { Button("Copy SHA-256", systemImage: "number") { UIPasteboard.general.string = hash } }
                     Button("Copy Path", systemImage: "doc.on.doc") { UIPasteboard.general.string = item.url.path }

@@ -22,6 +22,7 @@
     "%lld items": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "%lld 项" } } } },
     "Back": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "后退" } } } },
     "Forward": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "前进" } } } },
+    "File Actions": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "文件操作" } } } },
     "Edit the absolute path": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "编辑绝对路径" } } } },
     "Testing application container access": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "正在测试应用容器访问" } } } },
     "Architectures": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "架构" } } } },

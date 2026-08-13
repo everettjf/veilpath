@@ -18,9 +18,13 @@ enum ExportCache {
     }
 
     static func stage(_ source: URL, named name: String) throws -> URL {
+        try stage(Data(contentsOf: source), named: name)
+    }
+
+    static func stage(_ data: Data, named name: String) throws -> URL {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let destination = uniqueDestination(named: name)
-        try FileManager.default.copyItem(at: source, to: destination)
+        try data.write(to: destination, options: .atomic)
         return destination
     }
 
@@ -55,11 +59,16 @@ enum FilePreviewLoader {
     }
 
     nonisolated static func load(_ item: FileItem) throws -> Result {
-        let grant = try BadQueryClient.acquire(.init(path: item.url.path))
-        defer { BadQueryClient.release(grant) }
+        let parentGrant = try BadQueryClient.acquire(.init(
+            path: item.url.deletingLastPathComponent().path,
+            createIfMissing: true
+        ))
+        defer { BadQueryClient.release(parentGrant) }
+        let fileGrant = try BadQueryClient.acquire(.init(path: item.url.path, createIfMissing: true))
+        defer { BadQueryClient.release(fileGrant) }
         ExportCache.removeExpired()
-        let exportURL = try ExportCache.stage(item.url, named: item.name)
         let data = try Data(contentsOf: item.url, options: .mappedIfSafe)
+        let exportURL = try ExportCache.stage(data, named: item.name)
         return .init(preview: try makePreview(item: item, data: data), properties: try FileAnalyzer.properties(for: item.url, data: data), exportURL: exportURL, hexDump: FileAnalyzer.hexDump(data: data))
     }
 
