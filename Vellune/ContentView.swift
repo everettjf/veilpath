@@ -15,7 +15,9 @@ struct ContentView: View {
                         item: model.selectedItem,
                         preview: model.selectedPreview,
                         previewError: model.previewError,
-                        exportURL: model.selectedExportURL
+                        exportURL: model.selectedExportURL,
+                        properties: model.selectedProperties,
+                        hexDump: model.selectedHexDump
                     )
                     .inspectorColumnWidth(min: 300, ideal: 380, max: 520)
                 }
@@ -130,6 +132,7 @@ private struct SidebarView: View {
 private struct SettingsView: View {
     @Bindable var model: VelluneModel
     @Environment(\.dismiss) private var dismiss
+    @State private var cacheMessage: String?
 
     var body: some View {
         NavigationStack {
@@ -148,6 +151,25 @@ private struct SettingsView: View {
                     }
                     LabeledContent("Grant policy", value: "Per operation")
                     LabeledContent("Mode", value: "Read only")
+                }
+
+                Section("Storage") {
+                    Button("Clear Export Cache", systemImage: "trash", role: .destructive) {
+                        do {
+                            try ExportCache.removeAll()
+                            cacheMessage = String(localized: "Export cache cleared")
+                        } catch {
+                            cacheMessage = error.localizedDescription
+                        }
+                    }
+                    if let cacheMessage {
+                        Text(cacheMessage)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Text("Shared files are copied to a private cache and automatically removed after 24 hours.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
 
                 Section("About") {
@@ -249,6 +271,7 @@ private struct BrowserView: View {
     @Bindable var model: VelluneModel
     @Binding var showInspector: Bool
     @FocusState private var pathFocused: Bool
+    @State private var showFileSearch = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -317,6 +340,7 @@ private struct BrowserView: View {
                     if model.isWorking { ProgressView() }
                 } else {
                     Menu("View Options", systemImage: "ellipsis.circle") {
+                        Button("Search This Container", systemImage: "magnifyingglass") { showFileSearch = true }
                         Toggle("Show Hidden Files", isOn: $model.showHiddenFiles)
                         if model.selectedItem != nil {
                             Button("File Info", systemImage: "info.circle") {
@@ -330,6 +354,7 @@ private struct BrowserView: View {
                 }
             }
         }
+        .sheet(isPresented: $showFileSearch) { ContainerSearchView(model: model) }
     }
 }
 
@@ -373,29 +398,28 @@ private struct InspectorView: View {
     let preview: FilePreview?
     let previewError: String?
     let exportURL: URL?
+    let properties: FileProperties?
+    let hexDump: String
+    @State private var selection: InspectorSection = .preview
+    @State private var confirmWebSearch = false
+    @Environment(\.openURL) private var openURL
 
     var body: some View {
         if let item {
             VStack(spacing: 0) {
-                PreviewContent(preview: preview, error: previewError)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                Divider()
-                List {
-                    Section("File") {
-                        LabeledContent("Name", value: item.name)
-                        LabeledContent("Path", value: item.url.path)
-                        LabeledContent("Kind") {
-                            Text(item.isDirectory ? LocalizedStringResource("Directory") : LocalizedStringResource("File"))
-                        }
-                        if let size = item.size {
-                            LabeledContent(
-                                "Size",
-                                value: ByteCountFormatter.string(fromByteCount: size, countStyle: .file)
-                            )
-                        }
+                Picker("View", selection: $selection) {
+                    ForEach(InspectorSection.allCases) { section in Label(section.title, systemImage: section.icon).tag(section) }
+                }
+                .pickerStyle(.segmented)
+                .padding()
+                Group {
+                    switch selection {
+                    case .preview: PreviewContent(preview: preview, error: previewError)
+                    case .properties: FilePropertiesView(item: item, properties: properties)
+                    case .hex: TextViewer(text: hexDump, format: "Hex")
                     }
                 }
-                .frame(maxHeight: 260)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             .navigationTitle("Info")
             .toolbar {
@@ -404,7 +428,20 @@ private struct InspectorView: View {
                         Label("Export", systemImage: "square.and.arrow.up")
                     }
                 }
+                Menu("More", systemImage: "ellipsis.circle") {
+                    Button("Search Filename on Web", systemImage: "safari") { confirmWebSearch = true }
+                    if let hash = properties?.sha256 { Button("Copy SHA-256", systemImage: "number") { UIPasteboard.general.string = hash } }
+                    Button("Copy Path", systemImage: "doc.on.doc") { UIPasteboard.general.string = item.url.path }
+                }
             }
+            .confirmationDialog("Search the Web?", isPresented: $confirmWebSearch, titleVisibility: .visible) {
+                Button("Search for “\(item.name)”") {
+                    var components = URLComponents(string: "https://www.google.com/search")!
+                    components.queryItems = [.init(name: "q", value: item.name)]
+                    if let url = components.url { openURL(url) }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: { Text("Only the filename will be sent to your web browser. The full path is never included.") }
         } else {
             ContentUnavailableView("Select a File", systemImage: "doc.text.magnifyingglass")
         }
@@ -425,27 +462,11 @@ private struct PreviewContent: View {
                 )
             } else if let preview {
                 switch preview {
-                case .text(let text):
-                    ScrollView([.horizontal, .vertical]) {
-                        Text(text)
-                            .font(.system(.footnote, design: .monospaced))
-                            .textSelection(.enabled)
-                            .frame(maxWidth: .infinity, alignment: .topLeading)
-                            .padding()
-                    }
-                case .image(let data):
-                    if let image = UIImage(data: data) {
-                        ScrollView([.horizontal, .vertical]) {
-                            Image(uiImage: image)
-                                .resizable()
-                                .scaledToFit()
-                                .padding()
-                        }
-                    } else {
-                        ContentUnavailableView("Invalid Image", systemImage: "photo.badge.exclamationmark")
-                    }
-                case .metadata:
-                    ContentUnavailableView("No Inline Preview", systemImage: "doc")
+                case .structured(let root, let source, let format): StructuredViewer(root: root, source: source, format: format)
+                case .text(let text, let format): TextViewer(text: text, format: format)
+                case .image(let data, let details): ImageViewer(data: data, details: details)
+                case .machO(let info): MachOViewer(info: info)
+                case .binary: ContentUnavailableView("Binary File", systemImage: "doc.badge.gearshape", description: Text("Use the Hex view to inspect this file."))
                 case .tooLarge(let size):
                     ContentUnavailableView(
                         "File Too Large",
@@ -456,6 +477,154 @@ private struct PreviewContent: View {
             } else {
                 ProgressView("Loading preview…")
             }
+        }
+    }
+}
+
+private enum InspectorSection: String, CaseIterable, Identifiable {
+    case preview, properties, hex
+    var id: Self { self }
+    var title: LocalizedStringResource { switch self { case .preview: "Preview"; case .properties: "Properties"; case .hex: "Hex" } }
+    var icon: String { switch self { case .preview: "eye"; case .properties: "list.bullet.rectangle"; case .hex: "number" } }
+}
+
+private struct StructuredViewer: View {
+    let root: StructuredNode
+    let source: String
+    let format: String
+    @State private var query = ""
+    @State private var showSource = false
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Text(format).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                Spacer()
+                Toggle("Source", isOn: $showSource).toggleStyle(.button)
+            }.padding(.horizontal)
+            if showSource { TextViewer(text: source, format: format) }
+            else if let filtered = root.matching(query) {
+                List { OutlineGroup([filtered], children: \.children.optionalWhenNotEmpty) { node in StructuredNodeRow(node: node) } }
+                    .searchable(text: $query, prompt: "Search keys and values")
+            } else { ContentUnavailableView.search(text: query) }
+        }
+    }
+}
+
+private extension Array where Element == StructuredNode {
+    var optionalWhenNotEmpty: [StructuredNode]? { isEmpty ? nil : self }
+}
+
+private struct StructuredNodeRow: View {
+    let node: StructuredNode
+    var body: some View {
+        HStack(alignment: .firstTextBaseline) {
+            Image(systemName: node.children.isEmpty ? "circle.fill" : "chevron.right.circle").font(.caption2).foregroundStyle(.secondary)
+            Text(node.key).font(.system(.callout, design: .monospaced)).fontWeight(.medium)
+            if let value = node.value { Spacer(); Text(value).font(.system(.caption, design: .monospaced)).foregroundStyle(.secondary).lineLimit(3).textSelection(.enabled) }
+        }
+    }
+}
+
+private struct TextViewer: View {
+    let text: String
+    let format: String
+    @State private var query = ""
+    @State private var wrapLines = true
+    private var displayed: String {
+        guard !query.isEmpty else { return text }
+        return text.split(separator: "\n", omittingEmptySubsequences: false).filter { $0.localizedCaseInsensitiveContains(query) }.joined(separator: "\n")
+    }
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack { Text(format).font(.caption.weight(.semibold)).foregroundStyle(.secondary); Spacer(); Toggle("Wrap", isOn: $wrapLines).toggleStyle(.button) }.padding(.horizontal)
+            ScrollView(wrapLines ? .vertical : [.horizontal, .vertical]) {
+                Text(displayed).font(.system(.footnote, design: .monospaced)).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .topLeading).padding()
+            }.searchable(text: $query, prompt: "Search in file")
+        }
+    }
+}
+
+private struct ImageViewer: View {
+    let data: Data
+    let details: ImageDetails
+    @State private var scale = 1.0
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Text("\(details.width) × \(details.height)").monospacedDigit()
+                Spacer()
+                Text("\(details.frameCount) frame(s)").foregroundStyle(.secondary)
+                Menu("Image Details", systemImage: "info.circle") {
+                    if let type = details.typeIdentifier { Text(type) }
+                    ForEach(details.properties.sorted(by: { $0.key < $1.key }), id: \.key) { key, value in
+                        Text("\(key): \(value)")
+                    }
+                }
+                Stepper("Zoom", value: $scale, in: 0.25...8, step: 0.25).labelsHidden()
+            }.font(.caption).padding(.horizontal)
+            if let image = UIImage(data: data) {
+                ScrollView([.horizontal, .vertical]) { Image(uiImage: image).resizable().interpolation(.high).scaledToFit().scaleEffect(scale).padding(30) }
+                    .onTapGesture(count: 2) { withAnimation { scale = scale == 1 ? 2 : 1 } }
+            } else { ContentUnavailableView("Invalid Image", systemImage: "photo.badge.exclamationmark") }
+        }
+    }
+}
+
+private struct MachOViewer: View {
+    let info: MachOInfo
+    var body: some View {
+        List {
+            Section("Overview") { LabeledContent("Architectures", value: info.architectures.map(\.name).joined(separator: ", ")); LabeledContent("Code Signature", value: info.codeSignaturePresent ? "Present" : "Not Found") }
+            ForEach(info.architectures) { arch in
+                Section(arch.name) {
+                    LabeledContent("File Type", value: arch.fileType); LabeledContent("Flags", value: arch.flags)
+                    if let value = arch.minimumOS { LabeledContent("Minimum OS", value: value) }
+                    if let value = arch.sdk { LabeledContent("SDK", value: value) }
+                    if let value = arch.uuid { LabeledContent("UUID", value: value) }
+                    if let value = arch.encrypted { LabeledContent("Encrypted", value: value ? "Yes" : "No") }
+                    if !arch.rpaths.isEmpty { DisclosureGroup("RPATHs") { ForEach(arch.rpaths, id: \.self) { Text($0).font(.caption.monospaced()).textSelection(.enabled) } } }
+                    DisclosureGroup("Dependencies (\(arch.dependencies.count))") { ForEach(arch.dependencies, id: \.self) { Text($0).font(.caption.monospaced()).textSelection(.enabled) } }
+                }
+            }
+            if let entitlements = info.entitlements { Section("Entitlements") { Text(entitlements).font(.caption.monospaced()).textSelection(.enabled) } }
+        }
+    }
+}
+
+private struct FilePropertiesView: View {
+    let item: FileItem
+    let properties: FileProperties?
+    var body: some View {
+        List {
+            Section("File") { LabeledContent("Name", value: item.name); LabeledContent("Path", value: item.url.path); LabeledContent("Kind", value: item.isDirectory ? "Directory" : "File") }
+            if let properties {
+                Section("Properties") {
+                    LabeledContent("Size", value: ByteCountFormatter.string(fromByteCount: properties.size, countStyle: .file))
+                    LabeledContent("Type", value: properties.typeIdentifier ?? "Unknown")
+                    LabeledContent("Permissions", value: String(format: "%04o", properties.posixPermissions))
+                    if let owner = properties.owner { LabeledContent("Owner", value: owner) }; if let group = properties.group { LabeledContent("Group", value: group) }; if let inode = properties.inode { LabeledContent("Inode", value: String(inode)) }
+                    if let createdAt = properties.createdAt { LabeledContent("Created", value: createdAt.formatted(date: .abbreviated, time: .standard)) }
+                    if let modifiedAt = properties.modifiedAt { LabeledContent("Modified", value: modifiedAt.formatted(date: .abbreviated, time: .standard)) }
+                }
+                Section("SHA-256") { Text(properties.sha256).font(.caption.monospaced()).textSelection(.enabled) }
+            }
+        }
+    }
+}
+
+private struct ContainerSearchView: View {
+    @Bindable var model: VelluneModel
+    @Environment(\.dismiss) private var dismiss
+    @State private var query = ""
+    var body: some View {
+        NavigationStack {
+            List(model.searchResults) { item in Button { Task { await model.open(item); dismiss() } } label: { VStack(alignment: .leading) { Text(item.name); Text(item.url.path).font(.caption.monospaced()).foregroundStyle(.secondary).lineLimit(2) } } }
+                .overlay { if model.isSearching { ProgressView("Searching…") } else if model.searchResults.isEmpty && !query.isEmpty { ContentUnavailableView.search(text: query) } }
+                .searchable(text: $query, prompt: "Search filenames")
+                .onSubmit(of: .search) { Task { await model.searchCurrentContainer(for: query) } }
+                .navigationTitle("Container Search")
+                .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
         }
     }
 }

@@ -5,9 +5,12 @@ import Observation
 @MainActor
 final class VelluneModel {
     var path = ""
+    var currentContainerRoot = ""
     var items: [FileItem] = []
     var selectedItem: FileItem?
     var selectedPreview: FilePreview?
+    var selectedProperties: FileProperties?
+    var selectedHexDump = ""
     var previewError: String?
     var selectedExportURL: URL?
     var logs: [LogEntry] = []
@@ -16,6 +19,8 @@ final class VelluneModel {
     var lastError: String?
     var selfTestReport: SelfTestReport?
     var containerIndexes: [ContainerKind: [ContainerDescriptor]] = [:]
+    var searchResults: [FileItem] = []
+    var isSearching = false
 
     var containers: [ContainerDescriptor] { containerIndexes[.application, default: []] }
     var systemContainers: [ContainerDescriptor] { containerIndexes[.systemData, default: []] }
@@ -32,12 +37,13 @@ final class VelluneModel {
             containerIndexes[kind] = ContainerDiscoveryService.loadCached(kind)
         }
         selfTestReport = SelfTestRunner.loadPersistedReport()
+        ExportCache.removeExpired()
         log("Vellune started on \(ProcessInfo.processInfo.operatingSystemVersionString)")
         #if targetEnvironment(simulator)
         log("bad_query self-test skipped in Simulator")
         #else
         let currentVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
-        if selfTestReport?.schemaVersion != 7
+        if selfTestReport?.schemaVersion != 8
             || selfTestReport?.appVersion != currentVersion
             || containers.isEmpty
             || systemContainers.isEmpty {
@@ -71,6 +77,7 @@ final class VelluneModel {
     }
 
     func open(_ container: ContainerDescriptor) async {
+        currentContainerRoot = container.path
         path = container.path
         await acquireAndLoad()
     }
@@ -98,6 +105,8 @@ final class VelluneModel {
         items = try FileSystemReader.contents(at: path, showHidden: showHiddenFiles)
         selectedItem = nil
         selectedPreview = nil
+        selectedProperties = nil
+        selectedHexDump = ""
         previewError = nil
         selectedExportURL = nil
         log("Listed \(items.count) items at \(path)")
@@ -112,6 +121,8 @@ final class VelluneModel {
         guard item.isDirectory else {
             selectedItem = item
             selectedPreview = nil
+            selectedProperties = nil
+            selectedHexDump = ""
             previewError = nil
             selectedExportURL = nil
             do {
@@ -119,6 +130,8 @@ final class VelluneModel {
                     try FilePreviewLoader.load(item)
                 }.value
                 selectedPreview = result.preview
+                selectedProperties = result.properties
+                selectedHexDump = result.hexDump
                 selectedExportURL = result.exportURL
             } catch {
                 previewError = error.localizedDescription
@@ -135,6 +148,24 @@ final class VelluneModel {
         guard parent != path else { return }
         path = parent
         await acquireAndLoad()
+    }
+
+    func searchCurrentContainer(for query: String) async {
+        guard !path.isEmpty, !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            searchResults = []
+            return
+        }
+        isSearching = true
+        defer { isSearching = false }
+        let root = currentContainerRoot.isEmpty ? path : currentContainerRoot
+        let includesHidden = showHiddenFiles
+        do {
+            let grant = try BadQueryClient.acquire(.forPath(root))
+            defer { BadQueryClient.release(grant) }
+            searchResults = await Task.detached(priority: .userInitiated) {
+                FileSystemReader.search(at: root, query: query, showHidden: includesHidden)
+            }.value
+        } catch { report(error) }
     }
 
     func log(_ message: String, isError: Bool = false) {

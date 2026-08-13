@@ -53,9 +53,14 @@ enum SelfTestRunner {
         checks.append(testDirectoryAccess(name: "Internal daemon containers", path: ContainerKind.internalDaemon.rootPath))
         checks.append(testDirectoryAccess(name: "App Group containers", path: ContainerKind.appGroup.rootPath))
         checks.append(testDirectoryAccess(name: "System Group containers", path: ContainerKind.systemGroup.rootPath))
+        checks.append(testStructuredFormats())
+        checks.append(testFileAnalysis())
+        checks.append(testMachOAnalysis())
+        checks.append(testExportCache())
+        checks.append(testLocalSearch())
 
         let report = SelfTestReport(
-            schemaVersion: 7,
+            schemaVersion: 8,
             appVersion: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "unknown",
             systemVersion: ProcessInfo.processInfo.operatingSystemVersionString,
             startedAt: startedAt,
@@ -102,7 +107,7 @@ enum SelfTestRunner {
             guard FileManager.default.fileExists(atPath: result.exportURL.path) else {
                 throw SelfTestFailure("Export cache file was not created")
             }
-            guard case .text(let text) = result.preview, text.contains("<plist") else {
+            guard case .structured(_, let text, _) = result.preview, text.contains("<plist") else {
                 throw SelfTestFailure("Property list preview was not converted to XML text")
             }
             return "previewCharacters=\(text.count), export=\(result.exportURL.path)"
@@ -121,6 +126,68 @@ enum SelfTestRunner {
             defer { BadQueryClient.release(grant) }
             let children = try FileManager.default.contentsOfDirectory(atPath: path)
             return "baselineCount=\(baseline.map(String.init) ?? "denied"), handle=\(grant.handle), childCount=\(children.count), indexed=\(indexed)"
+        }
+    }
+
+    nonisolated private static func testStructuredFormats() -> SelfTestReport.Check {
+        timedCheck(name: "Structured plist and JSON", path: "self-test fixtures") {
+            let plist: [String: Any] = ["name": "Vellune", "enabled": true, "items": [1, 2, 3]]
+            let plistData = try PropertyListSerialization.data(fromPropertyList: plist, format: .binary, options: 0)
+            let parsed = try PropertyListSerialization.propertyList(from: plistData, format: nil)
+            let root = StructuredNode.make(key: "Root", value: parsed)
+            guard root.searchableText.contains("Vellune"), root.matching("enabled") != nil else { throw SelfTestFailure("Plist tree search failed") }
+            let jsonData = try JSONSerialization.data(withJSONObject: plist)
+            guard let json = try JSONSerialization.jsonObject(with: jsonData) as? [String: Any], json["name"] as? String == "Vellune" else { throw SelfTestFailure("JSON parsing failed") }
+            return "binaryPlistBytes=\(plistData.count), treeChildren=\(root.children.count), jsonBytes=\(jsonData.count)"
+        }
+    }
+
+    nonisolated private static func testFileAnalysis() -> SelfTestReport.Check {
+        timedCheck(name: "File properties SHA-256 and hex", path: "temporary fixture") {
+            let data = Data("abc".utf8)
+            let url = FileManager.default.temporaryDirectory.appending(path: "vellune-analysis-\(UUID().uuidString).txt")
+            defer { try? FileManager.default.removeItem(at: url) }
+            try data.write(to: url)
+            let properties = try FileAnalyzer.properties(for: url, data: data)
+            guard properties.sha256 == "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad" else { throw SelfTestFailure("SHA-256 mismatch") }
+            let hex = FileAnalyzer.hexDump(data: data)
+            guard hex.contains("61 62 63"), hex.contains("|abc|") else { throw SelfTestFailure("Hex output mismatch") }
+            return "sha256=\(properties.sha256), permissions=\(String(format: "%04o", properties.posixPermissions))"
+        }
+    }
+
+    nonisolated private static func testMachOAnalysis() -> SelfTestReport.Check {
+        timedCheck(name: "Mach-O and code signature analysis", path: Bundle.main.executablePath ?? "") {
+            guard let path = Bundle.main.executablePath else { throw SelfTestFailure("Missing executable path") }
+            let data = try Data(contentsOf: URL(fileURLWithPath: path), options: .mappedIfSafe)
+            guard let info = MachOParser.parse(data), !info.architectures.isEmpty else { throw SelfTestFailure("Mach-O parsing failed") }
+            let names = info.architectures.map(\.name).joined(separator: ",")
+            return "architectures=\(names), codeSignature=\(info.codeSignaturePresent), dependencies=\(info.architectures.reduce(0) { $0 + $1.dependencies.count })"
+        }
+    }
+
+    nonisolated private static func testExportCache() -> SelfTestReport.Check {
+        timedCheck(name: "Export cache lifecycle", path: ExportCache.directory.path) {
+            try? ExportCache.removeAll()
+            let source = FileManager.default.temporaryDirectory.appending(path: "vellune-export-\(UUID().uuidString).txt")
+            defer { try? FileManager.default.removeItem(at: source); try? ExportCache.removeAll() }
+            try Data("export".utf8).write(to: source)
+            let first = try ExportCache.stage(source, named: "fixture.txt")
+            let second = try ExportCache.stage(source, named: "fixture.txt")
+            guard first != second, FileManager.default.fileExists(atPath: first.path), FileManager.default.fileExists(atPath: second.path) else { throw SelfTestFailure("Export cache collision handling failed") }
+            return "uniqueCopies=2"
+        }
+    }
+
+    nonisolated private static func testLocalSearch() -> SelfTestReport.Check {
+        timedCheck(name: "Recursive container search", path: FileManager.default.temporaryDirectory.path) {
+            let root = FileManager.default.temporaryDirectory.appending(path: "vellune-search-\(UUID().uuidString)", directoryHint: .isDirectory)
+            defer { try? FileManager.default.removeItem(at: root) }
+            try FileManager.default.createDirectory(at: root.appending(path: "nested", directoryHint: .isDirectory), withIntermediateDirectories: true)
+            try Data().write(to: root.appending(path: "nested/UniqueNeedle.plist"))
+            let results = FileSystemReader.search(at: root.path, query: "needle", showHidden: true)
+            guard results.count == 1, results[0].name == "UniqueNeedle.plist" else { throw SelfTestFailure("Recursive search failed") }
+            return "matches=\(results.count)"
         }
     }
 

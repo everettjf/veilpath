@@ -54,4 +54,20 @@ enum FileSystemReader {
                 return $0.name.localizedStandardCompare($1.name) == .orderedAscending
             }
     }
+
+    static func search(at path: String, query: String, showHidden: Bool, limit: Int = 500) -> [FileItem] {
+        let root = URL(fileURLWithPath: path, isDirectory: true)
+        var options: FileManager.DirectoryEnumerationOptions = [.skipsPackageDescendants]
+        if !showHidden { options.insert(.skipsHiddenFiles) }
+        guard let enumerator = FileManager.default.enumerator(at: root, includingPropertiesForKeys: Array(resourceKeys), options: options) else { return [] }
+        var results: [FileItem] = []
+        while let url = enumerator.nextObject() as? URL, results.count < limit {
+            guard url.lastPathComponent.localizedCaseInsensitiveContains(query),
+                  let values = try? url.resourceValues(forKeys: resourceKeys) else { continue }
+            results.append(.init(url: url, isDirectory: values.isDirectory ?? false,
+                                 isSymbolicLink: values.isSymbolicLink ?? false,
+                                 size: values.fileSize.map(Int64.init), modifiedAt: values.contentModificationDate))
+        }
+        return results.sorted { $0.url.path.localizedStandardCompare($1.url.path) == .orderedAscending }
+    }
 }
