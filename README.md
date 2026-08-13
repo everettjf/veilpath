@@ -78,22 +78,14 @@ The upstream project currently describes support through iOS 26.6.1 and iOS
 implemented and validated here: **iOS/iPadOS 26 through 27 beta 3**. Versions
 outside this range are unsupported until confirmed by physical-device testing.
 
-### Physical-device regression results
+### Physical-device diagnostics
 
-Vellune 1.0.0 passed its schema 7 regression suite on iPadOS 27 beta 3:
-
-| Check | Result |
-| --- | ---: |
-| Application containers | 296 discovered, 296 identified |
-| App Group containers | 200 indexed |
-| Plugin containers | 1,050 indexed |
-| Internal Daemon containers | 17 indexed |
-| System Data containers | 21 indexed |
-| System Group containers | 28 indexed |
-| MobileGestalt read, plist preview, safe export | Passed |
-
-Exact counts are device-specific. The report is written to
-`Documents/vellune-self-test.json` inside Vellune's own data container.
+Vellune includes an on-device regression suite that verifies sandbox access,
+container discovery, structured preview, file analysis, Mach-O parsing, safe
+export, and local search. Results are written to
+`Documents/vellune-self-test.json` inside Vellune's own data container. Container
+counts are intentionally not presented as project-wide metrics because they
+depend entirely on the apps and system state of each device.
 
 ## Building
 

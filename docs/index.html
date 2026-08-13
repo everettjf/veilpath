@@ -34,12 +34,11 @@
           <span class="support-arrow">↓</span>
         </a>
         <div class="actions"><a class="primary" href="https://github.com/everettjf/vellune">View source <span>↗</span></a><a class="secondary" href="#build">Build Vellune <span>↓</span></a></div>
-        <div class="proof"><div><strong>296/296</strong><span>App containers identified</span></div><div><strong>21</strong><span>System containers indexed</span></div><div><strong>~8s</strong><span>Full on-device scan</span></div></div>
       </div>
       <div class="device-stage" aria-label="Vellune running on iPad">
         <div class="orbit orbit-a"></div><div class="orbit orbit-b"></div>
         <div class="device"><div class="camera"></div><img src="assets/ipad-ui.png" alt="Vellune showing application containers on iPad"></div>
-        <div class="status-card status-one"><i></i><span>Sandbox extension</span><b>Granted</b></div><div class="status-card status-two"><i></i><span>Metadata mapping</span><b>296 / 296</b></div>
+        <div class="status-card status-one"><i></i><span>Access policy</span><b>Read only</b></div><div class="status-card status-two"><i></i><span>Sandbox grants</span><b>Per operation</b></div>
       </div>
     </section>
     <section class="marquee"><div><span>APP CONTAINERS</span><b>✦</b><span>SYSTEM DATA</span><b>✦</b><span>PLIST PREVIEW</span><b>✦</b><span>SAFE EXPORT</span><b>✦</b><span>SHORT-LIVED GRANTS</span><b>✦</b><span>APP CONTAINERS</span><b>✦</b><span>SYSTEM DATA</span><b>✦</b><span>PLIST PREVIEW</span><b>✦</b><span>SAFE EXPORT</span><b>✦</b></div></section>
@@ -63,11 +62,11 @@
 <i>PASS</i> Preview and safe export
      plist → XML · 15723 characters
 
-<i>PASS</i> Application container discovery
-     discovered=296 · identified=296
+<i>PASS</i> Structured preview and search
+     plist · JSON · XML · text
 
-<i>PASS</i> System data containers
-     childCount=21 · indexed=21</code></pre></div>
+<i>PASS</i> File analysis and safe export
+     SHA-256 · Mach-O · cache lifecycle</code></pre></div>
       <div class="evidence-copy"><p class="eyebrow"><span></span> Evidence, not assumptions</p><h2>Tested where it<br><em>actually runs.</em></h2><p>Vellune carries an on-device regression suite. It verifies access, discovery, metadata resolution, preview, export, and timings against a physical device.</p><ul><li>Structured JSON test reports</li><li>Raw error-code mapping</li><li>Simulator self-test isolation</li><li>Debug and Release builds</li></ul></div>
     </section>
     <section id="build" class="section build shell">
