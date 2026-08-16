@@ -29,6 +29,11 @@ final class VelluneModel {
     var containerIndexes: [ContainerKind: [ContainerDescriptor]] = [:]
     var searchResults: [FileItem] = []
     var isSearching = false
+    var directoryExportRecursive = false
+    var directoryExportURL: URL?
+    var isExportingDirectory = false
+    var backupRecords: [FileBackupRecord] = []
+    var isReplacingFile = false
 
     var containers: [ContainerDescriptor] { containerIndexes[.application, default: []] }
     var systemContainers: [ContainerDescriptor] { containerIndexes[.systemData, default: []] }
@@ -49,6 +54,7 @@ final class VelluneModel {
         selfTestReport = SelfTestRunner.loadPersistedReport()
         accessVerification = selfTestReport?.checks.first { $0.name == "Application container discovery" }
         ExportCache.removeExpired()
+        backupRecords = (try? FileBackupService.records()) ?? []
         log("Vellune started on \(ProcessInfo.processInfo.operatingSystemVersionString)")
         #if targetEnvironment(simulator)
         log("bad_query self-test skipped in Simulator")
@@ -57,10 +63,16 @@ final class VelluneModel {
         }
         if ProcessInfo.processInfo.arguments.contains("--ui-testing-browser") {
             seedUITestBrowser()
+            if ProcessInfo.processInfo.arguments.contains("--ui-testing-preview"), let item = items.last {
+                Task { await open(item) }
+            }
+        }
+        if ProcessInfo.processInfo.arguments.contains("--ui-testing-self-test") {
+            Task { await runSelfTest() }
         }
         #else
         let currentVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
-        if selfTestReport?.schemaVersion != 9
+        if selfTestReport?.schemaVersion != 12
             || selfTestReport?.appVersion != currentVersion
             || containers.isEmpty
             || systemContainers.isEmpty {
@@ -90,15 +102,20 @@ final class VelluneModel {
     }
 
     private func seedUITestBrowser() {
-        currentContainerRoot = "/var/mobile/Containers/Data/Application/A111"
+        let fixtureRoot = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            .appending(path: "UI Test Container", directoryHint: .isDirectory)
+        try? FileManager.default.createDirectory(at: fixtureRoot.appending(path: "Documents", directoryHint: .isDirectory), withIntermediateDirectories: true)
+        try? FileManager.default.createDirectory(at: fixtureRoot.appending(path: "Library", directoryHint: .isDirectory), withIntermediateDirectories: true)
+        let plistURL = fixtureRoot.appending(path: "settings.plist")
+        if let data = try? PropertyListSerialization.data(
+            fromPropertyList: ["Feature": "File Browser", "Recursive Export": true],
+            format: .binary,
+            options: 0
+        ) { try? data.write(to: plistURL, options: .atomic) }
+        currentContainerRoot = fixtureRoot.path
         path = currentContainerRoot
         loadedPath = path
-        items = [
-            .init(url: URL(fileURLWithPath: path).appending(path: "Documents"), isDirectory: true, isSymbolicLink: false, size: nil, modifiedAt: .now),
-            .init(url: URL(fileURLWithPath: path).appending(path: "Library"), isDirectory: true, isSymbolicLink: false, size: nil, modifiedAt: .now),
-            .init(url: URL(fileURLWithPath: path).appending(path: "SystemData"), isDirectory: true, isSymbolicLink: false, size: nil, modifiedAt: .now),
-            .init(url: URL(fileURLWithPath: path).appending(path: ".com.apple.mobile_container_manager.metadata.plist"), isDirectory: false, isSymbolicLink: false, size: 585, modifiedAt: .now)
-        ]
+        items = (try? FileSystemReader.contents(at: path, showHidden: true)) ?? []
     }
     #endif
 
@@ -288,6 +305,56 @@ final class VelluneModel {
             searchResults = await Task.detached(priority: .userInitiated) {
                 FileSystemReader.search(at: root, query: query, showHidden: includesHidden)
             }.value
+        } catch { report(error) }
+    }
+
+    func prepareDirectoryMarkdownExport() async {
+        guard !path.isEmpty, !isExportingDirectory else { return }
+        isExportingDirectory = true
+        defer { isExportingDirectory = false }
+        do {
+            let requestedPath = path
+            let options = DirectoryMarkdownExportOptions(
+                recursively: directoryExportRecursive,
+                includeHidden: showHiddenFiles
+            )
+            let result = try await Task.detached(priority: .userInitiated) {
+                try DirectoryMarkdownExporter.export(path: requestedPath, options: options)
+            }.value
+            directoryExportURL = result.url
+            log("Prepared Markdown listing with \(result.itemCount) items")
+        } catch { report(error) }
+    }
+
+    func replaceSelectedFile(with source: URL) async {
+        guard let item = selectedItem, !item.isDirectory, !isReplacingFile else { return }
+        isReplacingFile = true
+        defer { isReplacingFile = false }
+        let accessed = source.startAccessingSecurityScopedResource()
+        defer { if accessed { source.stopAccessingSecurityScopedResource() } }
+        do {
+            let data = try Data(contentsOf: source, options: .mappedIfSafe)
+            let target = item.url
+            _ = try await Task.detached(priority: .userInitiated) {
+                try FileBackupService.replace(target: target, replacementData: data)
+            }.value
+            backupRecords = (try? FileBackupService.records()) ?? []
+            log("Backed up, replaced, and verified \(item.name)")
+            await open(item)
+        } catch { report(error) }
+    }
+
+    func restore(_ record: FileBackupRecord) async {
+        guard !isReplacingFile else { return }
+        isReplacingFile = true
+        defer { isReplacingFile = false }
+        do {
+            _ = try await Task.detached(priority: .userInitiated) {
+                try FileBackupService.restore(record)
+            }.value
+            backupRecords = (try? FileBackupService.records()) ?? []
+            log("Created a safety backup and restored \(URL(fileURLWithPath: record.manifest.targetPath).lastPathComponent)")
+            if let item = selectedItem, item.url.path == record.manifest.targetPath { await open(item) }
         } catch { report(error) }
     }
 

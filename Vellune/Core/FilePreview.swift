@@ -59,6 +59,11 @@ enum FilePreviewLoader {
     }
 
     nonisolated static func load(_ item: FileItem) throws -> Result {
+        #if targetEnvironment(simulator)
+        let data = try Data(contentsOf: item.url, options: .mappedIfSafe)
+        let exportURL = try ExportCache.stage(data, named: item.name)
+        return .init(preview: try makePreview(item: item, data: data), properties: try FileAnalyzer.properties(for: item.url, data: data), exportURL: exportURL, hexDump: FileAnalyzer.hexDump(data: data))
+        #else
         let parentGrant = try BadQueryClient.acquire(.init(
             path: item.url.deletingLastPathComponent().path,
             createIfMissing: true
@@ -70,6 +75,7 @@ enum FilePreviewLoader {
         let data = try Data(contentsOf: item.url, options: .mappedIfSafe)
         let exportURL = try ExportCache.stage(data, named: item.name)
         return .init(preview: try makePreview(item: item, data: data), properties: try FileAnalyzer.properties(for: item.url, data: data), exportURL: exportURL, hexDump: FileAnalyzer.hexDump(data: data))
+        #endif
     }
 
     private static func makePreview(item: FileItem, data: Data) throws -> FilePreview {

@@ -1,1032 +1,1671 @@
 {
-  "sourceLanguage": "en",
-  "strings": {
-    "Cancel": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "取消" } } } },
-    "More": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "更多" } } } },
-    "SDK": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "SDK" } } } },
-    "SHA-256": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "SHA-256" } } } },
-    "UUID": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "UUID" } } } },
-    "Vellune": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "Vellune" } } } },
-    "Directory Filtering and Sorting": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "目录筛选与排序" } } } },
-    "Export Cache Lifecycle": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "导出缓存生命周期" } } } },
-    "File Properties, SHA-256, and Hex": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "文件属性、SHA-256 与十六进制" } } } },
-    "Mach-O and Code Signature Analysis": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "Mach-O 与代码签名分析" } } } },
-    "Preview Unavailable": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "无法预览" } } } },
-    "Recursive Container Search": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "容器递归搜索" } } } },
-    "Structured Plist and JSON": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "结构化 Plist 与 JSON" } } } },
-    "Date Modified": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "修改日期" } } } },
-    "Filter Current Directory": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "筛选当前目录" } } } },
-    "Name": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "名称" } } } },
-    "Size": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "大小" } } } },
-    "Sort By": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "排序方式" } } } },
-    "%lld items": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "%lld 项" } } } },
-    "Back": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "后退" } } } },
-    "Forward": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "前进" } } } },
-    "File Actions": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "文件操作" } } } },
-    "Edit the absolute path": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "编辑绝对路径" } } } },
-    "Testing application container access": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "正在测试应用容器访问" } } } },
-    "Architectures": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "架构" } } } },
-    "Binary File": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "二进制文件" } } } },
-    "Clear Export Cache": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "清理导出缓存" } } } },
-    "Code Signature": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "代码签名" } } } },
-    "Container Search": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "容器内搜索" } } } },
-    "Copy Path": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "复制路径" } } } },
-    "Copy SHA-256": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "复制 SHA-256" } } } },
-    "Created": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "创建时间" } } } },
-    "Encrypted": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "加密" } } } },
-    "Entitlements": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "权限声明" } } } },
-    "Export cache cleared": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "导出缓存已清理" } } } },
-    "File Type": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "文件类型" } } } },
-    "Flags": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "标志" } } } },
-    "Group": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "用户组" } } } },
-    "Image Details": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "图片详情" } } } },
-    "Inode": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "索引节点" } } } },
-    "Minimum OS": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "最低系统版本" } } } },
-    "Modified": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "修改时间" } } } },
-    "Only the filename will be sent to your web browser. The full path is never included.": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "只会将文件名发送到浏览器，不会包含完整路径。" } } } },
-    "Overview": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "概览" } } } },
-    "Owner": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "所有者" } } } },
-    "Permissions": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "权限" } } } },
-    "Properties": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "属性" } } } },
-    "Search Filename on Web": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "在网页中搜索文件名" } } } },
-    "Search This Container": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "搜索当前容器" } } } },
-    "Shared files are copied to a private cache and automatically removed after 24 hours.": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "分享的文件会先复制到私有缓存，并在 24 小时后自动清理。" } } } },
-    "Source": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "源文本" } } } },
-    "Storage": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "存储" } } } },
-    "Type": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "类型" } } } },
-    "Use the Hex view to inspect this file.": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "请使用十六进制视图检查此文件。" } } } },
-    "View": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "视图" } } } },
-    "Wrap": { "localizations": { "zh-Hans": { "stringUnit": { "state": "translated", "value": "自动换行" } } } },
-    "About": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "关于"
-          }
-        }
+  "sourceLanguage" : "en",
+  "strings" : {
+    "Back Up and Replace" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "备份并替换" } }
       }
     },
-    "Absolute path": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "绝对路径"
+    "Close Preview" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "关闭预览" } }
+      }
+    },
+    "Create Safety Backup and Restore" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "创建安全备份并恢复" } }
+      }
+    },
+    "Drag horizontally to resize the preview panel" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "水平拖动以调整预览面板宽度" } }
+      }
+    },
+    "Full Screen" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "全屏" } }
+      }
+    },
+    "Open Preview" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "打开预览" } }
+      }
+    },
+    "Prepare Markdown Listing" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "生成 Markdown 列表" } }
+      }
+    },
+    "Recursive Markdown Export" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "递归导出 Markdown" } }
+      }
+    },
+    "Replace Selected File?" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "替换所选文件？" } }
+      }
+    },
+    "Resize Preview" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "调整预览宽度" } }
+      }
+    },
+    "Restore Latest Backup" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "恢复最近备份" } }
+      }
+    },
+    "Restore Preview Size" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "恢复预览大小" } }
+      }
+    },
+    "Restore This Backup?" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "恢复此备份？" } }
+      }
+    },
+    "Share Markdown Listing" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "分享 Markdown 列表" } }
+      }
+    },
+    "The current file will receive its own safety backup before restoration." : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "恢复前会先为当前文件创建独立的安全备份。" } }
+      }
+    },
+    "The original file will be backed up and verified before replacement." : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "替换前会先备份并校验原文件。" } }
+      }
+    },
+    "%@: %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@: %2$@"
+          }
+        }
+      }
+    },
+    "%lld × %lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld × %2$lld"
+          }
+        }
+      }
+    },
+    "%lld frame(s)" : {
+
+    },
+    "%lld items" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld 项"
+          }
+        }
+      }
+    },
+    "About" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "关于"
+          }
+        }
+      }
+    },
+    "Absolute path" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "绝对路径"
+          }
+        }
+      }
+    },
+    "Access" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "访问"
+          }
+        }
+      }
+    },
+    "Access Failed" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "访问失败"
+          }
+        }
+      }
+    },
+    "Access not verified" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "访问尚未验证"
+          }
+        }
+      }
+    },
+    "Access verification failed" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "访问验证失败"
+          }
+        }
+      }
+    },
+    "Access verified" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "访问已验证"
+          }
+        }
+      }
+    },
+    "Activity Log" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "活动日志"
+          }
+        }
+      }
+    },
+    "App Group" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "App 组"
+          }
+        }
+      }
+    },
+    "App Group Containers" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "App 组容器"
+          }
+        }
+      }
+    },
+    "Apple Applications" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apple 应用"
+          }
+        }
+      }
+    },
+    "Application" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "应用"
+          }
+        }
+      }
+    },
+    "Application Container Discovery" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "应用容器发现"
+          }
+        }
+      }
+    },
+    "Application Containers" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "应用容器"
+          }
+        }
+      }
+    },
+    "Applications" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "应用"
+          }
+        }
+      }
+    },
+    "Architectures" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "架构"
+          }
+        }
+      }
+    },
+    "Back" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "后退"
+          }
+        }
+      }
+    },
+    "Binary File" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "二进制文件"
+          }
+        }
+      }
+    },
+    "Cancel" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "取消"
+          }
+        }
+      }
+    },
+    "Checks" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "检查项"
+          }
+        }
+      }
+    },
+    "Choose a Container" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "选择容器"
+          }
+        }
+      }
+    },
+    "Clear Export Cache" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "清理导出缓存"
+          }
+        }
+      }
+    },
+    "Code Signature" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "代码签名"
+          }
+        }
+      }
+    },
+    "Consuming the sandbox extension failed (%lld)." : {
+
+    },
+    "Container Manager query creation failed." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "创建 Container Manager 查询失败。"
           }
         }
       }
     },
-    "Access": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "访问"
+    "Container Manager rejected the requested path." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Container Manager 拒绝了请求的路径。"
           }
         }
       }
     },
-    "Access Failed": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "访问失败"
+    "Container metadata root is not a dictionary" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "容器元数据根对象不是字典"
           }
         }
       }
     },
-    "Access not verified": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "访问尚未验证"
+    "Container name or UUID" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "容器名称或 UUID"
           }
         }
       }
     },
-    "Access verification failed": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "访问验证失败"
+    "Container Search" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "容器内搜索"
           }
         }
       }
     },
-    "Access verified": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "访问已验证"
+    "Copy Path" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "复制路径"
           }
         }
       }
     },
-    "Activity Log": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "活动日志"
+    "Copy SHA-256" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "复制 SHA-256"
           }
         }
       }
     },
-    "App Group": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "App 组"
+    "Created" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "创建时间"
           }
         }
       }
     },
-    "App Group Containers": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "App 组容器"
+    "Date Modified" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "修改日期"
           }
         }
       }
     },
-    "Apple Applications": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Apple 应用"
+    "Dependencies (%lld)" : {
+
+    },
+    "Diagnostics" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "诊断"
+          }
+        }
+      }
+    },
+    "Directory" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "目录"
+          }
+        }
+      }
+    },
+    "Directory Filtering and Sorting" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "目录筛选与排序"
+          }
+        }
+      }
+    },
+    "Done" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "完成"
+          }
+        }
+      }
+    },
+    "Edit the absolute path" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "编辑绝对路径"
+          }
+        }
+      }
+    },
+    "Empty Directory" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "空目录"
+          }
+        }
+      }
+    },
+    "Encrypted" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "加密"
+          }
+        }
+      }
+    },
+    "Entitlements" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "权限声明"
+          }
+        }
+      }
+    },
+    "Export" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "导出"
+          }
+        }
+      }
+    },
+    "Export cache cleared" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "导出缓存已清理"
+          }
+        }
+      }
+    },
+    "Export Cache Lifecycle" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "导出缓存生命周期"
+          }
+        }
+      }
+    },
+    "Failed" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "失败"
+          }
+        }
+      }
+    },
+    "File" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "文件"
+          }
+        }
+      }
+    },
+    "File Actions" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "文件操作"
+          }
+        }
+      }
+    },
+    "File Info" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "文件信息"
+          }
+        }
+      }
+    },
+    "File Properties, SHA-256, and Hex" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "文件属性、SHA-256 与十六进制"
+          }
+        }
+      }
+    },
+    "File Too Large" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "文件过大"
+          }
+        }
+      }
+    },
+    "File Type" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "文件类型"
+          }
+        }
+      }
+    },
+    "Files" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "文件"
+          }
+        }
+      }
+    },
+    "Filter Current Directory" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "筛选当前目录"
+          }
+        }
+      }
+    },
+    "Flags" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "标志"
+          }
+        }
+      }
+    },
+    "Forward" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "前进"
+          }
+        }
+      }
+    },
+    "Grant policy" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "授权策略"
+          }
+        }
+      }
+    },
+    "Grants are released after each operation" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "每次操作完成后都会释放授权"
+          }
+        }
+      }
+    },
+    "Group" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "用户组"
+          }
+        }
+      }
+    },
+    "Hex" : {
+
+    },
+    "Image Details" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "图片详情"
           }
         }
       }
     },
-    "Application": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "应用"
+    "Info" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "信息"
           }
         }
       }
     },
-    "Applications": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "应用"
+    "Inode" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "索引节点"
           }
         }
       }
     },
-    "Application Container Discovery": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "应用容器发现"
+    "Internal Daemon" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "内部守护进程"
           }
         }
       }
     },
-    "Application Containers": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "应用容器"
+    "Internal Daemon Containers" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "内部守护进程容器"
           }
         }
       }
     },
-    "Choose a Container": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "选择容器"
+    "Invalid Image" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无效图像"
           }
         }
       }
     },
-    "Checks": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "检查项"
+    "Kind" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "类型"
           }
         }
       }
     },
-    "Container Manager query creation failed.": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "创建 Container Manager 查询失败。"
+    "Loading preview…" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在加载预览…"
           }
         }
       }
     },
-    "Container Manager rejected the requested path.": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Container Manager 拒绝了请求的路径。"
+    "Locations" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "位置"
           }
         }
       }
     },
-    "Container metadata root is not a dictionary": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "容器元数据根对象不是字典"
+    "Log" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "日志"
           }
         }
       }
     },
-    "Container name or UUID": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "容器名称或 UUID"
+    "Mach-O and Code Signature Analysis" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mach-O 与代码签名分析"
           }
         }
       }
     },
-    "Diagnostics": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "诊断"
+    "Minimum OS" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "最低系统版本"
           }
         }
       }
     },
-    "Directory": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "目录"
+    "MobileGestalt File Access" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MobileGestalt 文件访问"
           }
         }
       }
     },
-    "Done": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "完成"
+    "Mode" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "模式"
           }
         }
       }
     },
-    "Empty Directory": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "空目录"
+    "Modified" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "修改时间"
           }
         }
       }
     },
-    "Export": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "导出"
+    "More" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "更多"
           }
         }
       }
     },
-    "Failed": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "失败"
+    "Name" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "名称"
           }
         }
       }
     },
-    "File": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "文件"
+    "No containers indexed" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "未索引到容器"
           }
         }
       }
     },
-    "File Info": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "文件信息"
+    "No Inline Preview" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法内嵌预览"
           }
         }
       }
     },
-    "File Too Large": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "文件过大"
+    "No matches" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "没有匹配项"
           }
         }
       }
     },
-    "Files": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "文件"
+    "Not verified" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "未验证"
           }
         }
       }
     },
-    "Grant policy": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "授权策略"
+    "OK" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "好"
           }
         }
       }
     },
-    "Grants are released after each operation": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "每次操作完成后都会释放授权"
+    "Only the filename will be sent to your web browser. The full path is never included." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "只会将文件名发送到浏览器，不会包含完整路径。"
           }
         }
       }
     },
-    "Info": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "信息"
+    "Open" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "打开"
           }
         }
       }
     },
-    "Internal Daemon": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "内部守护进程"
+    "Open Settings to review diagnostics" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "打开设置以查看诊断信息"
           }
         }
       }
     },
-    "Internal Daemon Containers": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "内部守护进程容器"
+    "Opens the container at %@" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "打开位于 %1$@ 的容器"
           }
         }
       }
     },
-    "Invalid Image": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "无效图像"
+    "Overview" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "概览"
           }
         }
       }
     },
-    "Kind": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "类型"
+    "Owner" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "所有者"
           }
         }
       }
     },
-    "Loading preview…": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "正在加载预览…"
+    "Passed" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已通过"
           }
         }
       }
     },
-    "Locations": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "位置"
+    "Path" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "路径"
           }
         }
       }
     },
-    "Log": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "日志"
+    "Per operation" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "按操作授权"
           }
         }
       }
     },
-    "MobileGestalt File Access": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "MobileGestalt 文件访问"
+    "Per-operation access" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "按操作授权"
           }
         }
       }
     },
-    "Mode": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "模式"
+    "Permissions" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "权限"
           }
         }
       }
     },
-    "Name": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "名称"
+    "Plugin" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "插件"
           }
         }
       }
     },
-    "No containers indexed": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "未索引到容器"
+    "Plugin Containers" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "插件容器"
           }
         }
       }
     },
-    "No Inline Preview": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "无法内嵌预览"
+    "Preview" : {
+
+    },
+    "Preview and Safe Export" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "预览与安全导出"
+          }
+        }
+      }
+    },
+    "Preview Failed" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "预览失败"
+          }
+        }
+      }
+    },
+    "Preview Unavailable" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法预览"
+          }
+        }
+      }
+    },
+    "Properties" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "属性"
+          }
+        }
+      }
+    },
+    "Read only" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "只读"
           }
         }
       }
     },
-    "No matches": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "没有匹配项"
+    "Recursive Container Search" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "容器递归搜索"
           }
         }
       }
     },
-    "OK": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "好"
+    "Requesting access…" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在请求访问…"
           }
         }
       }
     },
-    "Not verified": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "未验证"
+    "Required private symbols are unavailable." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "所需的私有符号不可用。"
           }
         }
       }
     },
-    "Open": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "打开"
+    "RPATHs" : {
+
+    },
+    "Run Self-Test" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "运行自检"
+          }
+        }
+      }
+    },
+    "Run the access check from Settings" : {
+
+    },
+    "Run the self-test from Settings" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "请在设置中运行自检"
+          }
+        }
+      }
+    },
+    "Running" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "运行中"
           }
         }
       }
     },
-    "Opens the container at %@": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "打开位于 %1$@ 的容器"
+    "Running on-device compatibility checks" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在运行设备兼容性检查"
           }
         }
       }
     },
-    "Open Settings to review diagnostics": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "打开设置以查看诊断信息"
+    "Runtime" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "运行环境"
           }
         }
       }
     },
-    "Path": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "路径"
+    "SDK" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "SDK"
           }
         }
       }
     },
-    "Passed": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "已通过"
+    "Search Filename on Web" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在网页中搜索文件名"
           }
         }
       }
+    },
+    "Search filenames" : {
+
+    },
+    "Search for “%@”" : {
+
     },
-    "Per operation": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "按操作授权"
+    "Search in file" : {
+
+    },
+    "Search keys and values" : {
+
+    },
+    "Search the Web?" : {
+
+    },
+    "Search This Container" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "搜索当前容器"
           }
         }
       }
     },
-    "Per-operation access": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "按操作授权"
+    "Searching…" : {
+
+    },
+    "Select a container in the sidebar to browse its files." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "从边栏选择一个容器以浏览其中的文件。"
           }
         }
       }
     },
-    "Plugin": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "插件"
+    "Select a File" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "选择文件"
           }
         }
       }
     },
-    "Plugin Containers": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "插件容器"
+    "Self-test" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自检"
           }
         }
       }
     },
-    "Preview and Safe Export": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "预览与安全导出"
+    "Settings" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "设置"
           }
         }
       }
     },
-    "Preview Failed": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "预览失败"
+    "SHA-256" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "SHA-256"
           }
         }
       }
     },
-    "Read only": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "只读"
+    "Shared files are copied to a private cache and automatically removed after 24 hours." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "分享的文件会先复制到私有缓存，并在 24 小时后自动清理。"
           }
         }
       }
     },
-    "Requesting access…": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "正在请求访问…"
+    "Show Hidden Files" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "显示隐藏文件"
           }
         }
       }
     },
-    "Required private symbols are unavailable.": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "所需的私有符号不可用。"
+    "Size" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "大小"
           }
         }
       }
     },
-    "Run the self-test from Settings": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "请在设置中运行自检"
+    "Sort By" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "排序方式"
           }
         }
       }
     },
-    "Run Self-Test": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "运行自检"
+    "Source" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "源文本"
           }
         }
       }
     },
-    "Running": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "运行中"
+    "Source Code" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "源代码"
           }
         }
       }
     },
-    "Running on-device compatibility checks": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "正在运行设备兼容性检查"
+    "Status" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "状态"
           }
         }
       }
     },
-    "Runtime": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "运行环境"
+    "Storage" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "存储"
           }
         }
       }
     },
-    "Select a container in the sidebar to browse its files.": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "从边栏选择一个容器以浏览其中的文件。"
+    "Structured Plist and JSON" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "结构化 Plist 与 JSON"
           }
         }
       }
     },
-    "Select a File": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "选择文件"
+    "System" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "系统"
           }
         }
       }
     },
-    "Self-test": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "自检"
+    "System Data" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "系统数据"
           }
         }
       }
     },
-    "Settings": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "设置"
+    "System Data Containers" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "系统数据容器"
           }
         }
       }
     },
-    "Show Hidden Files": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "显示隐藏文件"
+    "System Group" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "系统组"
           }
         }
       }
     },
-    "Size": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "大小"
+    "System Group Containers" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "系统组容器"
           }
         }
       }
     },
-    "Source Code": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "源代码"
+    "Testing application container access" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在测试应用容器访问"
           }
         }
       }
     },
-    "Status": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "状态"
+    "The access query could not allocate required memory." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "访问查询无法分配所需内存。"
           }
         }
       }
     },
-    "System": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "系统"
+    "The kernel refused to issue a sandbox extension." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "内核拒绝签发沙盒扩展。"
           }
         }
       }
     },
-    "System Data": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "系统数据"
+    "The target must be an absolute path." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "目标必须是绝对路径。"
           }
         }
       }
     },
-    "System Data Containers": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "系统数据容器"
+    "The target path does not exist." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "目标路径不存在。"
           }
         }
       }
     },
-    "System Group": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "系统组"
+    "This directory does not contain any visible items." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此目录中没有可见项目。"
           }
         }
       }
     },
-    "System Group Containers": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "系统组容器"
+    "Type" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "类型"
           }
         }
       }
     },
-    "The access query could not allocate required memory.": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "访问查询无法分配所需内存。"
+    "Unknown" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "未知"
           }
         }
       }
     },
-    "The kernel refused to issue a sandbox extension.": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "内核拒绝签发沙盒扩展。"
+    "Unknown Check" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "未知检查项"
           }
         }
       }
     },
-    "The target must be an absolute path.": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "目标必须是绝对路径。"
+    "Unknown error" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "未知错误"
           }
         }
       }
     },
-    "The target path does not exist.": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "目标路径不存在。"
+    "Unsupported" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "不支持"
           }
         }
       }
     },
-    "This directory does not contain any visible items.": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "此目录中没有可见项目。"
+    "Up" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "上一级"
           }
         }
       }
     },
-    "Unknown": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "未知"
+    "Use the Hex view to inspect this file." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "请使用十六进制视图检查此文件。"
           }
         }
       }
     },
-    "Unknown Check": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "未知检查项"
+    "UUID" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "UUID"
           }
         }
       }
     },
-    "Unknown error": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "未知错误"
+    "Vellune" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vellune"
           }
         }
       }
     },
-    "Unsupported": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "不支持"
+    "Vellune Website" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vellune 官方网站"
           }
         }
       }
     },
-    "Up": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "上一级"
+    "Verified" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已验证"
           }
         }
       }
     },
-    "Vellune Website": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Vellune 官方网站"
+    "Verifying access…" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在验证访问能力…"
           }
         }
       }
     },
-    "Verified": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "已验证"
+    "Verifying…" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在验证…"
           }
         }
       }
     },
-    "Verifying access…": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "正在验证访问能力…"
+    "Version" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "版本"
           }
         }
       }
     },
-    "Verifying…": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "正在验证…"
+    "View" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "视图"
           }
         }
       }
     },
-    "Version": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "版本"
+    "View Options" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "查看选项"
           }
         }
       }
     },
-    "View Options": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "查看选项"
+    "Wrap" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自动换行"
           }
         }
       }
+    },
+    "Zoom" : {
+
     }
   },
-  "version": "1.0"
+  "version" : "1.0"
 }

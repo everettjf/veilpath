@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct ContentView: View {
     @Bindable var model: VelluneModel
@@ -6,49 +7,153 @@ struct ContentView: View {
     @State private var showInspector = false
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
     @State private var preferredCompactColumn: NavigationSplitViewColumn = .sidebar
+    @State private var presentedPreview: FileItem?
+    @State private var previewWidthFraction: CGFloat = 0.75
+    @State private var previewIsFullScreen = false
+    @State private var previewDragStartFraction: CGFloat?
+    @State private var showingReplacementImporter = false
+    @State private var pendingReplacementURL: URL?
+    @State private var showingReplacementConfirmation = false
+    @State private var pendingRestore: FileBackupRecord?
+    @State private var showingRestoreConfirmation = false
 
     var body: some View {
-        NavigationSplitView(
-            columnVisibility: $columnVisibility,
-            preferredCompactColumn: $preferredCompactColumn
-        ) {
-            SidebarView(
-                model: model,
-                columnVisibility: $columnVisibility,
-                preferredCompactColumn: $preferredCompactColumn,
-                usesCompactNavigation: horizontalSizeClass == .compact
-            )
-                .navigationSplitViewColumnWidth(min: 290, ideal: 340, max: 430)
-        } detail: {
-            BrowserView(model: model, showInspector: $showInspector)
-                .inspector(isPresented: $showInspector) {
-                    InspectorView(
-                        item: model.selectedItem,
+        GeometryReader { geometry in
+            ZStack(alignment: .trailing) {
+                NavigationSplitView(
+                    columnVisibility: $columnVisibility,
+                    preferredCompactColumn: $preferredCompactColumn
+                ) {
+                    SidebarView(
+                        model: model,
+                        columnVisibility: $columnVisibility,
+                        preferredCompactColumn: $preferredCompactColumn,
+                        usesCompactNavigation: horizontalSizeClass == .compact
+                    )
+                        .navigationSplitViewColumnWidth(min: 290, ideal: 340, max: 430)
+                } detail: {
+                    BrowserView(
+                        model: model,
+                        showInspector: $showInspector,
+                        presentedPreview: $presentedPreview
+                    )
+                    .inspector(isPresented: inspectorPresented) {
+                        InspectorView(
+                            item: model.selectedItem,
+                            preview: model.selectedPreview,
+                            previewError: model.previewError,
+                            exportURL: model.selectedExportURL,
+                            properties: model.selectedProperties,
+                            hexDump: model.selectedHexDump,
+                            isLoading: model.isLoadingPreview,
+                            openPreview: openSelectedPreview,
+                            requestReplacement: { showingReplacementImporter = true },
+                            backups: selectedBackups,
+                            requestRestore: { record in
+                                pendingRestore = record
+                                showingRestoreConfirmation = true
+                            }
+                        )
+                        .inspectorColumnWidth(min: 300, ideal: 380, max: 520)
+                    }
+                }
+                .navigationSplitViewStyle(.balanced)
+
+                if let presentedPreview {
+                    FilePreviewOverlay(
+                        item: presentedPreview,
                         preview: model.selectedPreview,
                         previewError: model.previewError,
                         exportURL: model.selectedExportURL,
-                        properties: model.selectedProperties,
-                        hexDump: model.selectedHexDump,
-                        isLoading: model.isLoadingPreview
+                        isLoading: model.isLoadingPreview,
+                        availableWidth: geometry.size.width,
+                        widthFraction: $previewWidthFraction,
+                        isFullScreen: $previewIsFullScreen,
+                        dragStartFraction: $previewDragStartFraction,
+                        close: closePreview
                     )
-                    .inspectorColumnWidth(min: 300, ideal: 380, max: 520)
+                    .transition(.move(edge: .trailing).combined(with: .opacity))
+                    .zIndex(10)
+
+                    if !previewIsFullScreen {
+                        PreviewFileList(
+                            model: model,
+                            presentedPreview: $presentedPreview
+                        )
+                        .frame(width: geometry.size.width * (1 - previewWidthFraction))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .transition(.opacity)
+                        .zIndex(11)
+                    }
                 }
+            }
+            .animation(.snappy, value: presentedPreview?.id)
+            .animation(.snappy, value: previewIsFullScreen)
         }
-        .navigationSplitViewStyle(.balanced)
         .onAppear {
             #if targetEnvironment(simulator)
             if ProcessInfo.processInfo.arguments.contains("--ui-testing-browser") {
                 preferredCompactColumn = .detail
+                columnVisibility = .detailOnly
             }
             #endif
         }
         .onChange(of: model.selectedItem) { _, item in
             if item != nil { showInspector = true }
         }
+        .onChange(of: presentedPreview) { _, item in
+            if item != nil, horizontalSizeClass == .compact {
+                previewIsFullScreen = true
+            }
+        }
+        .onChange(of: model.currentContainerRoot, initial: true) { _, root in
+            if !root.isEmpty {
+                preferredCompactColumn = .detail
+                columnVisibility = .detailOnly
+            }
+        }
+        .onChange(of: model.selectedPreview) { _, preview in
+            #if targetEnvironment(simulator)
+            if preview != nil,
+               ProcessInfo.processInfo.arguments.contains("--ui-testing-preview"),
+               let item = model.selectedItem {
+                showInspector = false
+                presentedPreview = item
+            }
+            #endif
+        }
         .alert("Access Failed", isPresented: errorPresented) {
             Button("OK") { model.lastError = nil }
         } message: {
             Text(model.lastError ?? String(localized: "Unknown error"))
+        }
+        .fileImporter(isPresented: $showingReplacementImporter, allowedContentTypes: [.data]) { result in
+            switch result {
+            case .success(let url):
+                pendingReplacementURL = url
+                showingReplacementConfirmation = true
+            case .failure(let error): model.lastError = error.localizedDescription
+            }
+        }
+        .confirmationDialog("Replace Selected File?", isPresented: $showingReplacementConfirmation) {
+            Button("Back Up and Replace", role: .destructive) {
+                guard let pendingReplacementURL else { return }
+                Task { await model.replaceSelectedFile(with: pendingReplacementURL) }
+                self.pendingReplacementURL = nil
+            }
+            Button("Cancel", role: .cancel) { pendingReplacementURL = nil }
+        } message: {
+            Text("The original file will be backed up and verified before replacement.")
+        }
+        .confirmationDialog("Restore This Backup?", isPresented: $showingRestoreConfirmation) {
+            Button("Create Safety Backup and Restore", role: .destructive) {
+                guard let pendingRestore else { return }
+                Task { await model.restore(pendingRestore) }
+                self.pendingRestore = nil
+            }
+            Button("Cancel", role: .cancel) { pendingRestore = nil }
+        } message: {
+            Text("The current file will receive its own safety backup before restoration.")
         }
     }
 
@@ -57,6 +162,68 @@ struct ContentView: View {
             get: { model.lastError != nil },
             set: { if !$0 { model.lastError = nil } }
         )
+    }
+
+    private var inspectorPresented: Binding<Bool> {
+        Binding(
+            get: { showInspector && presentedPreview == nil },
+            set: { showInspector = $0 }
+        )
+    }
+
+    private func openSelectedPreview() {
+        guard let item = model.selectedItem else { return }
+        showInspector = false
+        presentedPreview = item
+    }
+
+    private func closePreview() {
+        presentedPreview = nil
+        previewIsFullScreen = false
+        previewDragStartFraction = nil
+    }
+
+    private var selectedBackups: [FileBackupRecord] {
+        guard let path = model.selectedItem?.url.path else { return [] }
+        return model.backupRecords.filter { $0.manifest.targetPath == path }
+    }
+}
+
+private struct PreviewFileList: View {
+    @Bindable var model: VelluneModel
+    @Binding var presentedPreview: FileItem?
+
+    var body: some View {
+        NavigationStack {
+            List(model.items) { item in
+                Button {
+                    Task {
+                        await model.open(item)
+                        if !item.isDirectory, model.selectedItem == item {
+                            presentedPreview = item
+                        }
+                    }
+                } label: {
+                    FileRow(item: item)
+                }
+                .buttonStyle(.plain)
+                .listRowBackground(model.selectedItem == item ? Color.accentColor.opacity(0.12) : Color.clear)
+            }
+            .listStyle(.plain)
+            .navigationTitle("Files")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Up", systemImage: "arrow.up") {
+                        Task { await model.goUp() }
+                    }
+                    .labelStyle(.iconOnly)
+                    .disabled(model.isWorking || model.path == "/")
+                }
+            }
+        }
+        .background(.background)
+        .overlay(alignment: .trailing) { Divider() }
     }
 }
 
@@ -195,9 +362,8 @@ private struct SidebarView: View {
     private func containerRows(_ containers: [ContainerDescriptor]) -> some View {
         ForEach(containers) { container in
             Button {
-                if usesCompactNavigation {
-                    preferredCompactColumn = .detail
-                }
+                preferredCompactColumn = .detail
+                columnVisibility = .detailOnly
                 Task {
                     await model.open(container)
                 }
@@ -384,6 +550,7 @@ private struct ContainerRow: View {
 private struct BrowserView: View {
     @Bindable var model: VelluneModel
     @Binding var showInspector: Bool
+    @Binding var presentedPreview: FileItem?
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @FocusState private var pathFocused: Bool
     @State private var showFileSearch = false
@@ -432,7 +599,13 @@ private struct BrowserView: View {
             } else {
                 List(visibleItems) { item in
                     Button {
-                        Task { await model.open(item) }
+                        Task {
+                            await model.open(item)
+                            if !item.isDirectory, model.selectedItem == item {
+                                showInspector = false
+                                presentedPreview = item
+                            }
+                        }
                     } label: {
                         FileRow(item: item)
                     }
@@ -481,6 +654,17 @@ private struct BrowserView: View {
                             }
                         }
                         Toggle("Show Hidden Files", isOn: $model.showHiddenFiles)
+                        Divider()
+                        Toggle("Recursive Markdown Export", isOn: $model.directoryExportRecursive)
+                        Button("Prepare Markdown Listing", systemImage: "doc.badge.arrow.up") {
+                            Task { await model.prepareDirectoryMarkdownExport() }
+                        }
+                        .disabled(model.isExportingDirectory)
+                        if let directoryExportURL = model.directoryExportURL {
+                            ShareLink(item: directoryExportURL) {
+                                Label("Share Markdown Listing", systemImage: "square.and.arrow.up")
+                            }
+                        }
                         if model.selectedItem != nil {
                             Button("File Info", systemImage: "info.circle") {
                                 showInspector = true
@@ -680,7 +864,11 @@ private struct InspectorView: View {
     let properties: FileProperties?
     let hexDump: String
     let isLoading: Bool
-    @State private var selection: InspectorSection = .preview
+    let openPreview: () -> Void
+    let requestReplacement: () -> Void
+    let backups: [FileBackupRecord]
+    let requestRestore: (FileBackupRecord) -> Void
+    @State private var selection: InspectorSection = .properties
     @State private var confirmWebSearch = false
     @Environment(\.openURL) private var openURL
 
@@ -700,9 +888,23 @@ private struct InspectorView: View {
                     }
                 }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+                Divider()
+                HStack {
+                    Button("Back Up and Replace", systemImage: "arrow.triangle.2.circlepath", action: requestReplacement)
+                        .disabled(isLoading)
+                    Spacer()
+                    if let backup = backups.first {
+                        Button("Restore Latest Backup", systemImage: "clock.arrow.circlepath") {
+                            requestRestore(backup)
+                        }
+                    }
+                }
+                .padding()
             }
             .navigationTitle("Info")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                Button("Open Preview", systemImage: "doc.text.magnifyingglass", action: openPreview)
                 if let exportURL {
                     ShareLink(item: exportURL) {
                         Label("Export", systemImage: "square.and.arrow.up")
@@ -725,6 +927,79 @@ private struct InspectorView: View {
         } else {
             ContentUnavailableView("Select a File", systemImage: "doc.text.magnifyingglass")
         }
+    }
+}
+
+private struct FilePreviewOverlay: View {
+    let item: FileItem
+    let preview: FilePreview?
+    let previewError: String?
+    let exportURL: URL?
+    let isLoading: Bool
+    let availableWidth: CGFloat
+    @Binding var widthFraction: CGFloat
+    @Binding var isFullScreen: Bool
+    @Binding var dragStartFraction: CGFloat?
+    let close: () -> Void
+
+    var body: some View {
+        HStack(spacing: 0) {
+            if !isFullScreen {
+                Color.black.opacity(0.22)
+                    .contentShape(.rect)
+                    .onTapGesture(perform: close)
+            }
+
+            NavigationStack {
+                PreviewContent(preview: preview, error: previewError, isLoading: isLoading)
+                    .navigationTitle(item.name)
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .topBarLeading) {
+                            Button("Close Preview", systemImage: "xmark", action: close)
+                                .keyboardShortcut(.cancelAction)
+                        }
+                        ToolbarItemGroup(placement: .topBarTrailing) {
+                            Button(isFullScreen ? "Restore Preview Size" : "Full Screen",
+                                   systemImage: isFullScreen ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right") {
+                                isFullScreen.toggle()
+                            }
+                            .keyboardShortcut("f", modifiers: [.command, .shift])
+                            if let exportURL {
+                                ShareLink(item: exportURL) {
+                                    Label("Export", systemImage: "square.and.arrow.up")
+                                }
+                            }
+                        }
+                    }
+            }
+            .frame(width: isFullScreen ? availableWidth : availableWidth * widthFraction)
+            .background(.background)
+            .shadow(radius: 18)
+            .overlay(alignment: .leading) {
+                if !isFullScreen {
+                    Capsule()
+                        .fill(.secondary.opacity(0.65))
+                        .frame(width: 5, height: 64)
+                        .padding(.leading, 4)
+                        .frame(width: 24, alignment: .leading)
+                        .frame(maxHeight: .infinity)
+                        .contentShape(.rect)
+                        .gesture(
+                            DragGesture()
+                                .onChanged { value in
+                                    if dragStartFraction == nil { dragStartFraction = widthFraction }
+                                    let start = dragStartFraction ?? widthFraction
+                                    widthFraction = min(0.9, max(0.6, start - value.translation.width / availableWidth))
+                                }
+                                .onEnded { _ in dragStartFraction = nil }
+                        )
+                        .accessibilityLabel("Resize Preview")
+                        .accessibilityHint("Drag horizontally to resize the preview panel")
+                }
+            }
+        }
+        .ignoresSafeArea()
     }
 }
 

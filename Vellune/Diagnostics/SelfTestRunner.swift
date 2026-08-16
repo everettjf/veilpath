@@ -34,6 +34,7 @@ enum SelfTestRunner {
         let startedAt = Date()
         var checks: [SelfTestReport.Check] = []
 
+        #if !targetEnvironment(simulator)
         checks.append(testFileAccess(
             name: "MobileGestalt file access",
             path: "/var/containers/Shared/SystemGroup/systemgroup.com.apple.mobilegestaltcache/Library/Caches/com.apple.MobileGestalt.plist"
@@ -53,15 +54,18 @@ enum SelfTestRunner {
         checks.append(testDirectoryAccess(name: "Internal daemon containers", path: ContainerKind.internalDaemon.rootPath))
         checks.append(testDirectoryAccess(name: "App Group containers", path: ContainerKind.appGroup.rootPath))
         checks.append(testDirectoryAccess(name: "System Group containers", path: ContainerKind.systemGroup.rootPath))
+        #endif
         checks.append(testStructuredFormats())
         checks.append(testFileAnalysis())
         checks.append(testMachOAnalysis())
         checks.append(testExportCache())
+        checks.append(testDirectoryMarkdownExport())
+        checks.append(testBackupReplaceAndRestore())
         checks.append(testLocalSearch())
         checks.append(testDirectorySorting())
 
         let report = SelfTestReport(
-            schemaVersion: 9,
+            schemaVersion: 12,
             appVersion: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "unknown",
             systemVersion: ProcessInfo.processInfo.operatingSystemVersionString,
             startedAt: startedAt,
@@ -184,6 +188,73 @@ enum SelfTestRunner {
             let second = try ExportCache.stage(source, named: "fixture.txt")
             guard first != second, FileManager.default.fileExists(atPath: first.path), FileManager.default.fileExists(atPath: second.path) else { throw SelfTestFailure("Export cache collision handling failed") }
             return "uniqueCopies=2"
+        }
+    }
+
+    nonisolated private static func testDirectoryMarkdownExport() -> SelfTestReport.Check {
+        timedCheck(name: "Directory Markdown export", path: "temporary fixture") {
+            let root = FileManager.default.temporaryDirectory
+                .appending(path: "vellune-markdown-\(UUID().uuidString)", directoryHint: .isDirectory)
+            defer { try? FileManager.default.removeItem(at: root) }
+            try FileManager.default.createDirectory(
+                at: root.appending(path: "Nested", directoryHint: .isDirectory),
+                withIntermediateDirectories: true
+            )
+            try Data("top".utf8).write(to: root.appending(path: "top.txt"))
+            try Data("nested".utf8).write(to: root.appending(path: "Nested/child.txt"))
+
+            let shallow = try DirectoryMarkdownExporter.export(
+                path: root.path,
+                options: .init(recursively: false, includeHidden: true)
+            )
+            let recursive = try DirectoryMarkdownExporter.export(
+                path: root.path,
+                options: .init(recursively: true, includeHidden: true)
+            )
+            defer {
+                try? FileManager.default.removeItem(at: shallow.url)
+                try? FileManager.default.removeItem(at: recursive.url)
+            }
+            let markdown = try String(contentsOf: recursive.url, encoding: .utf8)
+            let containsNestedFile = markdown.contains("Nested/child.txt")
+            guard shallow.itemCount == 2,
+                  recursive.itemCount == 3,
+                  containsNestedFile else {
+                throw SelfTestFailure(
+                    "Markdown scope or relative paths were incorrect " +
+                    "(shallow=\(shallow.itemCount), recursive=\(recursive.itemCount), nested=\(containsNestedFile))"
+                )
+            }
+            return "shallowItems=\(shallow.itemCount), recursiveItems=\(recursive.itemCount)"
+        }
+    }
+
+    nonisolated private static func testBackupReplaceAndRestore() -> SelfTestReport.Check {
+        timedCheck(name: "Backup, replace, verify, and restore", path: "temporary fixture") {
+            let target = FileManager.default.temporaryDirectory
+                .appending(path: "vellune-replace-\(UUID().uuidString).txt")
+            let original = Data("original".utf8)
+            let replacement = Data("replacement".utf8)
+            try original.write(to: target)
+            var createdFolders: [URL] = []
+            defer {
+                try? FileManager.default.removeItem(at: target)
+                createdFolders.forEach { try? FileManager.default.removeItem(at: $0) }
+            }
+
+            let backup = try FileBackupService.replace(target: target, replacementData: replacement)
+            createdFolders.append(backup.folderURL)
+            guard backup.manifest.completed,
+                  try Data(contentsOf: target) == replacement else {
+                throw SelfTestFailure("Replacement was not committed")
+            }
+            let safetyBackup = try FileBackupService.restore(backup)
+            createdFolders.append(safetyBackup.folderURL)
+            guard safetyBackup.manifest.completed,
+                  try Data(contentsOf: target) == original else {
+                throw SelfTestFailure("Original content was not restored")
+            }
+            return "replacementVerified=true, restoreVerified=true, safetyBackup=true"
         }
     }
 

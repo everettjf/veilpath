@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  A native, read-only container explorer for iPhone and iPad,<br>
+  A native container explorer and guarded file workspace for iPhone and iPad,<br>
   built around the <a href="https://github.com/forcequitOS/bad_query"><code>bad_query</code></a> sandbox escape.
 </p>
 
@@ -40,7 +40,8 @@
 Vellune turns the `bad_query` proof of concept into a focused file-exploration
 interface for the iOS and iPadOS versions where the technique applies. It
 discovers otherwise inaccessible containers, resolves their identifiers, and
-lets you inspect and export files without enabling arbitrary writes.
+lets you inspect, export, and deliberately replace individual files with a
+verified backup and restore path.
 
 The name **Vellune** is an invented word inspired by **veil** and **lune**
 (French for “moon”). Its intended image is *looking through a veil at what was
@@ -62,10 +63,14 @@ sandbox boundary.
   recursive container search, and name/date/size sorting.
 - Previews searchable plist and JSON trees, XML, text, images, hexadecimal data,
   and Mach-O architecture, dependency, signature, and entitlement details.
+- Opens an app-specific iPad workspace with the current file list beside a
+  resizable 60–90% preview that can expand full screen.
 - Shows file metadata and SHA-256 hashes before export.
 - Stages files inside Vellune's cache before presenting the system share sheet.
+- Exports the current directory as Markdown, with optional recursive traversal.
+- Keeps browsing read-only by default; explicit replacement first creates a
+  versioned backup, verifies SHA-256, and supports restore with a safety backup.
 - Includes an on-device diagnostics suite with a structured JSON report.
-- Intentionally read-only: destructive container operations are not exposed.
 
 ## Compatibility
 
@@ -144,9 +149,12 @@ Vellune is experimental security-research software. It relies on private APIs
 and behavior that can differ between OS builds. Use it only on devices and data
 you own or are explicitly authorized to test.
 
-The user interface is intentionally read-only. Export creates a copy in
-Vellune's cache; it does not modify the source file. Diagnostics report failures
-explicitly instead of assuming a path is accessible.
+Browsing, previews, search, and export are read-only. The only write workflow is
+an explicit, confirmed replacement of one selected file. Vellune stores the
+original in its own versioned backup area, verifies writes with SHA-256, and
+creates another safety backup before a restore. This is still sensitive research
+software; a backup reduces risk but is not a substitute for a device backup.
+Diagnostics report failures explicitly instead of assuming a path is accessible.
 
 ## Acknowledgements
 
