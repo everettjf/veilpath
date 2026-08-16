@@ -157,7 +157,27 @@
         }
       }
     },
+    "Apple Applications": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple 应用"
+          }
+        }
+      }
+    },
     "Application": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "应用"
+          }
+        }
+      }
+    },
+    "Applications": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {

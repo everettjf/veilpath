@@ -68,6 +68,8 @@ private struct SidebarView: View {
     @State private var searchText = ""
     @State private var selectedKind: ContainerKind = .application
     @State private var showSettings = false
+    @AppStorage("sidebar.applicationsExpanded") private var applicationsExpanded = true
+    @AppStorage("sidebar.appleApplicationsExpanded") private var appleApplicationsExpanded = false
 
     var body: some View {
         List {
@@ -94,19 +96,10 @@ private struct SidebarView: View {
                             .foregroundStyle(.secondary)
                     }
                 } else {
-                    ForEach(containers) { container in
-                        Button {
-                            if usesCompactNavigation {
-                                preferredCompactColumn = .detail
-                            }
-                            Task {
-                                await model.open(container)
-                            }
-                        } label: {
-                            ContainerRow(container: container)
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityHint("Opens the container at \(container.path)")
+                    if selectedKind == .application {
+                        groupedApplicationRows(containers)
+                    } else {
+                        containerRows(containers)
                     }
                 }
             } header: {
@@ -138,6 +131,13 @@ private struct SidebarView: View {
         }
         .fullScreenCover(isPresented: $showSettings) {
             SettingsView(model: model)
+        }
+        .onAppear {
+            #if targetEnvironment(simulator)
+            if ProcessInfo.processInfo.arguments.contains("--ui-testing-apple-search") {
+                searchText = "com.apple"
+            }
+            #endif
         }
     }
 
@@ -195,6 +195,78 @@ private struct SidebarView: View {
             $0.displayName.localizedCaseInsensitiveContains(searchText)
                 || $0.uuid.localizedCaseInsensitiveContains(searchText)
         }
+    }
+
+    @ViewBuilder
+    private func groupedApplicationRows(_ containers: [ContainerDescriptor]) -> some View {
+        let applications = containers.filter { !isAppleApplication($0) }
+        let appleApplications = containers.filter(isAppleApplication)
+
+        if !applications.isEmpty {
+            DisclosureGroup(isExpanded: applicationsExpansion) {
+                containerRows(applications)
+            } label: {
+                containerGroupLabel("Applications", count: applications.count)
+            }
+        }
+
+        if !appleApplications.isEmpty {
+            DisclosureGroup(isExpanded: appleApplicationsExpansion) {
+                containerRows(appleApplications)
+            } label: {
+                containerGroupLabel("Apple Applications", count: appleApplications.count)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func containerRows(_ containers: [ContainerDescriptor]) -> some View {
+        ForEach(containers) { container in
+            Button {
+                if usesCompactNavigation {
+                    preferredCompactColumn = .detail
+                }
+                Task {
+                    await model.open(container)
+                }
+            } label: {
+                ContainerRow(container: container)
+            }
+            .buttonStyle(.plain)
+            .accessibilityHint("Opens the container at \(container.path)")
+        }
+    }
+
+    private func containerGroupLabel(
+        _ title: LocalizedStringResource,
+        count: Int
+    ) -> some View {
+        HStack {
+            Text(title)
+                .font(.callout.weight(.semibold))
+            Spacer()
+            Text(count, format: .number)
+                .font(.caption.monospacedDigit())
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private var applicationsExpansion: Binding<Bool> {
+        Binding(
+            get: { !searchText.isEmpty || applicationsExpanded },
+            set: { if searchText.isEmpty { applicationsExpanded = $0 } }
+        )
+    }
+
+    private var appleApplicationsExpansion: Binding<Bool> {
+        Binding(
+            get: { !searchText.isEmpty || appleApplicationsExpanded },
+            set: { if searchText.isEmpty { appleApplicationsExpanded = $0 } }
+        )
+    }
+
+    private func isAppleApplication(_ container: ContainerDescriptor) -> Bool {
+        container.identifier?.hasPrefix("com.apple.") == true
     }
 
 }
