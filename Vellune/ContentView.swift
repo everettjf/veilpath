@@ -116,16 +116,17 @@ private struct SidebarView: View {
         .searchable(text: $searchText, placement: .sidebar, prompt: "Container name or UUID")
         .navigationTitle("Vellune")
         .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
-                HStack(spacing: 8) {
-                    Button("Settings", systemImage: "gearshape") {
-                        showSettings = true
-                    }
-                    .labelStyle(.iconOnly)
-                    if usesCompactNavigation {
-                        locationsMenu
-                            .labelStyle(.titleAndIcon)
-                    }
+            if usesCompactNavigation {
+                ToolbarItem(placement: .topBarLeading) {
+                    locationsMenu
+                        .labelStyle(.iconOnly)
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    settingsButton
+                }
+            } else {
+                ToolbarItem(placement: .topBarLeading) {
+                    settingsButton
                 }
             }
         }
@@ -168,6 +169,13 @@ private struct SidebarView: View {
             }
         }
         .accessibilityValue(selectedKind.localizedName)
+    }
+
+    private var settingsButton: some View {
+        Button("Settings", systemImage: "gearshape") {
+            showSettings = true
+        }
+        .labelStyle(.iconOnly)
     }
 
     private func locationButton(_ kind: ContainerKind) -> some View {
