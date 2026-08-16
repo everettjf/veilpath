@@ -1,6 +1,21 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Feedback" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "反馈" } }
+      }
+    },
+    "Opens GitHub with your app and system versions included." : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "打开 GitHub，并自动附带 App 与系统版本。" } }
+      }
+    },
+    "Report an Issue" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "反馈问题" } }
+      }
+    },
     "App name or Bundle ID" : {
       "localizations" : {
         "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "App 名称或 Bundle ID" } }

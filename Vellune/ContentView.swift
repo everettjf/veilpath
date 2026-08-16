@@ -306,24 +306,27 @@ private struct ContainerHomeView: View {
             if ProcessInfo.processInfo.arguments.contains("--ui-testing-list-home") {
                 layoutRawValue = ContainerHomeLayout.list.rawValue
             }
+            if ProcessInfo.processInfo.arguments.contains("--ui-testing-settings") {
+                showSettings = true
+            }
             #endif
         }
     }
 
     private var gridContent: some View {
         ScrollView {
-            LazyVStack(alignment: .leading, spacing: 24) {
+            LazyVStack(alignment: .leading, spacing: 10) {
                 if model.accessVerification?.status != .passed {
                     AccessStatusView(model: model)
                         .padding(.horizontal)
                 }
                 ForEach(sections, id: \.id) { section in
-                    VStack(alignment: .leading, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 6) {
                         sectionHeader(section)
                         LazyVGrid(
-                            columns: [GridItem(.adaptive(minimum: horizontalSizeClass == .compact ? 145 : 190, maximum: 260), spacing: 14)],
+                            columns: homeGridColumns,
                             alignment: .leading,
-                            spacing: 14
+                            spacing: 6
                         ) {
                             ForEach(section.containers) { container in
                                 ContainerTile(container: container) { open(container) }
@@ -333,7 +336,7 @@ private struct ContainerHomeView: View {
                 }
             }
             .padding(.horizontal)
-            .padding(.vertical, 18)
+            .padding(.vertical, 6)
         }
         .scrollEdgeEffectStyle(.soft, for: .top)
     }
@@ -356,6 +359,13 @@ private struct ContainerHomeView: View {
             }
         }
         .listStyle(.insetGrouped)
+    }
+
+    private var homeGridColumns: [GridItem] {
+        if horizontalSizeClass == .compact {
+            return [GridItem(.flexible())]
+        }
+        return [GridItem(.adaptive(minimum: 290, maximum: 420), spacing: 14)]
     }
 
     private func sectionHeader(_ section: ContainerHomeSection) -> some View {
@@ -419,43 +429,96 @@ private struct ContainerTile: View {
 
     var body: some View {
         Button(action: action) {
-            VStack(alignment: .leading, spacing: 0) {
-                Image(systemName: tileSymbol)
-                    .font(.title2)
-                    .foregroundStyle(.tint)
-                    .frame(width: 46, height: 46)
-                    .background(.tint.opacity(0.12), in: .rect(cornerRadius: 12))
-                Spacer(minLength: 16)
-                Text(tileTitle)
-                    .font(.headline)
-                    .foregroundStyle(.primary)
-                    .lineLimit(2)
-                    .multilineTextAlignment(.leading)
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(alignment: .firstTextBaseline, spacing: 10) {
+                    Text(container.homeTitle)
+                        .font(.headline)
+                        .foregroundStyle(.primary)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
+                    Spacer(minLength: 8)
+                    if container.kind != .application {
+                        ContainerKindBadge(container: container)
+                    }
+                }
                 Text(container.identifier ?? container.uuid)
                     .font(.caption.monospaced())
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
                     .truncationMode(.middle)
             }
-            .frame(maxWidth: .infinity, minHeight: 128, alignment: .leading)
-            .padding(16)
-            .background(Color.secondary.opacity(0.08), in: .rect(cornerRadius: 18))
-            .contentShape(.rect(cornerRadius: 18))
+            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+            .padding(.vertical, 8)
+            .padding(.horizontal, 14)
+            .background(container.homeAccent.opacity(0.11), in: .rect(cornerRadius: 14))
+            .overlay(alignment: .leading) {
+                UnevenRoundedRectangle(
+                    topLeadingRadius: 14,
+                    bottomLeadingRadius: 14,
+                    bottomTrailingRadius: 2,
+                    topTrailingRadius: 2
+                )
+                .fill(container.homeAccent)
+                .frame(width: 5)
+            }
+            .contentShape(.rect(cornerRadius: 14))
         }
         .buttonStyle(.plain)
         .accessibilityElement(children: .combine)
         .accessibilityHint("Opens this app container")
     }
 
-    private var tileSymbol: String {
-        if container.kind != .application { return container.kind.systemImage }
-        if container.identifier?.hasPrefix("com.apple.") == true { return "apple.logo" }
-        return "app.fill"
+}
+
+private struct ContainerKindBadge: View {
+    let container: ContainerDescriptor
+
+    var body: some View {
+        Text(container.homeKindLabel)
+            .font(.caption2.weight(.semibold))
+            .foregroundStyle(container.homeAccent)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(container.homeAccent.opacity(0.12), in: .capsule)
+    }
+}
+
+private extension ContainerDescriptor {
+    var homeTitle: String {
+        guard let identifier else { return uuid }
+        let components = identifier.split(separator: ".").map(String.init)
+        guard let last = components.last else { return identifier }
+
+        let genericSuffixes: Set<String> = [
+            "app", "application", "ios", "mobile", "client", "prod", "release"
+        ]
+        if genericSuffixes.contains(last.lowercased()), components.count >= 2 {
+            return components[components.count - 2]
+        }
+        if last.count < 4, components.count >= 2 {
+            return components.suffix(2).joined(separator: ".")
+        }
+        return last
     }
 
-    private var tileTitle: String {
-        guard let identifier = container.identifier else { return container.uuid }
-        return identifier.split(separator: ".").last.map(String.init) ?? identifier
+    var homeKindLabel: String {
+        switch kind {
+        case .application: "APP"
+        case .appGroup: "GROUP"
+        case .plugin: "PLUGIN"
+        case .internalDaemon: "DAEMON"
+        case .systemData: "SYSTEM"
+        case .systemGroup: "GROUP"
+        }
+    }
+
+    var homeAccent: Color {
+        let palette: [Color] = [.blue, .indigo, .purple, .pink, .orange, .green, .teal, .cyan]
+        let key = identifier ?? uuid
+        let hash = key.unicodeScalars.reduce(UInt64(14_695_981_039_346_656_037)) {
+            ($0 ^ UInt64($1.value)) &* 1_099_511_628_211
+        }
+        return palette[Int(hash % UInt64(palette.count))]
     }
 }
 
@@ -734,6 +797,15 @@ private struct SettingsView: View {
                         Label("Source Code", systemImage: "chevron.left.forwardslash.chevron.right")
                     }
                 }
+
+                Section("Feedback") {
+                    Link(destination: feedbackURL) {
+                        Label("Report an Issue", systemImage: "exclamationmark.bubble")
+                    }
+                    Text("Opens GitHub with your app and system versions included.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
             .navigationTitle("Settings")
             .toolbar {
@@ -742,6 +814,19 @@ private struct SettingsView: View {
                 }
             }
         }
+    }
+
+    private var feedbackURL: URL {
+        var components = URLComponents(string: "https://github.com/everettjf/vellune/issues/new")!
+        let appVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "Unknown"
+        components.queryItems = [
+            URLQueryItem(name: "title", value: "[Feedback] "),
+            URLQueryItem(
+                name: "body",
+                value: "\n\n---\nVellune: \(appVersion)\nSystem: \(ProcessInfo.processInfo.operatingSystemVersionString)"
+            )
+        ]
+        return components.url ?? URL(string: "https://github.com/everettjf/vellune/issues/new")!
     }
 }
 
@@ -794,12 +879,8 @@ private struct ContainerRow: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
-            Image(systemName: "shippingbox")
-                .foregroundStyle(.secondary)
-                .frame(width: 18)
-
             VStack(alignment: .leading, spacing: 3) {
-                Text(container.displayName)
+                Text(container.homeTitle)
                     .font(.callout)
                     .lineLimit(2)
                     .multilineTextAlignment(.leading)
@@ -810,6 +891,9 @@ private struct ContainerRow: View {
                     .truncationMode(.middle)
             }
             Spacer(minLength: 4)
+            if container.kind != .application {
+                ContainerKindBadge(container: container)
+            }
         }
         .padding(.vertical, 3)
         .contentShape(.rect)
