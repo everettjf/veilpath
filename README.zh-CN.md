@@ -26,7 +26,7 @@
 > 实际功能必须使用真机，模拟器只能验证编译和界面。上游概念验证项目标注支持
 > 至 iOS 26.6.1 和 iOS 27 beta 4，但这些额外版本尚未全部经过 Vellune 验证。
 
-![Vellune 在 iPad 上运行](docs/assets/ipad-ui.png)
+![Vellune 在 iPad 上显示分组应用容器和文件列表](docs/assets/ipad-ui.png)
 
 ## Vellune 是什么？
 
