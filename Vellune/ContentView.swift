@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import UniformTypeIdentifiers
 
 struct ContentView: View {
@@ -819,14 +820,34 @@ private struct SettingsView: View {
     private var feedbackURL: URL {
         var components = URLComponents(string: "https://github.com/everettjf/vellune/issues/new")!
         let appVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "Unknown"
+        let appBuild = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "Unknown"
+        let device = UIDevice.current
         components.queryItems = [
             URLQueryItem(name: "title", value: "[Feedback] "),
             URLQueryItem(
                 name: "body",
-                value: "\n\n---\nVellune: \(appVersion)\nSystem: \(ProcessInfo.processInfo.operatingSystemVersionString)"
+                value: """
+
+
+                ## Environment
+                - Device: \(device.model) (\(Self.hardwareIdentifier))
+                - Operating System: \(device.systemName) \(device.systemVersion)
+                - System Build: \(ProcessInfo.processInfo.operatingSystemVersionString)
+                - Vellune: \(appVersion) (\(appBuild))
+                """
             )
         ]
         return components.url ?? URL(string: "https://github.com/everettjf/vellune/issues/new")!
+    }
+
+    private static var hardwareIdentifier: String {
+        var systemInfo = utsname()
+        uname(&systemInfo)
+        return withUnsafePointer(to: &systemInfo.machine) {
+            $0.withMemoryRebound(to: CChar.self, capacity: 1) {
+                String(cString: $0)
+            }
+        }
     }
 }
 
