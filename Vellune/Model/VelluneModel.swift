@@ -11,6 +11,7 @@ final class VelluneModel {
     private(set) var forwardHistory: [String] = []
     private var loadedPath = ""
     var items: [FileItem] = []
+    private(set) var directorySummaries: [String: DirectoryContentsSummary] = [:]
     var selectedItem: FileItem?
     var selectedPreview: FilePreview?
     var selectedProperties: FileProperties?
@@ -35,6 +36,10 @@ final class VelluneModel {
     var isExportingDirectory = false
     var backupRecords: [FileBackupRecord] = []
     var isReplacingFile = false
+
+    @ObservationIgnored private var directorySummaryTask: Task<Void, Never>?
+    @ObservationIgnored private var directorySummaryModificationDates: [String: Date] = [:]
+    @ObservationIgnored private var directorySummaryIncludesHidden: Bool?
 
     var containers: [ContainerDescriptor] { containerIndexes[.application, default: []] }
     var systemContainers: [ContainerDescriptor] { containerIndexes[.systemData, default: []] }
@@ -126,6 +131,7 @@ final class VelluneModel {
         path = currentContainerRoot
         loadedPath = path
         items = (try? FileSystemReader.contents(at: path, showHidden: true)) ?? []
+        scheduleDirectorySummaries(for: items)
     }
     #endif
 
@@ -182,6 +188,10 @@ final class VelluneModel {
         backHistory = []
         forwardHistory = []
         items = []
+        directorySummaryTask?.cancel()
+        directorySummaries = [:]
+        directorySummaryModificationDates = [:]
+        directorySummaryIncludesHidden = nil
         selectedItem = nil
         selectedPreview = nil
         selectedProperties = nil
@@ -229,6 +239,7 @@ final class VelluneModel {
 
     private func applyLoadedItems(_ loadedItems: [FileItem]) {
         items = loadedItems
+        scheduleDirectorySummaries(for: loadedItems)
         selectedItem = nil
         selectedPreview = nil
         selectedProperties = nil
@@ -237,6 +248,58 @@ final class VelluneModel {
         selectedExportURL = nil
         isLoadingPreview = false
         log("Listed \(loadedItems.count) items at \(path)")
+    }
+
+    private func scheduleDirectorySummaries(for loadedItems: [FileItem]) {
+        directorySummaryTask?.cancel()
+
+        if directorySummaryIncludesHidden != showHiddenFiles {
+            directorySummaries = [:]
+            directorySummaryModificationDates = [:]
+            directorySummaryIncludesHidden = showHiddenFiles
+        }
+
+        let visiblePaths = Set(loadedItems.lazy.filter(\.isDirectory).map(\.url.path))
+        directorySummaries = directorySummaries.filter { visiblePaths.contains($0.key) }
+        directorySummaryModificationDates = directorySummaryModificationDates.filter { visiblePaths.contains($0.key) }
+
+        let directories = loadedItems.filter { item in
+            item.isDirectory
+                && directorySummaryModificationDates[item.url.path] != (item.modifiedAt ?? .distantPast)
+        }
+        for directory in directories {
+            directorySummaries.removeValue(forKey: directory.url.path)
+        }
+        guard !directories.isEmpty else { return }
+
+        let includesHidden = showHiddenFiles
+        directorySummaryTask = Task { [weak self] in
+            for directory in directories {
+                guard !Task.isCancelled else { return }
+                let path = directory.url.path
+                let summary = await Task.detached(priority: .utility) {
+                    try? Self.loadDirectorySummary(at: path, showHidden: includesHidden)
+                }.value
+                guard !Task.isCancelled else { return }
+                if let summary {
+                    self?.directorySummaries[path] = summary
+                    self?.directorySummaryModificationDates[path] = directory.modifiedAt ?? .distantPast
+                }
+            }
+        }
+    }
+
+    nonisolated private static func loadDirectorySummary(
+        at path: String,
+        showHidden: Bool
+    ) throws -> DirectoryContentsSummary {
+        #if targetEnvironment(simulator)
+        return try FileSystemReader.directContentsSummary(at: path, showHidden: showHidden)
+        #else
+        let grant = try BadQueryClient.acquire(.forPath(path))
+        defer { BadQueryClient.release(grant) }
+        return try FileSystemReader.directContentsSummary(at: path, showHidden: showHidden)
+        #endif
     }
 
     func refresh() async {

@@ -24,6 +24,13 @@ struct FileItem: Identifiable, Hashable, Sendable {
     }
 }
 
+struct DirectoryContentsSummary: Hashable, Sendable {
+    let fileCount: Int
+    let folderCount: Int
+
+    var isEmpty: Bool { fileCount == 0 && folderCount == 0 }
+}
+
 enum FileSortOrder: String, CaseIterable, Identifiable, Sendable {
     case name, date, size
 
@@ -74,6 +81,29 @@ enum FileSystemReader {
                 }
                 return lhs.name.localizedStandardCompare(rhs.name) == .orderedAscending
             }
+    }
+
+    static func directContentsSummary(at path: String, showHidden: Bool) throws -> DirectoryContentsSummary {
+        let url = URL(fileURLWithPath: path, isDirectory: true)
+        let keys: Set<URLResourceKey> = [.isDirectoryKey]
+        var options: FileManager.DirectoryEnumerationOptions = [.skipsPackageDescendants]
+        if !showHidden { options.insert(.skipsHiddenFiles) }
+
+        var fileCount = 0
+        var folderCount = 0
+        for child in try FileManager.default.contentsOfDirectory(
+            at: url,
+            includingPropertiesForKeys: Array(keys),
+            options: options
+        ) {
+            let values = try child.resourceValues(forKeys: keys)
+            if values.isDirectory == true {
+                folderCount += 1
+            } else {
+                fileCount += 1
+            }
+        }
+        return .init(fileCount: fileCount, folderCount: folderCount)
     }
 
     static func search(at path: String, query: String, showHidden: Bool, limit: Int = 500) -> [FileItem] {

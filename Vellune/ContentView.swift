@@ -538,7 +538,7 @@ private struct PreviewFileList: View {
                         }
                     }
                 } label: {
-                    FileRow(item: item)
+                    FileRow(item: item, directorySummary: model.directorySummaries[item.url.path])
                 }
                 .buttonStyle(.plain)
                 .listRowBackground(model.selectedItem == item ? Color.accentColor.opacity(0.12) : Color.clear)
@@ -984,7 +984,7 @@ private struct BrowserView: View {
                             }
                         }
                     } label: {
-                        FileRow(item: item)
+                        FileRow(item: item, directorySummary: model.directorySummaries[item.url.path])
                     }
                     .buttonStyle(.plain)
                     .listRowBackground(model.selectedItem == item ? Color.accentColor.opacity(0.12) : Color.clear)
@@ -1207,6 +1207,7 @@ private struct BrowserView: View {
 
 private struct FileRow: View {
     let item: FileItem
+    let directorySummary: DirectoryContentsSummary?
 
     var body: some View {
         HStack(spacing: 12) {
@@ -1217,16 +1218,28 @@ private struct FileRow: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(item.name)
                     .lineLimit(1)
-                HStack {
-                    if let size = item.size, !item.isDirectory {
-                        Text(ByteCountFormatter.string(fromByteCount: size, countStyle: .file))
+                if item.isDirectory {
+                    if let directorySummary {
+                        DirectorySummaryLabel(summary: directorySummary)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
                     }
-                    if let modifiedAt = item.modifiedAt {
-                        Text(modifiedAt, format: .dateTime.year().month().day().hour().minute())
+                } else {
+                    HStack(spacing: 5) {
+                        if let size = item.size {
+                            Text(ByteCountFormatter.string(fromByteCount: size, countStyle: .file))
+                        }
+                        if item.size != nil, item.modifiedAt != nil {
+                            Text("·")
+                        }
+                        if let modifiedAt = item.modifiedAt {
+                            Text("Modified")
+                            Text(modifiedAt, format: .dateTime.year().month().day().hour().minute())
+                        }
                     }
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
                 }
-                .font(.caption)
-                .foregroundStyle(.secondary)
             }
             Spacer()
             if item.isDirectory {
@@ -1237,6 +1250,31 @@ private struct FileRow: View {
         }
         .contentShape(.rect)
         .accessibilityElement(children: .combine)
+    }
+}
+
+private struct DirectorySummaryLabel: View {
+    let summary: DirectoryContentsSummary
+
+    var body: some View {
+        if summary.isEmpty {
+            Text("Empty")
+        } else {
+            HStack(spacing: 3) {
+                if summary.folderCount > 0 {
+                    Text(summary.folderCount, format: .number)
+                    if summary.folderCount == 1 { Text("folder") } else { Text("folders") }
+                }
+                if summary.folderCount > 0, summary.fileCount > 0 {
+                    Text("·")
+                        .padding(.horizontal, 2)
+                }
+                if summary.fileCount > 0 {
+                    Text(summary.fileCount, format: .number)
+                    if summary.fileCount == 1 { Text("file") } else { Text("files") }
+                }
+            }
+        }
     }
 }
 
