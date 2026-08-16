@@ -26,7 +26,12 @@
 > 实际功能必须使用真机，模拟器只能验证编译和界面。上游概念验证项目标注支持
 > 至 iOS 26.6.1 和 iOS 27 beta 4，但这些额外版本尚未全部经过 Vellune 验证。
 
-![Vellune 在 iPad 上显示分组应用容器和文件列表](docs/assets/ipad-ui.png)
+<table>
+  <tr>
+    <td width="68%"><img src="docs/assets/ipad-ui.png" alt="Vellune 在 iPad 上显示分组应用容器和文件列表"></td>
+    <td width="32%"><img src="docs/assets/iphone-ui.png" alt="Vellune 在 iPhone 上显示紧凑文件浏览界面"></td>
+  </tr>
+</table>
 
 ## Vellune 是什么？
 

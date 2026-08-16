@@ -79,10 +79,6 @@ private struct SidebarView: View {
                 }
             }
 
-            if !usesCompactNavigation {
-                locationsSection
-            }
-
             Section {
                 let containers = filteredContainers(for: selectedKind)
                 if containers.isEmpty {
@@ -116,18 +112,12 @@ private struct SidebarView: View {
         .searchable(text: $searchText, placement: .sidebar, prompt: "Container name or UUID")
         .navigationTitle("Vellune")
         .toolbar {
-            if usesCompactNavigation {
-                ToolbarItem(placement: .topBarLeading) {
-                    locationsMenu
-                        .labelStyle(.iconOnly)
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    settingsButton
-                }
-            } else {
-                ToolbarItem(placement: .topBarLeading) {
-                    settingsButton
-                }
+            ToolbarItem(placement: .topBarLeading) {
+                locationsMenu
+                    .labelStyle(.iconOnly)
+            }
+            ToolbarItem(placement: .topBarTrailing) {
+                settingsButton
             }
         }
         .fullScreenCover(isPresented: $showSettings) {
@@ -139,14 +129,6 @@ private struct SidebarView: View {
                 searchText = "com.apple"
             }
             #endif
-        }
-    }
-
-    @ViewBuilder private var locationsSection: some View {
-        Section("Locations") {
-            ForEach(ContainerKind.allCases, id: \.self) { kind in
-                locationButton(kind)
-            }
         }
     }
 
@@ -176,24 +158,6 @@ private struct SidebarView: View {
             showSettings = true
         }
         .labelStyle(.iconOnly)
-    }
-
-    private func locationButton(_ kind: ContainerKind) -> some View {
-        Button {
-            selectedKind = kind
-        } label: {
-            HStack {
-                Label(kind.localizedName, systemImage: kind.systemImage)
-                Spacer()
-                Text(model.containerIndexes[kind, default: []].count, format: .number)
-                    .font(.caption.monospacedDigit())
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .buttonStyle(.plain)
-        .fontWeight(selectedKind == kind ? .semibold : .regular)
-        .listRowBackground(selectedKind == kind ? Color.accentColor.opacity(0.12) : Color.clear)
-        .accessibilityAddTraits(selectedKind == kind ? .isSelected : [])
     }
 
     private func filteredContainers(for kind: ContainerKind) -> [ContainerDescriptor] {

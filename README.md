@@ -28,7 +28,12 @@
 > support through iOS 26.6.1 and iOS 27 beta 4, but those additional versions
 > have not all been validated in Vellune.
 
-![Vellune showing grouped application containers and a file list on iPad](docs/assets/ipad-ui.png)
+<table>
+  <tr>
+    <td width="68%"><img src="docs/assets/ipad-ui.png" alt="Vellune showing grouped application containers and a file list on iPad"></td>
+    <td width="32%"><img src="docs/assets/iphone-ui.png" alt="Vellune showing the compact file browser on iPhone"></td>
+  </tr>
+</table>
 
 ## What is Vellune?
 

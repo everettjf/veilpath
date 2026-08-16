@@ -113,9 +113,13 @@ code { font-family: var(--mono) }
 .proof span { color: var(--muted); font-size: 10px; line-height: 1.5; text-transform: uppercase; letter-spacing: .08em }
 
 .device-stage { position: relative; height: 620px; display: grid; place-items: center }
-.device { width: 470px; aspect-ratio: 1.065; background: #090a0a; border: 8px solid #292b2b; border-radius: 27px; padding: 7px; transform: perspective(1200px) rotateY(-7deg) rotateX(2deg); box-shadow: -40px 50px 100px rgba(0,0,0,.7), 0 0 70px rgba(220,210,185,.06); overflow: hidden; position: relative; z-index: 2 }
+.device { background: #090a0a; border: 8px solid #292b2b; padding: 7px; overflow: hidden; position: absolute; z-index: 2 }
+.ipad-device { width: 440px; aspect-ratio: 1.065; border-radius: 27px; transform: translateX(-28px) perspective(1200px) rotateY(-7deg) rotateX(2deg); box-shadow: -40px 50px 100px rgba(0,0,0,.7), 0 0 70px rgba(220,210,185,.06) }
+.iphone-device { width: 142px; aspect-ratio: 1206 / 2622; right: 12px; bottom: 52px; border-width: 5px; border-radius: 25px; padding: 3px; transform: rotate(2.5deg); box-shadow: -18px 25px 55px rgba(0,0,0,.72), 0 0 35px rgba(220,210,185,.05); z-index: 4 }
 .device img { width: 100%; height: 100%; object-fit: cover; border-radius: 13px; filter: saturate(.72) contrast(1.03) }
+.iphone-device img { border-radius: 18px }
 .camera { position: absolute; background: #111; width: 6px; height: 6px; border-radius: 50%; top: 50%; left: 3px; z-index: 4 }
+.dynamic-island { position: absolute; z-index: 5; top: 7px; left: 50%; width: 38px; height: 10px; border-radius: 20px; background: #050505; transform: translateX(-50%) }
 .orbit { position: absolute; border: 1px solid rgba(225,220,205,.12); border-radius: 50%; width: 550px; height: 550px }
 .orbit-b { width: 420px; height: 420px; border-color: rgba(255,255,255,.07) }
 .status-card { position: absolute; z-index: 3; background: rgba(12,14,14,.87); backdrop-filter: blur(16px); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; display: grid; grid-template-columns: auto auto; column-gap: 10px; box-shadow: 0 15px 40px rgba(0,0,0,.45) }
@@ -168,7 +172,7 @@ footer { display: flex; align-items: center; justify-content: space-between; pad
   .shell { width: min(100% - 30px, var(--max)) }
   nav > a:not(.nav-cta) { display: none }
   .hero { grid-template-columns: 1fr; padding-top: 70px }
-  .device-stage { height: 520px }.device { width: min(90vw, 540px) }
+  .device-stage { height: 520px }.ipad-device { width: min(82vw, 500px) }.iphone-device { width: min(25vw, 150px); right: 2vw }
   .proof { grid-template-columns: 1fr 1fr }.proof div:last-child { display: none }
   .feature-grid, .compatibility, .evidence, .build { grid-template-columns: 1fr }
   .compatibility, .evidence, .build { gap: 45px }.section { padding-block: 90px }.evidence .terminal { order: 2 }
@@ -176,7 +180,7 @@ footer { display: flex; align-items: center; justify-content: space-between; pad
 }
 @media (max-width: 560px) {
   .nav { height: 78px }.hero { min-height: auto }.hero h1 { font-size: 58px }
-  .device-stage { height: 400px }.device { border-width: 6px; border-radius: 20px }.orbit { width: 380px; height: 380px }.status-card { display: none }
+  .device-stage { height: 430px }.ipad-device { width: 88vw; border-width: 6px; border-radius: 20px; transform: translateX(-10px) perspective(1200px) rotateY(-5deg) }.iphone-device { width: 27vw; right: 0; bottom: 28px; border-width: 4px; border-radius: 20px }.orbit { width: 380px; height: 380px }.status-card { display: none }
   .support-banner { grid-template-columns: auto 1fr auto }.support-note { grid-column: 2; white-space: normal }.support-arrow { grid-column: 3; grid-row: 1/3 }
   .actions { flex-direction: column }.actions a { justify-content: space-between }
   .feature-grid { grid-template-columns: 1fr }.feature { min-height: 280px }
