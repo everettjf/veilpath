@@ -51,6 +51,8 @@ sandbox boundary.
 ## Highlights
 
 - Native SwiftUI interface that adapts to iPad and iPhone.
+- Opens on an App library that can switch between a visual grid and a compact
+  list, with the selected layout remembered across launches.
 - Indexes Application, App Group, PluginKit, Internal Daemon, System Data, and
   System Group containers.
 - Resolves container UUIDs to readable bundle identifiers using container
@@ -63,8 +65,10 @@ sandbox boundary.
   recursive container search, and name/date/size sorting.
 - Previews searchable plist and JSON trees, XML, text, images, hexadecimal data,
   and Mach-O architecture, dependency, signature, and entitlement details.
-- Opens an app-specific iPad workspace with the current file list beside a
-  resizable 60–90% preview that can expand full screen.
+- Opens an app-specific iPad workspace with the current file list beside file
+  properties, then a resizable 60–90% preview that can expand full screen.
+- Uses a focused push flow on iPhone: App library, file list, then full-screen
+  preview, with file information presented separately.
 - Shows file metadata and SHA-256 hashes before export.
 - Stages files inside Vellune's cache before presenting the system share sheet.
 - Exports the current directory as Markdown, with optional recursive traversal.

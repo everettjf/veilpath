@@ -6,6 +6,7 @@ import Observation
 final class VelluneModel {
     var path = ""
     var currentContainerRoot = ""
+    var selectedContainer: ContainerDescriptor?
     private(set) var backHistory: [String] = []
     private(set) var forwardHistory: [String] = []
     private var loadedPath = ""
@@ -63,7 +64,9 @@ final class VelluneModel {
         }
         if ProcessInfo.processInfo.arguments.contains("--ui-testing-browser") {
             seedUITestBrowser()
-            if ProcessInfo.processInfo.arguments.contains("--ui-testing-preview"), let item = items.last {
+            if (ProcessInfo.processInfo.arguments.contains("--ui-testing-preview")
+                || ProcessInfo.processInfo.arguments.contains("--ui-testing-selection")),
+               let item = items.last {
                 Task { await open(item) }
             }
         }
@@ -113,6 +116,13 @@ final class VelluneModel {
             options: 0
         ) { try? data.write(to: plistURL, options: .atomic) }
         currentContainerRoot = fixtureRoot.path
+        selectedContainer = .init(
+            path: fixtureRoot.path,
+            identifier: "com.example.DocumentsResearchWorkspace",
+            uuid: "A1111111-2222-3333-4444-555555555555",
+            kind: .application,
+            metadataDiagnostic: nil
+        )
         path = currentContainerRoot
         loadedPath = path
         items = (try? FileSystemReader.contents(at: path, showHidden: true)) ?? []
@@ -155,12 +165,31 @@ final class VelluneModel {
     }
 
     func open(_ container: ContainerDescriptor) async {
+        selectedContainer = container
         currentContainerRoot = container.path
         backHistory = []
         forwardHistory = []
         loadedPath = ""
         path = container.path
         await acquireAndLoad()
+    }
+
+    func closeCurrentContainer() {
+        selectedContainer = nil
+        currentContainerRoot = ""
+        path = ""
+        loadedPath = ""
+        backHistory = []
+        forwardHistory = []
+        items = []
+        selectedItem = nil
+        selectedPreview = nil
+        selectedProperties = nil
+        selectedHexDump = ""
+        previewError = nil
+        selectedExportURL = nil
+        directoryExportURL = nil
+        searchResults = []
     }
 
     func acquireAndLoad() async {

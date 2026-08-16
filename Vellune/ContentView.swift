@@ -5,8 +5,6 @@ struct ContentView: View {
     @Bindable var model: VelluneModel
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var showInspector = false
-    @State private var columnVisibility: NavigationSplitViewVisibility = .all
-    @State private var preferredCompactColumn: NavigationSplitViewColumn = .sidebar
     @State private var presentedPreview: FileItem?
     @State private var previewWidthFraction: CGFloat = 0.75
     @State private var previewIsFullScreen = false
@@ -20,44 +18,13 @@ struct ContentView: View {
     var body: some View {
         GeometryReader { geometry in
             ZStack(alignment: .trailing) {
-                NavigationSplitView(
-                    columnVisibility: $columnVisibility,
-                    preferredCompactColumn: $preferredCompactColumn
-                ) {
-                    SidebarView(
-                        model: model,
-                        columnVisibility: $columnVisibility,
-                        preferredCompactColumn: $preferredCompactColumn,
-                        usesCompactNavigation: horizontalSizeClass == .compact
-                    )
-                        .navigationSplitViewColumnWidth(min: 290, ideal: 340, max: 430)
-                } detail: {
-                    BrowserView(
-                        model: model,
-                        showInspector: $showInspector,
-                        presentedPreview: $presentedPreview
-                    )
-                    .inspector(isPresented: inspectorPresented) {
-                        InspectorView(
-                            item: model.selectedItem,
-                            preview: model.selectedPreview,
-                            previewError: model.previewError,
-                            exportURL: model.selectedExportURL,
-                            properties: model.selectedProperties,
-                            hexDump: model.selectedHexDump,
-                            isLoading: model.isLoadingPreview,
-                            openPreview: openSelectedPreview,
-                            requestReplacement: { showingReplacementImporter = true },
-                            backups: selectedBackups,
-                            requestRestore: { record in
-                                pendingRestore = record
-                                showingRestoreConfirmation = true
-                            }
-                        )
-                        .inspectorColumnWidth(min: 300, ideal: 380, max: 520)
-                    }
+                if model.currentContainerRoot.isEmpty {
+                    ContainerHomeView(model: model)
+                        .transition(.opacity)
+                } else {
+                    workspace
+                        .transition(.opacity)
                 }
-                .navigationSplitViewStyle(.balanced)
 
                 if let presentedPreview {
                     FilePreviewOverlay(
@@ -67,15 +34,17 @@ struct ContentView: View {
                         exportURL: model.selectedExportURL,
                         isLoading: model.isLoadingPreview,
                         availableWidth: geometry.size.width,
+                        allowsResizing: horizontalSizeClass != .compact,
                         widthFraction: $previewWidthFraction,
                         isFullScreen: $previewIsFullScreen,
                         dragStartFraction: $previewDragStartFraction,
+                        showInfo: { showInspector = true },
                         close: closePreview
                     )
                     .transition(.move(edge: .trailing).combined(with: .opacity))
                     .zIndex(10)
 
-                    if !previewIsFullScreen {
+                    if horizontalSizeClass != .compact, !previewIsFullScreen {
                         PreviewFileList(
                             model: model,
                             presentedPreview: $presentedPreview
@@ -90,26 +59,9 @@ struct ContentView: View {
             .animation(.snappy, value: presentedPreview?.id)
             .animation(.snappy, value: previewIsFullScreen)
         }
-        .onAppear {
-            #if targetEnvironment(simulator)
-            if ProcessInfo.processInfo.arguments.contains("--ui-testing-browser") {
-                preferredCompactColumn = .detail
-                columnVisibility = .detailOnly
-            }
-            #endif
-        }
-        .onChange(of: model.selectedItem) { _, item in
-            if item != nil { showInspector = true }
-        }
         .onChange(of: presentedPreview) { _, item in
             if item != nil, horizontalSizeClass == .compact {
                 previewIsFullScreen = true
-            }
-        }
-        .onChange(of: model.currentContainerRoot, initial: true) { _, root in
-            if !root.isEmpty {
-                preferredCompactColumn = .detail
-                columnVisibility = .detailOnly
             }
         }
         .onChange(of: model.selectedPreview) { _, preview in
@@ -126,6 +78,16 @@ struct ContentView: View {
             Button("OK") { model.lastError = nil }
         } message: {
             Text(model.lastError ?? String(localized: "Unknown error"))
+        }
+        .sheet(isPresented: $showInspector) {
+            NavigationStack {
+                inspectorContent
+                    .toolbar {
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button("Done") { showInspector = false }
+                        }
+                    }
+            }
         }
         .fileImporter(isPresented: $showingReplacementImporter, allowedContentTypes: [.data]) { result in
             switch result {
@@ -157,17 +119,64 @@ struct ContentView: View {
         }
     }
 
+    @ViewBuilder
+    private var workspace: some View {
+        if horizontalSizeClass == .compact {
+            NavigationStack {
+                BrowserView(
+                    model: model,
+                    presentedPreview: $presentedPreview,
+                    opensPreviewImmediately: true,
+                    closeWorkspace: closeWorkspace
+                )
+            }
+        } else {
+            NavigationSplitView {
+                BrowserView(
+                    model: model,
+                    presentedPreview: $presentedPreview,
+                    opensPreviewImmediately: false,
+                    closeWorkspace: closeWorkspace
+                )
+                .navigationSplitViewColumnWidth(min: 300, ideal: 380, max: 520)
+            } detail: {
+                if model.selectedItem == nil {
+                    ContentUnavailableView(
+                        "Select a File",
+                        systemImage: "doc.text.magnifyingglass",
+                        description: Text("Choose a file to inspect its properties or open a preview.")
+                    )
+                } else {
+                    inspectorContent
+                }
+            }
+            .navigationSplitViewStyle(.balanced)
+        }
+    }
+
+    private var inspectorContent: some View {
+        InspectorView(
+            item: model.selectedItem,
+            preview: model.selectedPreview,
+            previewError: model.previewError,
+            exportURL: model.selectedExportURL,
+            properties: model.selectedProperties,
+            hexDump: model.selectedHexDump,
+            isLoading: model.isLoadingPreview,
+            openPreview: {
+                showInspector = false
+                openSelectedPreview()
+            },
+            requestReplacement: requestReplacement,
+            backups: selectedBackups,
+            requestRestore: requestRestore
+        )
+    }
+
     private var errorPresented: Binding<Bool> {
         Binding(
             get: { model.lastError != nil },
             set: { if !$0 { model.lastError = nil } }
-        )
-    }
-
-    private var inspectorPresented: Binding<Bool> {
-        Binding(
-            get: { showInspector && presentedPreview == nil },
-            set: { showInspector = $0 }
         )
     }
 
@@ -183,9 +192,270 @@ struct ContentView: View {
         previewDragStartFraction = nil
     }
 
+    private func closeWorkspace() {
+        closePreview()
+        showInspector = false
+        model.closeCurrentContainer()
+    }
+
+    private func requestReplacement() {
+        showInspector = false
+        Task { @MainActor in
+            await Task.yield()
+            showingReplacementImporter = true
+        }
+    }
+
+    private func requestRestore(_ record: FileBackupRecord) {
+        showInspector = false
+        pendingRestore = record
+        Task { @MainActor in
+            await Task.yield()
+            showingRestoreConfirmation = true
+        }
+    }
+
     private var selectedBackups: [FileBackupRecord] {
         guard let path = model.selectedItem?.url.path else { return [] }
         return model.backupRecords.filter { $0.manifest.targetPath == path }
+    }
+}
+
+private enum ContainerHomeLayout: String, CaseIterable, Identifiable {
+    case grid
+    case list
+
+    var id: Self { self }
+    var title: LocalizedStringResource {
+        switch self {
+        case .grid: "Grid"
+        case .list: "List"
+        }
+    }
+    var systemImage: String {
+        switch self {
+        case .grid: "square.grid.2x2"
+        case .list: "list.bullet"
+        }
+    }
+}
+
+private struct ContainerHomeView: View {
+    @Bindable var model: VelluneModel
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @AppStorage("home.containerLayout") private var layoutRawValue = ContainerHomeLayout.grid.rawValue
+    @State private var searchText = ""
+    @State private var selectedKind: ContainerKind = .application
+    @State private var showSettings = false
+
+    private var layout: ContainerHomeLayout {
+        get { ContainerHomeLayout(rawValue: layoutRawValue) ?? .grid }
+        nonmutating set { layoutRawValue = newValue.rawValue }
+    }
+
+    private var filteredContainers: [ContainerDescriptor] {
+        let containers = model.containerIndexes[selectedKind, default: []]
+        guard !searchText.isEmpty else { return containers }
+        return containers.filter {
+            $0.displayName.localizedCaseInsensitiveContains(searchText)
+                || $0.uuid.localizedCaseInsensitiveContains(searchText)
+        }
+    }
+
+    private var sections: [ContainerHomeSection] {
+        guard selectedKind == .application else {
+            return [.init(id: selectedKind.rawValue, title: selectedKind.localizedContainerTitle, containers: filteredContainers)]
+        }
+        let applications = filteredContainers.filter { $0.identifier?.hasPrefix("com.apple.") != true }
+        let appleApplications = filteredContainers.filter { $0.identifier?.hasPrefix("com.apple.") == true }
+        return [
+            .init(id: "applications", title: "Applications", containers: applications),
+            .init(id: "apple-applications", title: "Apple Applications", containers: appleApplications)
+        ].filter { !$0.containers.isEmpty }
+    }
+
+    var body: some View {
+        NavigationStack {
+            Group {
+                if model.isWorking && filteredContainers.isEmpty {
+                    ProgressView("Loading containers…")
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if filteredContainers.isEmpty {
+                    ContentUnavailableView.search(text: searchText)
+                } else if layout == .grid {
+                    gridContent
+                } else {
+                    listContent
+                }
+            }
+            .navigationTitle("Vellune")
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) { locationsMenu }
+                ToolbarItemGroup(placement: .topBarTrailing) {
+                    layoutPicker
+                    Button("Settings", systemImage: "gearshape") { showSettings = true }
+                        .labelStyle(.iconOnly)
+                }
+            }
+            .searchable(text: $searchText, placement: .toolbar, prompt: "App name or Bundle ID")
+            .searchToolbarBehavior(.minimize)
+        }
+        .fullScreenCover(isPresented: $showSettings) { SettingsView(model: model) }
+        .onAppear {
+            #if targetEnvironment(simulator)
+            if ProcessInfo.processInfo.arguments.contains("--ui-testing-list-home") {
+                layoutRawValue = ContainerHomeLayout.list.rawValue
+            }
+            #endif
+        }
+    }
+
+    private var gridContent: some View {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 24) {
+                if model.accessVerification?.status != .passed {
+                    AccessStatusView(model: model)
+                        .padding(.horizontal)
+                }
+                ForEach(sections, id: \.id) { section in
+                    VStack(alignment: .leading, spacing: 12) {
+                        sectionHeader(section)
+                        LazyVGrid(
+                            columns: [GridItem(.adaptive(minimum: horizontalSizeClass == .compact ? 145 : 190, maximum: 260), spacing: 14)],
+                            alignment: .leading,
+                            spacing: 14
+                        ) {
+                            ForEach(section.containers) { container in
+                                ContainerTile(container: container) { open(container) }
+                            }
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal)
+            .padding(.vertical, 18)
+        }
+        .scrollEdgeEffectStyle(.soft, for: .top)
+    }
+
+    private var listContent: some View {
+        List {
+            if model.accessVerification?.status != .passed {
+                Section { AccessStatusView(model: model) }
+            }
+            ForEach(sections, id: \.id) { section in
+                Section {
+                    ForEach(section.containers) { container in
+                        Button { open(container) } label: { ContainerRow(container: container) }
+                            .buttonStyle(.plain)
+                            .accessibilityHint("Opens this app container")
+                    }
+                } header: {
+                    sectionHeader(section)
+                }
+            }
+        }
+        .listStyle(.insetGrouped)
+    }
+
+    private func sectionHeader(_ section: ContainerHomeSection) -> some View {
+        HStack {
+            Text(section.title)
+                .font(.headline)
+            Spacer()
+            Text(section.containers.count, format: .number)
+                .font(.caption.monospacedDigit())
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private var locationsMenu: some View {
+        Menu("Locations", systemImage: selectedKind.systemImage) {
+            ForEach(ContainerKind.allCases, id: \.self) { kind in
+                Button {
+                    selectedKind = kind
+                    searchText = ""
+                } label: {
+                    Label {
+                        HStack {
+                            Text(kind.localizedName)
+                            Text(model.containerIndexes[kind, default: []].count, format: .number)
+                        }
+                    } icon: {
+                        Image(systemName: selectedKind == kind ? "checkmark" : kind.systemImage)
+                    }
+                }
+            }
+        }
+        .accessibilityValue(selectedKind.localizedName)
+    }
+
+    private var layoutPicker: some View {
+        Menu("Layout", systemImage: layout.systemImage) {
+            Picker("Layout", selection: Binding(get: { layout }, set: { layout = $0 })) {
+                ForEach(ContainerHomeLayout.allCases) { option in
+                    Label(option.title, systemImage: option.systemImage).tag(option)
+                }
+            }
+        }
+        .labelStyle(.iconOnly)
+        .accessibilityValue(layout.title)
+    }
+
+    private func open(_ container: ContainerDescriptor) {
+        Task { await model.open(container) }
+    }
+}
+
+private struct ContainerHomeSection: Identifiable {
+    let id: String
+    let title: LocalizedStringResource
+    let containers: [ContainerDescriptor]
+}
+
+private struct ContainerTile: View {
+    let container: ContainerDescriptor
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 0) {
+                Image(systemName: tileSymbol)
+                    .font(.title2)
+                    .foregroundStyle(.tint)
+                    .frame(width: 46, height: 46)
+                    .background(.tint.opacity(0.12), in: .rect(cornerRadius: 12))
+                Spacer(minLength: 16)
+                Text(tileTitle)
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
+                Text(container.identifier ?? container.uuid)
+                    .font(.caption.monospaced())
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
+            .frame(maxWidth: .infinity, minHeight: 128, alignment: .leading)
+            .padding(16)
+            .background(Color.secondary.opacity(0.08), in: .rect(cornerRadius: 18))
+            .contentShape(.rect(cornerRadius: 18))
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
+        .accessibilityHint("Opens this app container")
+    }
+
+    private var tileSymbol: String {
+        if container.kind != .application { return container.kind.systemImage }
+        if container.identifier?.hasPrefix("com.apple.") == true { return "apple.logo" }
+        return "app.fill"
+    }
+
+    private var tileTitle: String {
+        guard let identifier = container.identifier else { return container.uuid }
+        return identifier.split(separator: ".").last.map(String.init) ?? identifier
     }
 }
 
@@ -430,7 +700,7 @@ private struct SettingsView: View {
                         AccessStateLabel(model: model)
                     }
                     LabeledContent("Grant policy", value: "Per operation")
-                    LabeledContent("Mode", value: "Read only")
+                    LabeledContent("Mode", value: "Read only by default")
                 }
 
                 Section("Storage") {
@@ -549,8 +819,9 @@ private struct ContainerRow: View {
 
 private struct BrowserView: View {
     @Bindable var model: VelluneModel
-    @Binding var showInspector: Bool
     @Binding var presentedPreview: FileItem?
+    let opensPreviewImmediately: Bool
+    let closeWorkspace: () -> Void
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @FocusState private var pathFocused: Bool
     @State private var showFileSearch = false
@@ -601,8 +872,9 @@ private struct BrowserView: View {
                     Button {
                         Task {
                             await model.open(item)
-                            if !item.isDirectory, model.selectedItem == item {
-                                showInspector = false
+                            if opensPreviewImmediately,
+                               !item.isDirectory,
+                               model.selectedItem == item {
                                 presentedPreview = item
                             }
                         }
@@ -625,6 +897,14 @@ private struct BrowserView: View {
         .navigationTitle(navigationTitle)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                if horizontalSizeClass == .compact {
+                    Button("Applications", systemImage: "chevron.backward", action: closeWorkspace)
+                        .labelStyle(.iconOnly)
+                } else {
+                    Button("Applications", systemImage: "chevron.backward", action: closeWorkspace)
+                }
+            }
             if horizontalSizeClass != .compact && !model.path.isEmpty {
                 ToolbarItemGroup(placement: .topBarLeading) {
                     toolbarNavigationButton("Back", systemImage: "chevron.backward", disabled: !model.canGoBack) {
@@ -665,11 +945,6 @@ private struct BrowserView: View {
                                 Label("Share Markdown Listing", systemImage: "square.and.arrow.up")
                             }
                         }
-                        if model.selectedItem != nil {
-                            Button("File Info", systemImage: "info.circle") {
-                                showInspector = true
-                            }
-                        }
                     }
                     .onChange(of: model.showHiddenFiles) {
                         Task { await model.refresh() }
@@ -690,7 +965,11 @@ private struct BrowserView: View {
 
     private var navigationTitle: String {
         guard !model.path.isEmpty else { return String(localized: "Files") }
-        guard model.path != model.currentContainerRoot else { return String(localized: "Files") }
+        if horizontalSizeClass == .compact { return String(localized: "Files") }
+        guard model.path != model.currentContainerRoot else {
+            guard let container = model.selectedContainer else { return String(localized: "Files") }
+            return container.identifier?.split(separator: ".").last.map(String.init) ?? container.displayName
+        }
         return URL(fileURLWithPath: model.path).lastPathComponent
     }
 
@@ -937,14 +1216,16 @@ private struct FilePreviewOverlay: View {
     let exportURL: URL?
     let isLoading: Bool
     let availableWidth: CGFloat
+    let allowsResizing: Bool
     @Binding var widthFraction: CGFloat
     @Binding var isFullScreen: Bool
     @Binding var dragStartFraction: CGFloat?
+    let showInfo: () -> Void
     let close: () -> Void
 
     var body: some View {
         HStack(spacing: 0) {
-            if !isFullScreen {
+            if allowsResizing, !isFullScreen {
                 Color.black.opacity(0.22)
                     .contentShape(.rect)
                     .onTapGesture(perform: close)
@@ -960,11 +1241,14 @@ private struct FilePreviewOverlay: View {
                                 .keyboardShortcut(.cancelAction)
                         }
                         ToolbarItemGroup(placement: .topBarTrailing) {
-                            Button(isFullScreen ? "Restore Preview Size" : "Full Screen",
-                                   systemImage: isFullScreen ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right") {
-                                isFullScreen.toggle()
+                            Button("File Info", systemImage: "info.circle", action: showInfo)
+                            if allowsResizing {
+                                Button(isFullScreen ? "Restore Preview Size" : "Full Screen",
+                                       systemImage: isFullScreen ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right") {
+                                    isFullScreen.toggle()
+                                }
+                                .keyboardShortcut("f", modifiers: [.command, .shift])
                             }
-                            .keyboardShortcut("f", modifiers: [.command, .shift])
                             if let exportURL {
                                 ShareLink(item: exportURL) {
                                     Label("Export", systemImage: "square.and.arrow.up")
@@ -973,11 +1257,11 @@ private struct FilePreviewOverlay: View {
                         }
                     }
             }
-            .frame(width: isFullScreen ? availableWidth : availableWidth * widthFraction)
+            .frame(width: isFullScreen || !allowsResizing ? availableWidth : availableWidth * widthFraction)
             .background(.background)
             .shadow(radius: 18)
             .overlay(alignment: .leading) {
-                if !isFullScreen {
+                if allowsResizing, !isFullScreen {
                     Capsule()
                         .fill(.secondary.opacity(0.65))
                         .frame(width: 5, height: 64)

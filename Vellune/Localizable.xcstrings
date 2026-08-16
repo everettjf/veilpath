@@ -1,6 +1,46 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "App name or Bundle ID" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "App 名称或 Bundle ID" } }
+      }
+    },
+    "Choose a file to inspect its properties or open a preview." : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "选择一个文件以查看属性或打开预览。" } }
+      }
+    },
+    "Grid" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "网格" } }
+      }
+    },
+    "Layout" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "布局" } }
+      }
+    },
+    "List" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "列表" } }
+      }
+    },
+    "Loading containers…" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "正在载入容器…" } }
+      }
+    },
+    "Opens this app container" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "打开这个 App 容器" } }
+      }
+    },
+    "Read only by default" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "默认只读" } }
+      }
+    },
     "Back Up and Replace" : {
       "localizations" : {
         "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "备份并替换" } }
