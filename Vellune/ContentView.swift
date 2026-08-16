@@ -15,6 +15,8 @@ struct ContentView: View {
     @State private var showingReplacementConfirmation = false
     @State private var pendingRestore: FileBackupRecord?
     @State private var showingRestoreConfirmation = false
+    @State private var screenshotFeedback: ScreenshotFeedbackContext?
+    @AppStorage("feedback.screenshotPromptEnabled") private var screenshotPromptEnabled = true
 
     var body: some View {
         GeometryReader { geometry in
@@ -118,6 +120,32 @@ struct ContentView: View {
         } message: {
             Text("The current file will receive its own safety backup before restoration.")
         }
+        .overlay(alignment: .bottom) {
+            if let screenshotFeedback {
+                ScreenshotFeedbackPrompt(
+                    context: screenshotFeedback,
+                    dismiss: { self.screenshotFeedback = nil }
+                )
+                .padding(.horizontal, 16)
+                .padding(.bottom, 12)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .zIndex(100)
+            }
+        }
+        .animation(.snappy, value: screenshotFeedback?.id)
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.userDidTakeScreenshotNotification)) { _ in
+            presentScreenshotFeedbackIfEnabled()
+        }
+        .onAppear {
+            #if targetEnvironment(simulator)
+            if ProcessInfo.processInfo.arguments.contains("--ui-testing-screenshot-feedback") {
+                Task { @MainActor in
+                    try? await Task.sleep(for: .milliseconds(750))
+                    presentScreenshotFeedbackIfEnabled()
+                }
+            }
+            #endif
+        }
     }
 
     @ViewBuilder
@@ -220,6 +248,82 @@ struct ContentView: View {
         guard let path = model.selectedItem?.url.path else { return [] }
         return model.backupRecords.filter { $0.manifest.targetPath == path }
     }
+
+    private var currentScreenDescription: String {
+        if let presentedPreview {
+            return "File preview: \(presentedPreview.name)"
+        }
+        if model.currentContainerRoot.isEmpty {
+            return "Container home"
+        }
+        if let identifier = model.selectedContainer?.identifier {
+            return "File browser: \(identifier)"
+        }
+        return "File browser"
+    }
+
+    private func presentScreenshotFeedbackIfEnabled() {
+        guard screenshotPromptEnabled else { return }
+        do {
+            let screenshot = try FeedbackSupport.captureCurrentWindow()
+            screenshotFeedback = .init(
+                screenshotURL: screenshot.url,
+                previewImage: screenshot.image,
+                screenDescription: currentScreenDescription
+            )
+        } catch {
+            model.log("Screenshot sharing preparation failed: \(error.localizedDescription)", isError: true)
+        }
+    }
+}
+
+private struct ScreenshotFeedbackPrompt: View {
+    let context: ScreenshotFeedbackContext
+    let dismiss: () -> Void
+    @Environment(\.openURL) private var openURL
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 10) {
+                Label("Screenshot captured", systemImage: "checkmark.circle.fill")
+                    .font(.headline)
+                Spacer()
+                Button("Dismiss", systemImage: "xmark", action: dismiss)
+                    .labelStyle(.iconOnly)
+                    .buttonStyle(.plain)
+                    .accessibilityHint("Closes the screenshot actions.")
+            }
+
+            Text("Share it or report an issue while the context is fresh.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+
+            HStack(spacing: 10) {
+                ShareLink(
+                    item: context.screenshotURL,
+                    preview: SharePreview("Vellune Screenshot", image: Image(uiImage: context.previewImage))
+                ) {
+                    Label("Share", systemImage: "square.and.arrow.up")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+
+                Button {
+                    openURL(FeedbackSupport.issueURL(screenDescription: context.screenDescription))
+                    dismiss()
+                } label: {
+                    Label("Report Issue", systemImage: "exclamationmark.bubble")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+            }
+        }
+        .padding(16)
+        .background(.regularMaterial, in: .rect(cornerRadius: 20, style: .continuous))
+        .shadow(color: .black.opacity(0.16), radius: 16, y: 6)
+        .accessibilityElement(children: .contain)
+    }
+
 }
 
 private enum ContainerHomeLayout: String, CaseIterable, Identifiable {
@@ -747,6 +851,7 @@ private struct SettingsView: View {
     @Bindable var model: VelluneModel
     @Environment(\.dismiss) private var dismiss
     @State private var cacheMessage: String?
+    @AppStorage("feedback.screenshotPromptEnabled") private var screenshotPromptEnabled = true
 
     var body: some View {
         NavigationStack {
@@ -800,10 +905,14 @@ private struct SettingsView: View {
                 }
 
                 Section("Feedback") {
-                    Link(destination: feedbackURL) {
+                    Toggle("Screenshot feedback prompt", isOn: $screenshotPromptEnabled)
+                    Link(destination: FeedbackSupport.issueURL()) {
                         Label("Report an Issue", systemImage: "exclamationmark.bubble")
                     }
-                    Text("Opens GitHub with your app and system versions included.")
+                    Text("After you take a screenshot in Vellune, show quick actions to share it or report an issue.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Text("GitHub reports include app and system versions. Review screenshots for sensitive information before attaching them.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -817,38 +926,6 @@ private struct SettingsView: View {
         }
     }
 
-    private var feedbackURL: URL {
-        var components = URLComponents(string: "https://github.com/everettjf/vellune/issues/new")!
-        let appVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "Unknown"
-        let appBuild = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "Unknown"
-        let device = UIDevice.current
-        components.queryItems = [
-            URLQueryItem(name: "title", value: "[Feedback] "),
-            URLQueryItem(
-                name: "body",
-                value: """
-
-
-                ## Environment
-                - Device: \(device.model) (\(Self.hardwareIdentifier))
-                - Operating System: \(device.systemName) \(device.systemVersion)
-                - System Build: \(ProcessInfo.processInfo.operatingSystemVersionString)
-                - Vellune: \(appVersion) (\(appBuild))
-                """
-            )
-        ]
-        return components.url ?? URL(string: "https://github.com/everettjf/vellune/issues/new")!
-    }
-
-    private static var hardwareIdentifier: String {
-        var systemInfo = utsname()
-        uname(&systemInfo)
-        return withUnsafePointer(to: &systemInfo.machine) {
-            $0.withMemoryRebound(to: CChar.self, capacity: 1) {
-                String(cString: $0)
-            }
-        }
-    }
 }
 
 private struct AccessStatusView: View {

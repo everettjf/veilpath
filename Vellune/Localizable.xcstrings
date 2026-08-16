@@ -1,6 +1,61 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "After you take a screenshot in Vellune, show quick actions to share it or report an issue." : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "在 Vellune 中截屏后，显示分享截图或反馈问题的快捷操作。" } }
+      }
+    },
+    "Closes the screenshot actions." : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "关闭截屏快捷操作。" } }
+      }
+    },
+    "GitHub reports include app and system versions. Review screenshots for sensitive information before attaching them." : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "GitHub 反馈会包含 App 与系统版本。附加截图前，请检查其中是否包含敏感信息。" } }
+      }
+    },
+    "Report Issue" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "反馈问题" } }
+      }
+    },
+    "Screenshot captured" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "截屏已完成" } }
+      }
+    },
+    "Screenshot feedback prompt" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "截屏后显示反馈操作" } }
+      }
+    },
+    "Share it or report an issue while the context is fresh." : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "趁当前操作还清晰，分享截图或反馈问题。" } }
+      }
+    },
+    "Share" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "分享" } }
+      }
+    },
+    "The current screen could not be captured." : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "无法捕获当前画面。" } }
+      }
+    },
+    "The screenshot could not be prepared for sharing." : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "无法准备要分享的截图。" } }
+      }
+    },
+    "Vellune Screenshot" : {
+      "localizations" : {
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "Vellune 截图" } }
+      }
+    },
     "Empty" : {
       "localizations" : {
         "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "空文件夹" } }
