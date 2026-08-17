@@ -81,14 +81,14 @@ final class VelluneModel {
         }
         #else
         let currentVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
-        if selfTestReport?.schemaVersion != 15
+        if selfTestReport?.schemaVersion != 17
             || selfTestReport?.passed != true
             || selfTestReport?.appVersion != currentVersion
             || containers.isEmpty
             || systemContainers.isEmpty {
             Task {
-                await verifyAccess()
                 await runSelfTest()
+                await verifyAccess()
             }
         } else {
             Task { await verifyAccess() }
@@ -458,6 +458,12 @@ final class VelluneModel {
             log("Created a safety backup and restored \(URL(fileURLWithPath: record.manifest.targetPath).lastPathComponent)")
             if let item = selectedItem, item.url.path == record.manifest.targetPath { await open(item) }
         } catch { report(error) }
+    }
+
+    func finishedEditing(_ item: FileItem) async {
+        backupRecords = (try? FileBackupService.records()) ?? []
+        log("Safely edited and versioned \(item.name)")
+        if selectedItem == item { await open(item) }
     }
 
     func log(_ message: String, isError: Bool = false) {

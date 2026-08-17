@@ -106,7 +106,16 @@ enum FileBackupService {
                       let manifest = try? decoder.decode(FileBackupManifest.self, from: data) else { return nil }
                 return .init(id: manifest.id, folderURL: folder, manifest: manifest)
             }
-        return (modern + legacy).sorted { $0.manifest.createdAt > $1.manifest.createdAt }
+        var combined = modern + legacy
+        for path in Set(combined.map(\.manifest.targetPath)) {
+            let indexes = combined.indices.filter { combined[$0].manifest.targetPath == path }
+            guard !indexes.contains(where: { combined[$0].manifest.effectiveRole == .original }),
+                  let oldest = indexes.min(by: { combined[$0].manifest.createdAt < combined[$1].manifest.createdAt }) else { continue }
+            var manifest = combined[oldest].manifest
+            manifest.role = .original
+            combined[oldest] = .init(id: combined[oldest].id, folderURL: combined[oldest].folderURL, manifest: manifest)
+        }
+        return combined.sorted { $0.manifest.createdAt > $1.manifest.createdAt }
     }
 
     nonisolated static func records(for target: URL) throws -> [FileBackupRecord] {

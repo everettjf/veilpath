@@ -64,11 +64,12 @@ enum SelfTestRunner {
         checks.append(testExportCache())
         checks.append(testDirectoryMarkdownExport())
         checks.append(testBackupReplaceAndRestore())
+        checks.append(testSafeStructuredEditing())
         checks.append(testLocalSearch())
         checks.append(testDirectorySorting())
 
         let report = SelfTestReport(
-            schemaVersion: 15,
+            schemaVersion: 17,
             appVersion: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "unknown",
             systemVersion: ProcessInfo.processInfo.operatingSystemVersionString,
             startedAt: startedAt,
@@ -367,6 +368,53 @@ enum SelfTestRunner {
                 throw SelfTestFailure("Original content was not restored")
             }
             return "replacementVerified=true, restoreVerified=true, originalPermanent=true, deduplicated=true"
+        }
+    }
+
+    nonisolated private static func testSafeStructuredEditing() -> SelfTestReport.Check {
+        timedCheck(name: "JSON and plist safe editing", path: "temporary fixtures") {
+            let root = FileManager.default.temporaryDirectory.appending(path: "vellune-editor-\(UUID().uuidString)", directoryHint: .isDirectory)
+            try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+            defer { try? FileManager.default.removeItem(at: root) }
+
+            let jsonURL = root.appending(path: "fixture.json")
+            try Data("{\"value\":1}".utf8).write(to: jsonURL)
+            var session = try SafeStructuredEditor.open(target: jsonURL)
+            guard FileManager.default.fileExists(atPath: session.draftURL.path) else { throw SelfTestFailure("Temporary edit draft was not created") }
+            do {
+                _ = try SafeStructuredEditor.validate(session, text: "{")
+                throw SelfTestFailure("Invalid JSON passed validation")
+            } catch is StructuredEditorError {}
+
+            try Data("{\"external\":true}".utf8).write(to: jsonURL)
+            do {
+                _ = try SafeStructuredEditor.save(session, text: "{\"value\":2}")
+                throw SelfTestFailure("External modification conflict was not detected")
+            } catch StructuredEditorError.externalModification {}
+            SafeStructuredEditor.discard(session)
+
+            try Data("{\"value\":1}".utf8).write(to: jsonURL)
+            session = try SafeStructuredEditor.open(target: jsonURL)
+            let jsonBackup = try SafeStructuredEditor.save(session, text: "{\"value\":2}")
+            defer { try? FileManager.default.removeItem(at: jsonBackup.folderURL) }
+            let json = try JSONSerialization.jsonObject(with: Data(contentsOf: jsonURL)) as? [String: Int]
+            guard json?["value"] == 2, jsonBackup.manifest.effectiveRole == .original else {
+                throw SelfTestFailure("Validated JSON was not saved through the Original snapshot")
+            }
+
+            let plistURL = root.appending(path: "fixture.plist")
+            let plistData = try PropertyListSerialization.data(fromPropertyList: ["enabled": false], format: .binary, options: 0)
+            try plistData.write(to: plistURL)
+            let plistSession = try SafeStructuredEditor.open(target: plistURL)
+            guard plistSession.kind == .propertyList(.binary) else { throw SelfTestFailure("Binary plist format was not retained") }
+            let plistBackup = try SafeStructuredEditor.save(
+                plistSession,
+                text: "<?xml version=\"1.0\" encoding=\"UTF-8\"?><!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\"><plist version=\"1.0\"><dict><key>enabled</key><true/></dict></plist>"
+            )
+            defer { try? FileManager.default.removeItem(at: plistBackup.folderURL) }
+            let savedPlist = try Data(contentsOf: plistURL)
+            guard savedPlist.starts(with: Data("bplist".utf8)) else { throw SelfTestFailure("Binary plist was not written back in its original format") }
+            return "draft=true, validation=true, conflict=true, atomicSave=true, binaryFormatPreserved=true"
         }
     }
 

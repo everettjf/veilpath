@@ -17,6 +17,7 @@ struct ContentView: View {
     @State private var showingReplacementConfirmation = false
     @State private var pendingRestore: FileBackupRecord?
     @State private var showingRestoreConfirmation = false
+    @State private var editingItem: FileItem?
     @State private var screenshotFeedback: ScreenshotFeedbackContext?
     @AppStorage("feedback.screenshotPromptEnabled") private var screenshotPromptEnabled = true
 
@@ -96,6 +97,14 @@ struct ContentView: View {
                             Button("Done") { showInspector = false }
                         }
                     }
+            }
+        }
+        .sheet(item: $editingItem) { item in
+            NavigationStack {
+                SafeStructuredEditorView(item: item) {
+                    editingItem = nil
+                    Task { await model.finishedEditing(item) }
+                }
             }
         }
         .fileImporter(isPresented: $showingReplacementImporter, allowedContentTypes: [.data]) { result in
@@ -210,6 +219,8 @@ struct ContentView: View {
                 openSelectedPreview()
             },
             requestReplacement: requestReplacement,
+            canEdit: canEditSelectedFile,
+            requestEdit: requestSafeEdit,
             backups: selectedBackups,
             requestRestore: requestRestore
         )
@@ -248,6 +259,15 @@ struct ContentView: View {
         }
     }
 
+    private func requestSafeEdit() {
+        let item = model.selectedItem
+        showInspector = false
+        Task { @MainActor in
+            await Task.yield()
+            editingItem = item
+        }
+    }
+
     private func requestRestore(_ record: FileBackupRecord) {
         showInspector = false
         pendingRestore = record
@@ -260,6 +280,15 @@ struct ContentView: View {
     private var selectedBackups: [FileBackupRecord] {
         guard let path = model.selectedItem?.url.path else { return [] }
         return model.backupRecords.filter { $0.manifest.targetPath == path }
+    }
+
+    private var canEditSelectedFile: Bool {
+        guard let item = model.selectedItem, !item.isDirectory else { return false }
+        if ["json", "plist"].contains(item.url.pathExtension.lowercased()) { return true }
+        if case .structured(_, _, let format)? = model.selectedPreview {
+            return format == "JSON" || format.contains("Plist")
+        }
+        return false
     }
 
     private var currentScreenDescription: String {
@@ -1380,6 +1409,8 @@ private struct InspectorView: View {
     let isLoading: Bool
     let openPreview: () -> Void
     let requestReplacement: () -> Void
+    let canEdit: Bool
+    let requestEdit: () -> Void
     let backups: [FileBackupRecord]
     let requestRestore: (FileBackupRecord) -> Void
     @State private var confirmWebSearch = false
@@ -1393,6 +1424,10 @@ private struct InspectorView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 Divider()
                 HStack {
+                    if canEdit {
+                        Button("Edit Safely", systemImage: "pencil.and.outline", action: requestEdit)
+                            .disabled(isLoading)
+                    }
                     Button("Back Up and Replace", systemImage: "arrow.triangle.2.circlepath", action: requestReplacement)
                         .disabled(isLoading)
                     Spacer()
@@ -1438,6 +1473,118 @@ private struct InspectorView: View {
             }
         } else {
             ContentUnavailableView("Select a File", systemImage: "doc.text.magnifyingglass")
+        }
+    }
+}
+
+private struct SafeStructuredEditorView: View {
+    let item: FileItem
+    let completed: () -> Void
+    @State private var session: StructuredEditSession?
+    @State private var text = ""
+    @State private var status = "Preparing a protected draft…"
+    @State private var error: String?
+    @State private var showSaveConfirmation = false
+    @State private var isSaving = false
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        Group {
+            if session != nil {
+                TextEditor(text: $text)
+                    .font(.system(.footnote, design: .monospaced))
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
+                    .padding(.horizontal, 6)
+                    .safeAreaInset(edge: .bottom) {
+                        HStack {
+                            Image(systemName: "lock.shield")
+                            Text(status)
+                            Spacer()
+                        }
+                        .font(.caption).foregroundStyle(.secondary)
+                        .padding(.horizontal).padding(.vertical, 8)
+                        .background(.bar)
+                    }
+                    .onChange(of: text) { _, value in
+                        guard let session else { return }
+                        status = "Draft has unsaved changes"
+                        Task.detached(priority: .utility) { try? SafeStructuredEditor.updateDraft(session, text: value) }
+                    }
+            } else if let error {
+                ContentUnavailableView("Cannot Edit This File", systemImage: "exclamationmark.triangle", description: Text(error))
+            } else {
+                ProgressView(status)
+            }
+        }
+        .navigationTitle(item.name)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+                Button("Cancel") {
+                    if let session { SafeStructuredEditor.discard(session) }
+                    dismiss()
+                }
+            }
+            ToolbarItemGroup(placement: .confirmationAction) {
+                Button("Validate") { validate() }.disabled(session == nil || isSaving)
+                Button("Save") { validateAndConfirm() }.disabled(session == nil || isSaving)
+            }
+        }
+        .task { await prepare() }
+        .confirmationDialog("Save This Version?", isPresented: $showSaveConfirmation, titleVisibility: .visible) {
+            Button("Back Up Original and Save") { save() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("The original and every pre-save version remain available in Version Vault. The target is replaced only after validation and conflict checks pass.")
+        }
+        .alert("Safe Edit", isPresented: Binding(get: { error != nil && session != nil }, set: { if !$0 { error = nil } })) {
+            Button("OK") { error = nil }
+        } message: { Text(error ?? "Unknown error") }
+    }
+
+    private func prepare() async {
+        do {
+            let value = try await Task.detached(priority: .userInitiated) { try SafeStructuredEditor.open(target: item.url) }.value
+            session = value
+            text = value.text
+            status = "Protected \(value.kind.title) draft · original SHA recorded"
+        } catch { self.error = error.localizedDescription }
+    }
+
+    private func validate() {
+        guard let session else { return }
+        do {
+            _ = try SafeStructuredEditor.validate(session, text: text)
+            status = "Valid \(session.kind.title) · ready to save"
+        } catch { self.error = error.localizedDescription }
+    }
+
+    private func validateAndConfirm() {
+        guard let session else { return }
+        do {
+            _ = try SafeStructuredEditor.validate(session, text: text)
+            status = "Validation passed"
+            showSaveConfirmation = true
+        } catch { self.error = error.localizedDescription }
+    }
+
+    private func save() {
+        guard let session else { return }
+        let draftText = text
+        isSaving = true
+        status = "Checking for conflicts and saving…"
+        Task {
+            do {
+                _ = try await Task.detached(priority: .userInitiated) { try SafeStructuredEditor.save(session, text: draftText) }.value
+                status = "Saved and verified"
+                completed()
+                dismiss()
+            } catch {
+                self.error = error.localizedDescription
+                status = "Not saved"
+            }
+            isSaving = false
         }
     }
 }
@@ -1503,12 +1650,9 @@ private struct VersionSnapshotPreview: View {
                 do {
                     let loaded = try await Task.detached(priority: .userInitiated) {
                         let source = try FileBackupService.contentURL(for: record)
-                        let data = try Data(contentsOf: source, options: .mappedIfSafe)
-                        let name = URL(fileURLWithPath: record.manifest.targetPath).lastPathComponent
-                        let staged = try ExportCache.stage(data, named: name)
-                        let item = FileItem(url: staged, isDirectory: false, isSymbolicLink: false,
-                                            size: Int64(data.count), modifiedAt: record.manifest.createdAt)
-                        return try FilePreviewLoader.makePreview(item: item, data: data, exportURL: staged)
+                        let item = FileItem(url: source, isDirectory: false, isSymbolicLink: false,
+                                            size: record.manifest.originalSize, modifiedAt: record.manifest.createdAt)
+                        return try FilePreviewLoader.load(item).preview
                     }.value
                     preview = loaded
                 } catch { self.error = error.localizedDescription }
