@@ -70,7 +70,10 @@ sandbox boundary.
 - Uses a focused push flow on iPhone: App library, file list, then full-screen
   preview, with file information presented separately.
 - Shows file metadata and SHA-256 hashes before export.
-- Stages files inside Vellune's cache before presenting the system share sheet.
+- Prepares files on demand for sharing, streaming large copies in 1 MiB chunks
+  with progress, cancellation, verification, and automatic cache expiry.
+- Archives the current folder or a selected folder as ZIP while preserving empty
+  directories, honoring the hidden-file setting, and skipping symbolic links.
 - Exports the current directory as Markdown, with optional recursive traversal.
 - Keeps browsing read-only by default; explicit replacement first creates a
   versioned backup, verifies SHA-256, and supports restore with a safety backup.
@@ -88,7 +91,7 @@ builds.
 | --- | --- | --- |
 | iPadOS | 27 beta 3 (`24A5380l`) | Fully tested on physical iPad Air (`iPad15,3`) |
 | iOS / iPadOS | 26.x | Deployment target and App Group compatibility path |
-| iPhone | 26–27 beta 3 | Adaptive UI builds and simulator validation |
+| iPhone | 27 beta 3 (`24A5390f`) | Fully tested on physical iPhone 17 Pro (`iPhone18,1`) |
 | Simulator | 26–27 | UI only; `bad_query` requires a physical device |
 
 The upstream project currently describes support through iOS 26.6.1 and iOS
@@ -99,8 +102,9 @@ outside this range are unsupported until confirmed by physical-device testing.
 ### Physical-device diagnostics
 
 Vellune includes an on-device regression suite that verifies sandbox access,
-container discovery, structured preview, file analysis, Mach-O parsing, safe
-export, and local search. Results are written to
+container discovery, structured preview, file analysis, Mach-O parsing,
+streamed sharing, ZIP policy, cancellation cleanup, Markdown export, guarded
+editing, backup and restore, and local search. Results are written to
 `Documents/vellune-self-test.json` inside Vellune's own data container. Container
 counts are intentionally not presented as project-wide metrics because they
 depend entirely on the apps and system state of each device.

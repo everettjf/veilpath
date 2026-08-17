@@ -142,9 +142,9 @@ code { font-family: var(--mono) }
 .device-required b { color: var(--gold); font-size: 11px; text-transform: uppercase; letter-spacing: .11em }
 .device-required span { color: var(--muted); font-size: 12px; line-height: 1.6 }
 .device-required code { color: var(--silver) }
-.feature-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-top: 64px }
+.feature-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 64px }
 .feature { min-height: 300px; padding: 32px; background: linear-gradient(145deg, rgba(20,22,22,.86), rgba(9,10,10,.72)); border: 1px solid var(--line); border-radius: 14px; position: relative; overflow: hidden; backdrop-filter: blur(12px) }
-.feature.featured { background: radial-gradient(circle at 82% 16%, rgba(215,198,157,.1), transparent 42%), var(--panel) }
+.feature.featured { grid-column: span 2; background: radial-gradient(circle at 82% 16%, rgba(215,198,157,.1), transparent 42%), var(--panel) }
 .feature-number { color: #72736f; font: 10px var(--mono); letter-spacing: .15em }
 .feature h3 { margin-top: 82px; font: 400 28px var(--display); letter-spacing: -.025em }
 .feature p { color: var(--muted); line-height: 1.7; max-width: 470px; font-size: 14px }
@@ -153,6 +153,15 @@ code { font-family: var(--mono) }
 .layers i { position: absolute; width: 48px; height: 30px; border: 1px solid var(--gold); border-radius: 50%; transform: rotate(-16deg) }
 .layers i:nth-child(2) { transform: translateY(10px) rotate(-16deg); opacity: .55 }.layers i:nth-child(3) { transform: translateY(20px) rotate(-16deg); opacity: .25 }
 .pulse { border: 1px solid rgba(216,196,155,.18); border-radius: 50% }.pulse:before, .pulse i { content: ""; position: absolute; border-radius: 50%; border: 1px solid var(--gold); inset: 14px }.pulse i { inset: 27px; background: var(--gold); box-shadow: 0 0 16px rgba(216,196,155,.55) }
+.inspect, .vault { border: 1px solid rgba(216,196,155,.22); border-radius: 18px; font-size: 29px }
+.vault { transform: rotate(45deg); border-radius: 13px }
+.vault::first-letter { transform: rotate(-45deg) }
+
+.proof-strip { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: rgba(12,14,14,.72); backdrop-filter: blur(12px) }
+.proof-strip article { min-height: 128px; padding: 28px; display: flex; flex-direction: column; justify-content: center; gap: 9px; border-right: 1px solid var(--line) }
+.proof-strip article:last-child { border-right: 0 }
+.proof-strip strong { color: var(--gold); font: 400 31px/1 var(--display) }
+.proof-strip span { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .1em }
 
 .compatibility, .evidence { display: grid; grid-template-columns: .8fr 1.2fr; gap: 80px; align-items: center }
 .matrix { border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: rgba(12,14,14,.82); backdrop-filter: blur(12px) }
@@ -175,6 +184,8 @@ footer { display: flex; align-items: center; justify-content: space-between; pad
   .device-stage { height: 520px }.ipad-device { width: min(82vw, 500px) }.iphone-device { width: min(25vw, 150px); right: 2vw }
   .proof { grid-template-columns: 1fr 1fr }.proof div:last-child { display: none }
   .feature-grid, .compatibility, .evidence, .build { grid-template-columns: 1fr }
+  .feature.featured { grid-column: auto }
+  .proof-strip { grid-template-columns: repeat(2, 1fr) }.proof-strip article:nth-child(2) { border-right: 0 }.proof-strip article:nth-child(-n+2) { border-bottom: 1px solid var(--line) }
   .compatibility, .evidence, .build { gap: 45px }.section { padding-block: 90px }.evidence .terminal { order: 2 }
   .status-one { right: 0 }.status-two { left: 0 }
 }
@@ -186,6 +197,7 @@ footer { display: flex; align-items: center; justify-content: space-between; pad
   .feature-grid { grid-template-columns: 1fr }.feature { min-height: 280px }
   .matrix > div { grid-template-columns: 1fr 1fr }.matrix > div > *:last-child { grid-column: 2; margin-top: 8px }.matrix-head { display: none !important }
   .evidence-copy ul { grid-template-columns: 1fr }.cta { padding-block: 80px }.proof { gap: 18px }
+  .proof-strip { grid-template-columns: 1fr }.proof-strip article { min-height: 104px; border-right: 0; border-bottom: 1px solid var(--line) }.proof-strip article:last-child { border-bottom: 0 }
   footer { flex-direction: column; gap: 20px; text-align: center }
 }
 @media (prefers-reduced-motion: reduce) {

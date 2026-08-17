@@ -12,11 +12,53 @@ concurrency:
   group: pages
   cancel-in-progress: true
 jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate static site
+        run: |
+          python3 - <<'PY'
+          from html.parser import HTMLParser
+          from pathlib import Path
+          from urllib.parse import urlparse
+
+          root = Path("docs")
+          required = [root / "index.html", root / "styles.css", root / ".nojekyll"]
+          missing = [str(path) for path in required if not path.is_file()]
+
+          class LocalAssets(HTMLParser):
+              def __init__(self):
+                  super().__init__()
+                  self.paths = []
+
+              def handle_starttag(self, tag, attrs):
+                  values = dict(attrs)
+                  for key in ("href", "src"):
+                      value = values.get(key)
+                      if not value or value.startswith(("#", "mailto:", "data:")):
+                          continue
+                      parsed = urlparse(value)
+                      if not parsed.scheme and not parsed.netloc:
+                          self.paths.append(parsed.path)
+
+          parser = LocalAssets()
+          parser.feed((root / "index.html").read_text())
+          missing.extend(path for path in parser.paths if not (root / path).is_file())
+          if missing:
+              raise SystemExit("Missing website assets: " + ", ".join(sorted(set(missing))))
+          print(f"Validated {len(parser.paths)} local website references")
+          PY
   deploy:
+    needs: validate
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/configure-pages@v5
