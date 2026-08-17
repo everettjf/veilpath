@@ -1,6 +1,8 @@
 import SwiftUI
 import UIKit
 import UniformTypeIdentifiers
+import PDFKit
+import QuickLook
 
 struct ContentView: View {
     @Bindable var model: VelluneModel
@@ -1316,18 +1318,7 @@ private struct FileRow: View {
                             .foregroundStyle(.secondary)
                     }
                 } else {
-                    HStack(spacing: 5) {
-                        if let size = item.size {
-                            Text(ByteCountFormatter.string(fromByteCount: size, countStyle: .file))
-                        }
-                        if item.size != nil, item.modifiedAt != nil {
-                            Text("·")
-                        }
-                        if let modifiedAt = item.modifiedAt {
-                            Text("Modified")
-                            Text(modifiedAt, format: .dateTime.year().month().day().hour().minute())
-                        }
-                    }
+                    fileMetadata
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 }
@@ -1341,6 +1332,19 @@ private struct FileRow: View {
         }
         .contentShape(.rect)
         .accessibilityElement(children: .combine)
+    }
+
+    @ViewBuilder
+    private var fileMetadata: some View {
+        if let size = item.size, let modifiedAt = item.modifiedAt {
+            Text("\(ByteCountFormatter.string(fromByteCount: size, countStyle: .file)) · Modified \(modifiedAt.formatted(.dateTime.year().month().day().hour().minute()))")
+                .lineLimit(2)
+        } else if let size = item.size {
+            Text(ByteCountFormatter.string(fromByteCount: size, countStyle: .file))
+        } else if let modifiedAt = item.modifiedAt {
+            Text("Modified \(modifiedAt.formatted(.dateTime.year().month().day().hour().minute()))")
+                .lineLimit(2)
+        }
     }
 }
 
@@ -1556,6 +1560,12 @@ private struct PreviewContent: View {
                 case .text(let text, let format): TextViewer(text: text, format: format)
                 case .image(let data, let details): ImageViewer(data: data, details: details)
                 case .machO(let info): MachOViewer(info: info)
+                case .pdf(let data): PDFDocumentViewer(data: data)
+                case .sqlite(let summary): SQLiteViewer(summary: summary)
+                case .archive(let summary): ArchiveViewer(summary: summary)
+                case .font(let summary): FontViewer(summary: summary)
+                case .binaryCookies(let summary): BinaryCookiesViewer(summary: summary)
+                case .quickLook(let url, _): QuickLookViewer(url: url)
                 case .binary: ContentUnavailableView("Binary File", systemImage: "doc.badge.gearshape")
                 case .tooLarge(let size):
                     ContentUnavailableView(
@@ -1568,6 +1578,162 @@ private struct PreviewContent: View {
                 ProgressView("Loading preview…")
             } else {
                 ContentUnavailableView("Preview Unavailable", systemImage: "eye.slash")
+            }
+        }
+    }
+}
+
+private struct PDFDocumentViewer: UIViewRepresentable {
+    let data: Data
+
+    func makeUIView(context: Context) -> PDFView {
+        let view = PDFView()
+        view.autoScales = true
+        view.displayMode = .singlePageContinuous
+        view.displayDirection = .vertical
+        return view
+    }
+
+    func updateUIView(_ view: PDFView, context: Context) {
+        if view.document?.dataRepresentation() != data {
+            view.document = PDFDocument(data: data)
+        }
+    }
+}
+
+private struct QuickLookViewer: UIViewControllerRepresentable {
+    let url: URL
+
+    func makeCoordinator() -> Coordinator { Coordinator(url: url) }
+
+    func makeUIViewController(context: Context) -> QLPreviewController {
+        let controller = QLPreviewController()
+        controller.dataSource = context.coordinator
+        return controller
+    }
+
+    func updateUIViewController(_ controller: QLPreviewController, context: Context) {
+        guard context.coordinator.url != url else { return }
+        context.coordinator.url = url
+        controller.reloadData()
+    }
+
+    final class Coordinator: NSObject, QLPreviewControllerDataSource {
+        var url: URL
+        init(url: URL) { self.url = url }
+        func numberOfPreviewItems(in controller: QLPreviewController) -> Int { 1 }
+        func previewController(_ controller: QLPreviewController, previewItemAt index: Int) -> QLPreviewItem { url as NSURL }
+    }
+}
+
+private struct SQLiteViewer: View {
+    let summary: SQLiteSummary
+    var body: some View {
+        List {
+            Section("Database") {
+                LabeledContent("Tables", value: summary.tables.count.formatted())
+                LabeledContent("Indexes", value: summary.indexes.count.formatted())
+                if let mode = summary.journalMode { LabeledContent("Journal Mode", value: mode.uppercased()) }
+                LabeledContent("WAL", value: summary.hasWAL ? "Present" : "Not Found")
+                LabeledContent("SHM", value: summary.hasSHM ? "Present" : "Not Found")
+            }
+            ForEach(summary.tables) { table in
+                Section(table.name) {
+                    if let count = table.rowCount { LabeledContent("Rows", value: count.formatted()) }
+                    DisclosureGroup("Columns (\(table.columns.count))") {
+                        ForEach(table.columns, id: \.self) { Text($0).font(.callout.monospaced()) }
+                    }
+                    if !table.sampleRows.isEmpty {
+                        DisclosureGroup("Rows (first \(table.sampleRows.count))") {
+                            ForEach(Array(table.sampleRows.enumerated()), id: \.offset) { rowIndex, row in
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text("Row \(rowIndex + 1)").font(.caption.weight(.semibold))
+                                    ForEach(Array(row.enumerated()), id: \.offset) { columnIndex, value in
+                                        LabeledContent(columnIndex < table.columns.count ? table.columns[columnIndex] : "#\(columnIndex + 1)", value: value)
+                                            .font(.caption.monospaced())
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            if !summary.indexes.isEmpty {
+                Section("Indexes") { ForEach(summary.indexes, id: \.self) { Text($0).font(.callout.monospaced()) } }
+            }
+        }
+    }
+}
+
+private struct ArchiveViewer: View {
+    let summary: ArchiveSummary
+    var body: some View {
+        List(summary.entries) { entry in
+            HStack {
+                Image(systemName: entry.isDirectory ? "folder" : "doc")
+                    .foregroundStyle(entry.isDirectory ? .blue : .secondary)
+                VStack(alignment: .leading) {
+                    Text(entry.name).lineLimit(2)
+                    if !entry.isDirectory {
+                        Text("\(ByteCountFormatter.string(fromByteCount: Int64(entry.uncompressedSize), countStyle: .file)) · compressed \(ByteCountFormatter.string(fromByteCount: Int64(entry.compressedSize), countStyle: .file))")
+                            .font(.caption).foregroundStyle(.secondary)
+                        if let preview = entry.previewText {
+                            DisclosureGroup("Text Preview") {
+                                Text(preview).font(.caption.monospaced()).textSelection(.enabled)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        .safeAreaInset(edge: .top) {
+            Text("\(summary.entries.count) archive entries")
+                .font(.caption).foregroundStyle(.secondary).padding(.vertical, 6)
+        }
+    }
+}
+
+private struct FontViewer: View {
+    let summary: FontSummary
+    var body: some View {
+        List {
+            Section("Font") {
+                LabeledContent("PostScript Name", value: summary.postScriptName)
+                if let name = summary.fullName { LabeledContent("Full Name", value: name) }
+                LabeledContent("Glyphs", value: summary.glyphCount.formatted())
+            }
+            Section("Sample") {
+                Text("Aa Bb Cc 123 中文")
+                    .font(.system(size: 32))
+            }
+        }
+    }
+}
+
+private struct BinaryCookiesViewer: View {
+    let summary: BinaryCookiesSummary
+    var body: some View {
+        List {
+            Section("Binary Cookies") {
+                LabeledContent("Pages", value: summary.pageCount.formatted())
+                LabeledContent("Size", value: ByteCountFormatter.string(fromByteCount: Int64(summary.totalBytes), countStyle: .file))
+            }
+            Section("Page Sizes") {
+                ForEach(Array(summary.pageSizes.enumerated()), id: \.offset) { index, size in
+                    LabeledContent("Page \(index + 1)", value: ByteCountFormatter.string(fromByteCount: Int64(size), countStyle: .file))
+                }
+            }
+            if !summary.cookies.isEmpty {
+                Section("Cookies") {
+                    ForEach(summary.cookies) { cookie in
+                        DisclosureGroup(cookie.name.isEmpty ? "Unnamed Cookie" : cookie.name) {
+                            LabeledContent("Domain", value: cookie.domain)
+                            LabeledContent("Path", value: cookie.path)
+                            LabeledContent("Value", value: cookie.value)
+                            if let date = cookie.expiresAt { LabeledContent("Expires", value: date.formatted()) }
+                        }
+                    }
+                }
             }
         }
     }

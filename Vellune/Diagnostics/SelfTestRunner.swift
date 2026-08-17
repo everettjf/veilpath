@@ -1,5 +1,6 @@
 import Foundation
 import OSLog
+import SQLite3
 
 struct SelfTestReport: Codable, Sendable {
     struct Check: Codable, Sendable {
@@ -56,6 +57,7 @@ enum SelfTestRunner {
         checks.append(testDirectoryAccess(name: "System Group containers", path: ContainerKind.systemGroup.rootPath))
         #endif
         checks.append(testStructuredFormats())
+        checks.append(testAdvancedPreviewFormats())
         checks.append(testFileAnalysis())
         checks.append(testMachOAnalysis())
         checks.append(testExportCache())
@@ -65,7 +67,7 @@ enum SelfTestRunner {
         checks.append(testDirectorySorting())
 
         let report = SelfTestReport(
-            schemaVersion: 12,
+            schemaVersion: 13,
             appVersion: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "unknown",
             systemVersion: ProcessInfo.processInfo.operatingSystemVersionString,
             startedAt: startedAt,
@@ -151,6 +153,83 @@ enum SelfTestRunner {
             let jsonData = try JSONSerialization.data(withJSONObject: plist)
             guard let json = try JSONSerialization.jsonObject(with: jsonData) as? [String: Any], json["name"] as? String == "Vellune" else { throw SelfTestFailure("JSON parsing failed") }
             return "binaryPlistBytes=\(plistData.count), treeChildren=\(root.children.count), jsonBytes=\(jsonData.count)"
+        }
+    }
+
+    nonisolated private static func testAdvancedPreviewFormats() -> SelfTestReport.Check {
+        timedCheck(name: "Advanced file format detection", path: "self-test fixtures") {
+            let root = FileManager.default.temporaryDirectory.appending(path: "vellune-formats-\(UUID().uuidString)", directoryHint: .isDirectory)
+            try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+            defer { try? FileManager.default.removeItem(at: root) }
+
+            func preview(_ name: String, data: Data) throws -> FilePreview {
+                let url = root.appending(path: name)
+                try data.write(to: url)
+                let item = FileItem(url: url, isDirectory: false, isSymbolicLink: false, size: Int64(data.count), modifiedAt: nil)
+                return try FilePreviewLoader.makePreview(item: item, data: data, exportURL: url)
+            }
+
+            let plist = try PropertyListSerialization.data(fromPropertyList: ["key": "value"], format: .binary, options: 0)
+            guard case .structured = try preview("no-extension", data: plist) else { throw SelfTestFailure("Binary plist magic detection failed") }
+            guard case .structured = try preview("payload", data: Data("{\"answer\":42}".utf8)) else { throw SelfTestFailure("JSON content detection failed") }
+            guard case .pdf = try preview("document.bin", data: Data("%PDF-1.7\n%%EOF".utf8)) else { throw SelfTestFailure("PDF magic detection failed") }
+            guard case .quickLook = try preview("document.docx", data: Data("office fixture".utf8)) else { throw SelfTestFailure("Quick Look fallback detection failed") }
+            guard case .quickLook = try preview("clip.mp4", data: Data("media fixture".utf8)) else { throw SelfTestFailure("Media Quick Look routing failed") }
+            guard case .quickLook = try preview("contact.vcf", data: Data("BEGIN:VCARD\nEND:VCARD".utf8)) else { throw SelfTestFailure("Contact Quick Look routing failed") }
+            guard case .quickLook = try preview("event.ics", data: Data("BEGIN:VCALENDAR\nEND:VCALENDAR".utf8)) else { throw SelfTestFailure("Calendar Quick Look routing failed") }
+
+            let webArchive = try PropertyListSerialization.data(
+                fromPropertyList: ["WebMainResource": ["WebResourceURL": "https://example.com"]],
+                format: .binary,
+                options: 0
+            )
+            guard case .structured = try preview("page.webarchive", data: webArchive) else { throw SelfTestFailure("WebArchive parsing failed") }
+
+            let png = Data(base64Encoded: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=")!
+            guard case .image = try preview("image.unknown", data: png) else { throw SelfTestFailure("Image content detection failed") }
+
+            var cookieData = Data("cook".utf8)
+            cookieData.append(contentsOf: [0, 0, 0, 1, 0, 0, 0, 4])
+            cookieData.append(contentsOf: [0, 0, 0, 0])
+            guard case .binaryCookies(let cookies) = try preview("Cookies.binarycookies", data: cookieData), cookies.pageCount == 1 else {
+                throw SelfTestFailure("Binary cookies detection failed")
+            }
+
+            let zipName = Data("file.txt".utf8)
+            let zipPayload = Data("archive preview".utf8)
+            var local = Data(repeating: 0, count: 30)
+            local.replaceSubrange(0..<4, with: [0x50, 0x4b, 0x03, 0x04])
+            local.replaceSubrange(18..<22, with: [UInt8(zipPayload.count), 0, 0, 0])
+            local.replaceSubrange(22..<26, with: [UInt8(zipPayload.count), 0, 0, 0])
+            local.replaceSubrange(26..<28, with: [UInt8(zipName.count), 0])
+            local.append(zipName)
+            local.append(zipPayload)
+            var central = Data(repeating: 0, count: 46)
+            central.replaceSubrange(0..<4, with: [0x50, 0x4b, 0x01, 0x02])
+            central.replaceSubrange(20..<24, with: [UInt8(zipPayload.count), 0, 0, 0])
+            central.replaceSubrange(24..<28, with: [UInt8(zipPayload.count), 0, 0, 0])
+            central.replaceSubrange(28..<30, with: [UInt8(zipName.count), 0])
+            central.append(zipName)
+            local.append(central)
+            guard let archive = AdvancedFileAnalyzer.zip(data: local),
+                  archive.entries.first?.name == "file.txt",
+                  archive.entries.first?.previewText == "archive preview" else {
+                throw SelfTestFailure("ZIP central directory parsing failed")
+            }
+
+            let databaseURL = root.appending(path: "fixture.sqlite")
+            var database: OpaquePointer?
+            guard sqlite3_open(databaseURL.path, &database) == SQLITE_OK, let database else { throw SelfTestFailure("SQLite fixture creation failed") }
+            guard sqlite3_exec(database, "CREATE TABLE sample(id INTEGER PRIMARY KEY, name TEXT); INSERT INTO sample(name) VALUES('Vellune');", nil, nil, nil) == SQLITE_OK else {
+                sqlite3_close(database)
+                throw SelfTestFailure("SQLite fixture population failed")
+            }
+            sqlite3_close(database)
+            let sqliteData = try Data(contentsOf: databaseURL)
+            guard case .sqlite(let summary) = try preview("fixture.sqlite", data: sqliteData), summary.tables.first?.name == "sample" else {
+                throw SelfTestFailure("SQLite summary failed")
+            }
+            return "plist,json,image,pdf,quicklook,media,contact,calendar,webarchive,cookies,zip,sqlite=passed"
         }
     }
 

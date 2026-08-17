@@ -19,6 +19,12 @@ enum FilePreview: Equatable, Sendable {
     case text(String, format: String)
     case image(Data, ImageDetails)
     case machO(MachOInfo)
+    case pdf(Data)
+    case sqlite(SQLiteSummary)
+    case archive(ArchiveSummary)
+    case font(FontSummary)
+    case binaryCookies(BinaryCookiesSummary)
+    case quickLook(URL, kind: String)
     case binary
     case tooLarge(Int64)
 
@@ -76,7 +82,7 @@ enum FilePreviewLoader {
         #if targetEnvironment(simulator)
         let data = try Data(contentsOf: item.url, options: .mappedIfSafe)
         let exportURL = try ExportCache.stage(data, named: item.name)
-        return .init(preview: try makePreview(item: item, data: data), properties: try FileAnalyzer.properties(for: item.url, data: data), exportURL: exportURL, hexDump: FileAnalyzer.hexDump(data: data))
+        return .init(preview: try makePreview(item: item, data: data, exportURL: exportURL), properties: try FileAnalyzer.properties(for: item.url, data: data), exportURL: exportURL, hexDump: FileAnalyzer.hexDump(data: data))
         #else
         let parentGrant = try BadQueryClient.acquire(.init(
             path: item.url.deletingLastPathComponent().path,
@@ -88,27 +94,46 @@ enum FilePreviewLoader {
         ExportCache.removeExpired()
         let data = try Data(contentsOf: item.url, options: .mappedIfSafe)
         let exportURL = try ExportCache.stage(data, named: item.name)
-        return .init(preview: try makePreview(item: item, data: data), properties: try FileAnalyzer.properties(for: item.url, data: data), exportURL: exportURL, hexDump: FileAnalyzer.hexDump(data: data))
+        return .init(preview: try makePreview(item: item, data: data, exportURL: exportURL), properties: try FileAnalyzer.properties(for: item.url, data: data), exportURL: exportURL, hexDump: FileAnalyzer.hexDump(data: data))
         #endif
     }
 
-    private static func makePreview(item: FileItem, data: Data) throws -> FilePreview {
+    static func makePreview(item: FileItem, data: Data, exportURL: URL) throws -> FilePreview {
         let ext = item.url.pathExtension.lowercased()
         if let machO = MachOParser.parse(data) { return .machO(machO) }
-        if ["png", "jpg", "jpeg", "heic", "gif", "webp", "tif", "tiff"].contains(ext), let details = FileAnalyzer.imageDetails(data: data) { return .image(data, details) }
-        if ext == "plist" {
-            var format = PropertyListSerialization.PropertyListFormat.binary
-            let object = try PropertyListSerialization.propertyList(from: data, options: [], format: &format)
-            let xml = try PropertyListSerialization.data(fromPropertyList: object, format: .xml, options: 0)
-            return .structured(root: .make(key: "Root", value: object), source: String(decoding: xml, as: UTF8.self), format: format == .binary ? "Binary Plist" : "XML Plist")
+        if data.starts(with: Data("%PDF".utf8)) { return .pdf(data) }
+        if data.starts(with: Data("SQLite format 3\0".utf8)) {
+            return .sqlite(try AdvancedFileAnalyzer.sqlite(at: item.url))
         }
-        if ext == "json" {
-            let object = try JSONSerialization.jsonObject(with: data)
+        if let cookies = AdvancedFileAnalyzer.binaryCookies(data: data) { return .binaryCookies(cookies) }
+        if data.starts(with: [0x50, 0x4b]), let archive = AdvancedFileAnalyzer.zip(data: data) { return .archive(archive) }
+        if let details = FileAnalyzer.imageDetails(data: data) { return .image(data, details) }
+        if ["ttf", "otf", "ttc", "woff", "woff2"].contains(ext), let font = AdvancedFileAnalyzer.font(data: data) { return .font(font) }
+
+        let plistExtensions: Set<String> = ["plist", "strings", "stringsdict", "mobileconfig", "entitlements", "webarchive", "archive"]
+        if data.starts(with: Data("bplist".utf8)) || plistExtensions.contains(ext),
+           let object = try? PropertyListSerialization.propertyList(from: data, options: [], format: nil) {
+            var format = PropertyListSerialization.PropertyListFormat.binary
+            _ = try PropertyListSerialization.propertyList(from: data, options: [], format: &format)
+            let xml = try PropertyListSerialization.data(fromPropertyList: object, format: .xml, options: 0)
+            let label = (object as? [String: Any])?["$archiver"] != nil ? "NSKeyedArchive" : (format == .binary ? "Binary Plist" : "XML Plist")
+            return .structured(root: .make(key: "Root", value: object), source: String(decoding: xml, as: UTF8.self), format: label)
+        }
+        let trimmed = data.prefix(256).drop(while: { $0 == 0x20 || $0 == 0x09 || $0 == 0x0a || $0 == 0x0d })
+        if (ext == "json" || trimmed.first == 0x7b || trimmed.first == 0x5b),
+           let object = try? JSONSerialization.jsonObject(with: data) {
             let formatted = try JSONSerialization.data(withJSONObject: object, options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes])
             return .structured(root: .make(key: "Root", value: object), source: String(decoding: formatted, as: UTF8.self), format: "JSON")
         }
-        if let text = decodeText(data) { return .text(text, format: ext == "xml" ? "XML" : (ext.isEmpty ? "Text" : ext.uppercased())) }
         if Int64(data.count) > FilePreview.maximumInlineBytes { return .tooLarge(Int64(data.count)) }
+        let quickLookExtensions: Set<String> = [
+            "doc", "docx", "xls", "xlsx", "ppt", "pptx", "pages", "numbers", "key",
+            "rtf", "rtfd", "html", "htm", "svg", "usdz", "reality",
+            "mp3", "m4a", "aac", "wav", "aiff", "caf", "mp4", "mov", "m4v",
+            "vcf", "ics", "ttf", "otf", "ttc", "woff", "woff2"
+        ]
+        if quickLookExtensions.contains(ext) { return .quickLook(exportURL, kind: ext.uppercased()) }
+        if let text = decodeText(data) { return .text(text, format: ext == "xml" ? "XML" : (ext.isEmpty ? "Text" : ext.uppercased())) }
         return .binary
     }
 

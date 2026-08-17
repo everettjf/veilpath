@@ -80,7 +80,7 @@ final class VelluneModel {
         }
         #else
         let currentVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
-        if selfTestReport?.schemaVersion != 12
+        if selfTestReport?.schemaVersion != 13
             || selfTestReport?.appVersion != currentVersion
             || containers.isEmpty
             || systemContainers.isEmpty {
