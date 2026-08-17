@@ -38,7 +38,10 @@ enum ExportCache {
     }
 
     static func stage(_ source: URL, named name: String) throws -> URL {
-        try stage(Data(contentsOf: source), named: name)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let destination = uniqueDestination(named: name)
+        try FileManager.default.copyItem(at: source, to: destination)
+        return destination
     }
 
     static func stage(_ data: Data, named name: String) throws -> URL {

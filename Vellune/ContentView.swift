@@ -47,6 +47,7 @@ struct ContentView: View {
                         widthFraction: $previewWidthFraction,
                         isFullScreen: $previewIsFullScreen,
                         dragStartFraction: $previewDragStartFraction,
+                        requestShare: { model.prepareShare(for: presentedPreview) },
                         showInfo: { showInspector = true },
                         close: closePreview
                     )
@@ -106,6 +107,9 @@ struct ContentView: View {
                     Task { await model.finishedEditing(item) }
                 }
             }
+        }
+        .sheet(item: $model.sharePreparation, onDismiss: model.cancelSharePreparation) { _ in
+            SharePreparationView(model: model)
         }
         .fileImporter(isPresented: $showingReplacementImporter, allowedContentTypes: [.data]) { result in
             switch result {
@@ -219,6 +223,7 @@ struct ContentView: View {
                 openSelectedPreview()
             },
             requestReplacement: requestReplacement,
+            requestShare: { requestShare(model.selectedItem) },
             canEdit: canEditSelectedFile,
             requestEdit: requestSafeEdit,
             backups: selectedBackups,
@@ -265,6 +270,15 @@ struct ContentView: View {
         Task { @MainActor in
             await Task.yield()
             editingItem = item
+        }
+    }
+
+    private func requestShare(_ item: FileItem?) {
+        guard let item else { return }
+        showInspector = false
+        Task { @MainActor in
+            await Task.yield()
+            model.prepareShare(for: item)
         }
     }
 
@@ -1108,6 +1122,12 @@ private struct BrowserView: View {
                     .buttonStyle(.plain)
                     .listRowBackground(model.selectedItem == item ? Color.accentColor.opacity(0.12) : Color.clear)
                     .accessibilityAddTraits(model.selectedItem == item ? .isSelected : [])
+                    .contextMenu {
+                        Button(item.isDirectory ? "Share Folder as ZIP" : "Share File",
+                               systemImage: item.isDirectory ? "archivebox" : "square.and.arrow.up") {
+                            model.prepareShare(for: item)
+                        }
+                    }
                 }
                 .listStyle(.plain)
                 .refreshable { await model.refresh() }
@@ -1172,6 +1192,10 @@ private struct BrowserView: View {
                                 Label("Share Markdown Listing", systemImage: "square.and.arrow.up")
                             }
                         }
+                        Button("Share Folder as ZIP", systemImage: "archivebox") {
+                            model.prepareCurrentDirectoryZIP()
+                        }
+                        .disabled(model.isPreparingShare)
                     }
                     .onChange(of: model.showHiddenFiles) {
                         Task { await model.refresh() }
@@ -1402,6 +1426,127 @@ private struct DirectorySummaryLabel: View {
     }
 }
 
+private struct SharePreparationView: View {
+    @Bindable var model: VelluneModel
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            Group {
+                if let preparation = model.sharePreparation {
+                    VStack(spacing: 22) {
+                        Image(systemName: stateImage(preparation.state))
+                            .font(.system(size: 44))
+                            .foregroundStyle(stateColor(preparation.state))
+                            .accessibilityHidden(true)
+                        VStack(spacing: 6) {
+                            Text(preparation.request.title)
+                                .font(.headline)
+                                .lineLimit(2)
+                                .multilineTextAlignment(.center)
+                            Text(statusText(preparation))
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                                .multilineTextAlignment(.center)
+                        }
+                        progressView(preparation.progress, state: preparation.state)
+                            .frame(maxWidth: 420)
+                        actions(preparation)
+                    }
+                    .padding(28)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    ContentUnavailableView("Share Preparation Ended", systemImage: "square.and.arrow.up")
+                }
+            }
+            .navigationTitle("Prepare to Share")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(model.isPreparingShare ? "Cancel" : "Done") {
+                        model.cancelSharePreparation()
+                        dismiss()
+                    }
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+        .interactiveDismissDisabled(model.isPreparingShare)
+    }
+
+    @ViewBuilder
+    private func progressView(_ progress: ShareExportProgress, state: SharePreparation.State) -> some View {
+        if case .preparing = state {
+            VStack(spacing: 8) {
+                if progress.totalBytes > 0 {
+                    ProgressView(value: Double(progress.completedBytes), total: Double(progress.totalBytes))
+                    HStack {
+                        Text(ByteCountFormatter.string(fromByteCount: progress.completedBytes, countStyle: .file))
+                        Spacer()
+                        Text(ByteCountFormatter.string(fromByteCount: progress.totalBytes, countStyle: .file))
+                    }
+                    .font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+                } else {
+                    ProgressView()
+                }
+                if progress.totalItems > 1 {
+                    Text("\(progress.completedItems) of \(progress.totalItems) items")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Export progress")
+            .accessibilityValue(progress.totalBytes > 0
+                                ? "\(Int(Double(progress.completedBytes) / Double(progress.totalBytes) * 100)) percent"
+                                : "Preparing")
+        }
+    }
+
+    @ViewBuilder
+    private func actions(_ preparation: SharePreparation) -> some View {
+        switch preparation.state {
+        case .preparing:
+            Button("Cancel Export", role: .cancel) {
+                model.cancelSharePreparation()
+                dismiss()
+            }
+            .buttonStyle(.bordered)
+        case .ready(let url, _):
+            ShareLink(item: ExportedFile(url: url), preview: SharePreview(url.lastPathComponent)) {
+                Label("Open Share Sheet", systemImage: "square.and.arrow.up")
+                    .frame(maxWidth: 280)
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+        case .failed:
+            Button("Try Again", systemImage: "arrow.clockwise") { model.retrySharePreparation() }
+                .buttonStyle(.borderedProminent)
+        }
+    }
+
+    private func statusText(_ preparation: SharePreparation) -> String {
+        switch preparation.state {
+        case .preparing:
+            switch preparation.progress.phase {
+            case .preparing: "Inspecting source…"
+            case .copying: "Copying to a protected share cache…"
+            case .archiving: "Building ZIP archive…"
+            case .finalizing: "Verifying export…"
+            }
+        case .ready(_, let detail): "Ready to share · \(detail)"
+        case .failed(let message): message
+        }
+    }
+
+    private func stateImage(_ state: SharePreparation.State) -> String {
+        switch state { case .preparing: "arrow.down.doc"; case .ready: "checkmark.circle.fill"; case .failed: "exclamationmark.triangle.fill" }
+    }
+
+    private func stateColor(_ state: SharePreparation.State) -> Color {
+        switch state { case .preparing: .accentColor; case .ready: .green; case .failed: .orange }
+    }
+}
+
 private struct InspectorView: View {
     let item: FileItem?
     let exportURL: URL?
@@ -1409,6 +1554,7 @@ private struct InspectorView: View {
     let isLoading: Bool
     let openPreview: () -> Void
     let requestReplacement: () -> Void
+    let requestShare: () -> Void
     let canEdit: Bool
     let requestEdit: () -> Void
     let backups: [FileBackupRecord]
@@ -1441,14 +1587,8 @@ private struct InspectorView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 Button("Open Preview", systemImage: "doc.text.magnifyingglass", action: openPreview)
-                if let exportURL {
-                    ShareLink(
-                        item: ExportedFile(url: exportURL),
-                        preview: SharePreview(item.name)
-                    ) {
-                        Label("Export", systemImage: "square.and.arrow.up")
-                    }
-                }
+                Button("Share", systemImage: "square.and.arrow.up", action: requestShare)
+                    .disabled(isLoading)
                 Menu("File Actions", systemImage: "doc.badge.gearshape") {
                     Button("Search Filename on Web", systemImage: "safari") { confirmWebSearch = true }
                     if let hash = properties?.sha256 { Button("Copy SHA-256", systemImage: "number") { UIPasteboard.general.string = hash } }
@@ -1673,6 +1813,7 @@ private struct FilePreviewOverlay: View {
     @Binding var widthFraction: CGFloat
     @Binding var isFullScreen: Bool
     @Binding var dragStartFraction: CGFloat?
+    let requestShare: () -> Void
     let showInfo: () -> Void
     let close: () -> Void
     @State private var displayMode = PreviewDisplayMode.bestMatch
@@ -1710,14 +1851,8 @@ private struct FilePreviewOverlay: View {
                                 }
                                 .keyboardShortcut("f", modifiers: [.command, .shift])
                             }
-                            if let exportURL {
-                                ShareLink(
-                                    item: ExportedFile(url: exportURL),
-                                    preview: SharePreview(item.name)
-                                ) {
-                                    Label("Export", systemImage: "square.and.arrow.up")
-                                }
-                            }
+                            Button("Share", systemImage: "square.and.arrow.up", action: requestShare)
+                                .disabled(isLoading)
                         }
                     }
             }

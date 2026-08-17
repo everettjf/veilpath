@@ -36,9 +36,11 @@ final class VelluneModel {
     var isExportingDirectory = false
     var backupRecords: [FileBackupRecord] = []
     var isReplacingFile = false
+    var sharePreparation: SharePreparation?
 
     @ObservationIgnored private var directorySummaryTask: Task<Void, Never>?
     @ObservationIgnored private var previewTask: Task<Void, Never>?
+    @ObservationIgnored private var shareTask: Task<Void, Never>?
     @ObservationIgnored private var directorySummaryModificationDates: [String: Date] = [:]
     @ObservationIgnored private var directorySummaryIncludesHidden: Bool?
 
@@ -46,6 +48,10 @@ final class VelluneModel {
     var systemContainers: [ContainerDescriptor] { containerIndexes[.systemData, default: []] }
     var canGoBack: Bool { !backHistory.isEmpty && !isWorking }
     var canGoForward: Bool { !forwardHistory.isEmpty && !isWorking }
+    var isPreparingShare: Bool {
+        guard case .preparing? = sharePreparation?.state else { return false }
+        return true
+    }
 
     struct LogEntry: Identifiable, Equatable {
         let id = UUID()
@@ -81,7 +87,7 @@ final class VelluneModel {
         }
         #else
         let currentVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
-        if selfTestReport?.schemaVersion != 17
+        if selfTestReport?.schemaVersion != 19
             || selfTestReport?.passed != true
             || selfTestReport?.appVersion != currentVersion
             || containers.isEmpty
@@ -155,7 +161,7 @@ final class VelluneModel {
         isRunningDiagnostics = true
         log("Starting bad_query self-test")
         let report = await Task.detached(priority: .userInitiated) {
-            SelfTestRunner.run()
+            await SelfTestRunner.run()
         }.value
         selfTestReport = report
         containerIndexes[.application] = ContainerDiscoveryService.loadCached(.application)
@@ -191,6 +197,7 @@ final class VelluneModel {
         forwardHistory = []
         items = []
         directorySummaryTask?.cancel()
+        shareTask?.cancel()
         directorySummaries = [:]
         directorySummaryModificationDates = [:]
         directorySummaryIncludesHidden = nil
@@ -202,6 +209,7 @@ final class VelluneModel {
         selectedExportURL = nil
         directoryExportURL = nil
         searchResults = []
+        sharePreparation = nil
     }
 
     func acquireAndLoad() async {
@@ -426,6 +434,89 @@ final class VelluneModel {
             directoryExportURL = result.url
             log("Prepared Markdown listing with \(result.itemCount) items")
         } catch { report(error) }
+    }
+
+    func prepareShare(for item: FileItem) {
+        if !item.isDirectory,
+           selectedItem == item,
+           let selectedExportURL,
+           FileManager.default.fileExists(atPath: selectedExportURL.path) {
+            let size = item.size ?? (try? selectedExportURL.resourceValues(forKeys: [.fileSizeKey]).fileSize).map(Int64.init) ?? 0
+            sharePreparation = .init(
+                id: UUID(), request: .file(item),
+                progress: .init(phase: .finalizing, completedBytes: size, totalBytes: size, completedItems: 1, totalItems: 1),
+                state: .ready(selectedExportURL, detail: ByteCountFormatter.string(fromByteCount: size, countStyle: .file))
+            )
+            return
+        }
+        if item.isDirectory {
+            startSharePreparation(.directory(url: item.url, name: item.name, includeHidden: showHiddenFiles))
+        } else {
+            startSharePreparation(.file(item))
+        }
+    }
+
+    func prepareCurrentDirectoryZIP() {
+        guard !path.isEmpty else { return }
+        let url = URL(fileURLWithPath: path, isDirectory: true)
+        startSharePreparation(.directory(url: url, name: url.lastPathComponent.isEmpty ? "Directory" : url.lastPathComponent,
+                                         includeHidden: showHiddenFiles))
+    }
+
+    func retrySharePreparation() {
+        guard let request = sharePreparation?.request else { return }
+        startSharePreparation(request)
+    }
+
+    func cancelSharePreparation() {
+        shareTask?.cancel()
+        shareTask = nil
+        sharePreparation = nil
+    }
+
+    private func startSharePreparation(_ request: ShareExportRequest) {
+        shareTask?.cancel()
+        let id = UUID()
+        sharePreparation = .init(
+            id: id, request: request,
+            progress: .init(phase: .preparing, completedBytes: 0, totalBytes: 0, completedItems: 0, totalItems: 0),
+            state: .preparing
+        )
+        shareTask = Task { [weak self] in
+            do {
+                let progress: ShareExportService.ProgressHandler = { update in
+                    await MainActor.run {
+                        guard self?.sharePreparation?.id == id else { return }
+                        self?.sharePreparation?.progress = update
+                    }
+                }
+                let ready: (URL, String)
+                switch request {
+                case .file(let item):
+                    let url = try await ShareExportService.prepareFile(at: item.url, named: item.name, progress: progress)
+                    let size = item.size ?? 0
+                    ready = (url, ByteCountFormatter.string(fromByteCount: size, countStyle: .file))
+                case .directory(let url, let name, let includeHidden):
+                    let result = try await ShareExportService.prepareDirectoryZIP(
+                        at: url, named: name, includeHidden: includeHidden, progress: progress
+                    )
+                    var detail = "\(result.itemCount) items · \(ByteCountFormatter.string(fromByteCount: result.totalBytes, countStyle: .file))"
+                    if result.skippedSymbolicLinks > 0 { detail += " · \(result.skippedSymbolicLinks) links skipped" }
+                    ready = (result.url, detail)
+                }
+                try Task.checkCancellation()
+                guard self?.sharePreparation?.id == id else { return }
+                self?.sharePreparation?.state = .ready(ready.0, detail: ready.1)
+                self?.log("Prepared share export: \(ready.0.lastPathComponent)")
+            } catch is CancellationError {
+                return
+            } catch {
+                guard self?.sharePreparation?.id == id else { return }
+                let message = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+                self?.sharePreparation?.state = .failed(message)
+                self?.log("Share preparation failed: \(message)", isError: true)
+            }
+        }
     }
 
     func replaceSelectedFile(with source: URL) async {

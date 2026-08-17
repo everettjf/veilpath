@@ -31,7 +31,7 @@ enum SelfTestRunner {
     nonisolated static let reportURL: URL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
         .appending(path: "vellune-self-test.json")
 
-    nonisolated static func run() -> SelfTestReport {
+    nonisolated static func run() async -> SelfTestReport {
         let startedAt = Date()
         var checks: [SelfTestReport.Check] = []
 
@@ -62,6 +62,7 @@ enum SelfTestRunner {
         checks.append(testLargeFilePreviewBudget())
         checks.append(testMachOAnalysis())
         checks.append(testExportCache())
+        checks.append(await testOnDemandShareExport())
         checks.append(testDirectoryMarkdownExport())
         checks.append(testBackupReplaceAndRestore())
         checks.append(testSafeStructuredEditing())
@@ -69,7 +70,7 @@ enum SelfTestRunner {
         checks.append(testDirectorySorting())
 
         let report = SelfTestReport(
-            schemaVersion: 17,
+            schemaVersion: 19,
             appVersion: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "unknown",
             systemVersion: ProcessInfo.processInfo.operatingSystemVersionString,
             startedAt: startedAt,
@@ -295,6 +296,87 @@ enum SelfTestRunner {
         }
     }
 
+    nonisolated private static func testOnDemandShareExport() async -> SelfTestReport.Check {
+        await timedAsyncCheck(name: "On-demand file and folder sharing", path: "temporary fixtures") {
+            let root = FileManager.default.temporaryDirectory.appending(path: "vellune-share-\(UUID().uuidString)", directoryHint: .isDirectory)
+            try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+            defer { try? FileManager.default.removeItem(at: root) }
+
+            let large = root.appending(path: "large.bin")
+            FileManager.default.createFile(atPath: large.path, contents: Data("stream-prefix".utf8))
+            let largeHandle = try FileHandle(forWritingTo: large)
+            try largeHandle.truncate(atOffset: 3 * 1024 * 1024 + 17)
+            try largeHandle.close()
+            let recorder = ShareProgressRecorder()
+            let exported = try await ShareExportService.prepareFile(at: large, named: "large.bin") { update in
+                await recorder.append(update)
+            }
+            let exportedSize = try exported.resourceValues(forKeys: [.fileSizeKey]).fileSize
+            let progressValues = await recorder.values
+            guard exportedSize == 3 * 1024 * 1024 + 17,
+                  progressValues.filter({ $0.phase == .copying }).count >= 3,
+                  progressValues.last?.phase == .finalizing else {
+                throw SelfTestFailure("File export was not streamed or finalized correctly")
+            }
+
+            let cacheBeforeCancellation = (try? FileManager.default.contentsOfDirectory(at: ExportCache.directory, includingPropertiesForKeys: nil).count) ?? 0
+            let cancellationRecorder = ShareProgressRecorder()
+            let cancellationTask = Task {
+                do {
+                    let result = try await ShareExportService.prepareFile(at: large, named: "cancel.bin") { update in
+                        await cancellationRecorder.append(update)
+                        if update.completedBytes >= 1024 * 1024 {
+                            try? await Task.sleep(for: .seconds(30))
+                        }
+                    }
+                    await cancellationRecorder.markFinished()
+                    return result
+                } catch {
+                    await cancellationRecorder.markFinished()
+                    throw error
+                }
+            }
+            while true {
+                let state = await cancellationRecorder.state
+                if state.reachedCancellationThreshold { break }
+                if state.finished {
+                    _ = try await cancellationTask.value
+                    throw SelfTestFailure("Cancellation fixture completed before reaching its test threshold")
+                }
+                await Task.yield()
+            }
+            cancellationTask.cancel()
+            do {
+                _ = try await cancellationTask.value
+                throw SelfTestFailure("Cancelled export unexpectedly completed")
+            } catch is CancellationError {}
+            let cacheAfterCancellation = (try? FileManager.default.contentsOfDirectory(at: ExportCache.directory, includingPropertiesForKeys: nil).count) ?? 0
+            guard cacheAfterCancellation == cacheBeforeCancellation else { throw SelfTestFailure("Cancelled export left a partial cache directory") }
+
+            let folder = root.appending(path: "Folder", directoryHint: .isDirectory)
+            try FileManager.default.createDirectory(at: folder.appending(path: "Nested/Empty", directoryHint: .isDirectory), withIntermediateDirectories: true)
+            try Data("top-level".utf8).write(to: folder.appending(path: "top.txt"))
+            try Data("nested-value".utf8).write(to: folder.appending(path: "Nested/value.txt"))
+            try Data("hidden".utf8).write(to: folder.appending(path: ".secret"))
+            try FileManager.default.createSymbolicLink(at: folder.appending(path: "outside-link"), withDestinationURL: large)
+            let archive = try await ShareExportService.prepareDirectoryZIP(at: folder, named: "Folder", includeHidden: false) { _ in }
+            let archiveData = try Data(contentsOf: archive.url)
+            guard let summary = AdvancedFileAnalyzer.zip(data: archiveData) else { throw SelfTestFailure("Prepared ZIP could not be parsed") }
+            let names = Set(summary.entries.map(\.name))
+            guard names.contains("top.txt"), names.contains("Nested/value.txt"), names.contains("Nested/Empty/"),
+                  !names.contains(".secret"), !names.contains("outside-link"), archive.skippedSymbolicLinks == 1,
+                  summary.entries.first(where: { $0.name == "Nested/value.txt" })?.previewText == "nested-value" else {
+                throw SelfTestFailure("ZIP contents, hidden-file policy, or symbolic-link policy was incorrect")
+            }
+
+            let expired = try ExportCache.createOperationDirectory()
+            try FileManager.default.setAttributes([.modificationDate: Date(timeIntervalSinceNow: -3_600)], ofItemAtPath: expired.path)
+            ExportCache.removeExpired(olderThan: 60)
+            guard !FileManager.default.fileExists(atPath: expired.path) else { throw SelfTestFailure("Expired share cache was not removed") }
+            return "streamed=true, cancellationClean=true, zipEntries=\(summary.entries.count), hiddenExcluded=true, symlinkSkipped=true, expiration=true"
+        }
+    }
+
     nonisolated private static func testDirectoryMarkdownExport() -> SelfTestReport.Check {
         timedCheck(name: "Directory Markdown export", path: "temporary fixture") {
             let root = FileManager.default.temporaryDirectory
@@ -485,6 +567,25 @@ enum SelfTestRunner {
         }
     }
 
+    nonisolated private static func timedAsyncCheck(
+        name: String,
+        path: String,
+        operation: () async throws -> String
+    ) async -> SelfTestReport.Check {
+        let start = ContinuousClock.now
+        do {
+            let detail = try await operation()
+            return .init(name: name, path: path, status: .passed, detail: detail,
+                         durationMilliseconds: milliseconds(since: start))
+        } catch let error as UnsupportedCapability {
+            return .init(name: name, path: path, status: .unsupported, detail: error.message,
+                         durationMilliseconds: milliseconds(since: start))
+        } catch {
+            return .init(name: name, path: path, status: .failed, detail: error.localizedDescription,
+                         durationMilliseconds: milliseconds(since: start))
+        }
+    }
+
     nonisolated private static func milliseconds(since start: ContinuousClock.Instant) -> Int {
         let duration = start.duration(to: .now)
         return Int(duration.components.seconds * 1_000 + duration.components.attoseconds / 1_000_000_000_000_000)
@@ -512,4 +613,21 @@ enum SelfTestRunner {
         let message: String
         init(_ message: String) { self.message = message }
     }
+}
+
+private actor ShareProgressRecorder {
+    private(set) var values: [ShareExportProgress] = []
+    private var finished = false
+
+    struct State: Sendable {
+        let reachedCancellationThreshold: Bool
+        let finished: Bool
+    }
+
+    var state: State {
+        .init(reachedCancellationThreshold: values.contains { $0.completedBytes >= 1024 * 1024 }, finished: finished)
+    }
+
+    func append(_ value: ShareExportProgress) { values.append(value) }
+    func markFinished() { finished = true }
 }
