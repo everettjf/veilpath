@@ -1383,6 +1383,7 @@ private struct InspectorView: View {
     let backups: [FileBackupRecord]
     let requestRestore: (FileBackupRecord) -> Void
     @State private var confirmWebSearch = false
+    @State private var showVersionHistory = false
     @Environment(\.openURL) private var openURL
 
     var body: some View {
@@ -1395,10 +1396,8 @@ private struct InspectorView: View {
                     Button("Back Up and Replace", systemImage: "arrow.triangle.2.circlepath", action: requestReplacement)
                         .disabled(isLoading)
                     Spacer()
-                    if let backup = backups.first {
-                        Button("Restore Latest Backup", systemImage: "clock.arrow.circlepath") {
-                            requestRestore(backup)
-                        }
+                    if !backups.isEmpty {
+                        Button("Version History", systemImage: "clock.arrow.circlepath") { showVersionHistory = true }
                     }
                 }
                 .padding()
@@ -1429,9 +1428,92 @@ private struct InspectorView: View {
                 }
                 Button("Cancel", role: .cancel) {}
             } message: { Text("Only the filename will be sent to your web browser. The full path is never included.") }
+            .sheet(isPresented: $showVersionHistory) {
+                NavigationStack {
+                    VersionHistoryView(records: backups) { record in
+                        showVersionHistory = false
+                        requestRestore(record)
+                    }
+                }
+            }
         } else {
             ContentUnavailableView("Select a File", systemImage: "doc.text.magnifyingglass")
         }
+    }
+}
+
+private struct VersionHistoryView: View {
+    let records: [FileBackupRecord]
+    let restore: (FileBackupRecord) -> Void
+    @State private var previewRecord: FileBackupRecord?
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        List(records) { record in
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Label(record.manifest.effectiveRole == .original ? "Original" : "Saved Version",
+                          systemImage: record.manifest.effectiveRole == .original ? "lock.shield" : "clock")
+                        .font(.headline)
+                    Spacer()
+                    Text(record.manifest.createdAt.formatted(date: .abbreviated, time: .shortened))
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                HStack {
+                    Text(ByteCountFormatter.string(fromByteCount: record.manifest.originalSize, countStyle: .file))
+                    Text(record.manifest.originalSHA256.prefix(12)).monospaced()
+                    Spacer()
+                    Button("Preview") { previewRecord = record }.buttonStyle(.borderless)
+                    Button("Restore") { restore(record) }.buttonStyle(.borderless)
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
+            .padding(.vertical, 4)
+        }
+        .overlay {
+            if records.isEmpty {
+                ContentUnavailableView("No Versions Yet", systemImage: "clock",
+                                       description: Text("The first edit or replacement permanently saves the original file."))
+            }
+        }
+        .navigationTitle("Version Vault")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar { Button("Done") { dismiss() } }
+        .sheet(item: $previewRecord) { record in
+            NavigationStack { VersionSnapshotPreview(record: record) }
+        }
+    }
+}
+
+private struct VersionSnapshotPreview: View {
+    let record: FileBackupRecord
+    @State private var preview: FilePreview?
+    @State private var error: String?
+    @State private var isLoading = true
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        PreviewContent(preview: preview, error: error, isLoading: isLoading)
+            .navigationTitle(record.manifest.effectiveRole == .original ? "Original" : "Saved Version")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { Button("Done") { dismiss() } }
+            .task(id: record.id) {
+                isLoading = true
+                do {
+                    let loaded = try await Task.detached(priority: .userInitiated) {
+                        let source = try FileBackupService.contentURL(for: record)
+                        let data = try Data(contentsOf: source, options: .mappedIfSafe)
+                        let name = URL(fileURLWithPath: record.manifest.targetPath).lastPathComponent
+                        let staged = try ExportCache.stage(data, named: name)
+                        let item = FileItem(url: staged, isDirectory: false, isSymbolicLink: false,
+                                            size: Int64(data.count), modifiedAt: record.manifest.createdAt)
+                        return try FilePreviewLoader.makePreview(item: item, data: data, exportURL: staged)
+                    }.value
+                    preview = loaded
+                } catch { self.error = error.localizedDescription }
+                isLoading = false
+            }
     }
 }
 

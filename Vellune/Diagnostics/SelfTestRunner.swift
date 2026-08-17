@@ -68,7 +68,7 @@ enum SelfTestRunner {
         checks.append(testDirectorySorting())
 
         let report = SelfTestReport(
-            schemaVersion: 14,
+            schemaVersion: 15,
             appVersion: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "unknown",
             systemVersion: ProcessInfo.processInfo.operatingSystemVersionString,
             startedAt: startedAt,
@@ -348,8 +348,17 @@ enum SelfTestRunner {
             let backup = try FileBackupService.replace(target: target, replacementData: replacement)
             createdFolders.append(backup.folderURL)
             guard backup.manifest.completed,
+                  backup.manifest.effectiveRole == .original,
                   try Data(contentsOf: target) == replacement else {
                 throw SelfTestFailure("Replacement was not committed")
+            }
+            let repeated = try FileBackupService.replace(target: target, replacementData: replacement)
+            createdFolders.append(repeated.folderURL)
+            let repeatedAgain = try FileBackupService.replace(target: target, replacementData: replacement)
+            createdFolders.append(repeatedAgain.folderURL)
+            guard repeated.manifest.effectiveRole == .revision,
+                  repeated.manifest.blobName == repeatedAgain.manifest.blobName else {
+                throw SelfTestFailure("Original permanence or content-addressed deduplication failed")
             }
             let safetyBackup = try FileBackupService.restore(backup)
             createdFolders.append(safetyBackup.folderURL)
@@ -357,7 +366,7 @@ enum SelfTestRunner {
                   try Data(contentsOf: target) == original else {
                 throw SelfTestFailure("Original content was not restored")
             }
-            return "replacementVerified=true, restoreVerified=true, safetyBackup=true"
+            return "replacementVerified=true, restoreVerified=true, originalPermanent=true, deduplicated=true"
         }
     }
 
