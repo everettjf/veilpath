@@ -1,4 +1,18 @@
+import CoreTransferable
 import Foundation
+import UniformTypeIdentifiers
+
+struct ExportedFile: Transferable, Sendable {
+    let url: URL
+
+    static var transferRepresentation: some TransferRepresentation {
+        FileRepresentation(contentType: .data) { file in
+            SentTransferredFile(file.url)
+        } importing: { received in
+            ExportedFile(url: received.file)
+        }
+    }
+}
 
 enum FilePreview: Equatable, Sendable {
     case structured(root: StructuredNode, source: String, format: String)

@@ -37,6 +37,7 @@ struct ContentView: View {
                         preview: model.selectedPreview,
                         previewError: model.previewError,
                         exportURL: model.selectedExportURL,
+                        hexDump: model.selectedHexDump,
                         isLoading: model.isLoadingPreview,
                         availableWidth: geometry.size.width,
                         allowsResizing: horizontalSizeClass != .compact,
@@ -199,11 +200,8 @@ struct ContentView: View {
     private var inspectorContent: some View {
         InspectorView(
             item: model.selectedItem,
-            preview: model.selectedPreview,
-            previewError: model.previewError,
             exportURL: model.selectedExportURL,
             properties: model.selectedProperties,
-            hexDump: model.selectedHexDump,
             isLoading: model.isLoadingPreview,
             openPreview: {
                 showInspector = false
@@ -1136,7 +1134,10 @@ private struct BrowserView: View {
                         }
                         .disabled(model.isExportingDirectory)
                         if let directoryExportURL = model.directoryExportURL {
-                            ShareLink(item: directoryExportURL) {
+                            ShareLink(
+                                item: ExportedFile(url: directoryExportURL),
+                                preview: SharePreview(directoryExportURL.lastPathComponent)
+                            ) {
                                 Label("Share Markdown Listing", systemImage: "square.and.arrow.up")
                             }
                         }
@@ -1370,35 +1371,20 @@ private struct DirectorySummaryLabel: View {
 
 private struct InspectorView: View {
     let item: FileItem?
-    let preview: FilePreview?
-    let previewError: String?
     let exportURL: URL?
     let properties: FileProperties?
-    let hexDump: String
     let isLoading: Bool
     let openPreview: () -> Void
     let requestReplacement: () -> Void
     let backups: [FileBackupRecord]
     let requestRestore: (FileBackupRecord) -> Void
-    @State private var selection: InspectorSection = .properties
     @State private var confirmWebSearch = false
     @Environment(\.openURL) private var openURL
 
     var body: some View {
         if let item {
             VStack(spacing: 0) {
-                Picker("View", selection: $selection) {
-                    ForEach(InspectorSection.allCases) { section in Label(section.title, systemImage: section.icon).tag(section) }
-                }
-                .pickerStyle(.segmented)
-                .padding()
-                Group {
-                    switch selection {
-                    case .preview: PreviewContent(preview: preview, error: previewError, isLoading: isLoading)
-                    case .properties: FilePropertiesView(item: item, properties: properties)
-                    case .hex: TextViewer(text: hexDump, format: "Hex")
-                    }
-                }
+                FilePropertiesView(item: item, properties: properties)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 Divider()
                 HStack {
@@ -1418,7 +1404,10 @@ private struct InspectorView: View {
             .toolbar {
                 Button("Open Preview", systemImage: "doc.text.magnifyingglass", action: openPreview)
                 if let exportURL {
-                    ShareLink(item: exportURL) {
+                    ShareLink(
+                        item: ExportedFile(url: exportURL),
+                        preview: SharePreview(item.name)
+                    ) {
                         Label("Export", systemImage: "square.and.arrow.up")
                     }
                 }
@@ -1447,6 +1436,7 @@ private struct FilePreviewOverlay: View {
     let preview: FilePreview?
     let previewError: String?
     let exportURL: URL?
+    let hexDump: String
     let isLoading: Bool
     let availableWidth: CGFloat
     let allowsResizing: Bool
@@ -1455,6 +1445,7 @@ private struct FilePreviewOverlay: View {
     @Binding var dragStartFraction: CGFloat?
     let showInfo: () -> Void
     let close: () -> Void
+    @State private var displayMode = PreviewDisplayMode.bestMatch
 
     var body: some View {
         HStack(spacing: 0) {
@@ -1465,7 +1456,7 @@ private struct FilePreviewOverlay: View {
             }
 
             NavigationStack {
-                PreviewContent(preview: preview, error: previewError, isLoading: isLoading)
+                displayedContent
                     .navigationTitle(item.name)
                     .navigationBarTitleDisplayMode(.inline)
                     .toolbar {
@@ -1474,6 +1465,13 @@ private struct FilePreviewOverlay: View {
                                 .keyboardShortcut(.cancelAction)
                         }
                         ToolbarItemGroup(placement: .topBarTrailing) {
+                            Menu("View As", systemImage: "eye") {
+                                Picker("View As", selection: $displayMode) {
+                                    ForEach(PreviewDisplayMode.allCases) { mode in
+                                        Label(mode.title, systemImage: mode.systemImage).tag(mode)
+                                    }
+                                }
+                            }
                             Button("File Info", systemImage: "info.circle", action: showInfo)
                             if allowsResizing {
                                 Button(isFullScreen ? "Restore Preview Size" : "Full Screen",
@@ -1483,7 +1481,10 @@ private struct FilePreviewOverlay: View {
                                 .keyboardShortcut("f", modifiers: [.command, .shift])
                             }
                             if let exportURL {
-                                ShareLink(item: exportURL) {
+                                ShareLink(
+                                    item: ExportedFile(url: exportURL),
+                                    preview: SharePreview(item.name)
+                                ) {
                                     Label("Export", systemImage: "square.and.arrow.up")
                                 }
                             }
@@ -1517,6 +1518,22 @@ private struct FilePreviewOverlay: View {
             }
         }
         .ignoresSafeArea()
+        .onChange(of: item.id) { displayMode = .bestMatch }
+    }
+
+    @ViewBuilder
+    private var displayedContent: some View {
+        if showsHex {
+            TextViewer(text: hexDump, format: "Hex")
+        } else {
+            PreviewContent(preview: preview, error: previewError, isLoading: isLoading)
+        }
+    }
+
+    private var showsHex: Bool {
+        if displayMode == .hex { return true }
+        if case .binary? = preview { return true }
+        return false
     }
 }
 
@@ -1539,7 +1556,7 @@ private struct PreviewContent: View {
                 case .text(let text, let format): TextViewer(text: text, format: format)
                 case .image(let data, let details): ImageViewer(data: data, details: details)
                 case .machO(let info): MachOViewer(info: info)
-                case .binary: ContentUnavailableView("Binary File", systemImage: "doc.badge.gearshape", description: Text("Use the Hex view to inspect this file."))
+                case .binary: ContentUnavailableView("Binary File", systemImage: "doc.badge.gearshape")
                 case .tooLarge(let size):
                     ContentUnavailableView(
                         "File Too Large",
@@ -1556,11 +1573,11 @@ private struct PreviewContent: View {
     }
 }
 
-private enum InspectorSection: String, CaseIterable, Identifiable {
-    case preview, properties, hex
+private enum PreviewDisplayMode: String, CaseIterable, Identifiable {
+    case bestMatch, hex
     var id: Self { self }
-    var title: LocalizedStringResource { switch self { case .preview: "Preview"; case .properties: "Properties"; case .hex: "Hex" } }
-    var icon: String { switch self { case .preview: "eye"; case .properties: "list.bullet.rectangle"; case .hex: "number" } }
+    var title: LocalizedStringResource { switch self { case .bestMatch: "Best Match"; case .hex: "Hex" } }
+    var systemImage: String { switch self { case .bestMatch: "wand.and.stars"; case .hex: "number" } }
 }
 
 private struct StructuredViewer: View {
