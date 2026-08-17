@@ -30,7 +30,8 @@ struct StoredZIPExtractedEntry: Sendable {
 }
 
 enum StoredZIPError: LocalizedError {
-    case archiveTooLarge, pathTooLong, invalidArchive, unsupportedCompression, unsafePath(String), symbolicLink, verificationFailed
+    case archiveTooLarge, pathTooLong, invalidArchive, unsupportedCompression, encryptedArchive
+    case unsafePath(String), symbolicLink, verificationFailed, insufficientStorage, suspiciousCompression
 
     var errorDescription: String? {
         switch self {
@@ -38,9 +39,12 @@ enum StoredZIPError: LocalizedError {
         case .pathTooLong: "A ZIP entry path is too long."
         case .invalidArchive: "The ZIP archive is incomplete or malformed."
         case .unsupportedCompression: "This ZIP uses a compression method that Vellune cannot safely extract yet."
+        case .encryptedArchive: "Encrypted ZIP archives are not supported."
         case .unsafePath(let path): "The ZIP contains an unsafe absolute or parent-relative path: \(path)"
         case .symbolicLink: "The ZIP contains a symbolic-link entry, which Vellune will not extract."
         case .verificationFailed: "A ZIP entry failed its size or CRC-32 verification."
+        case .insufficientStorage: "There is not enough free storage to extract this archive safely."
+        case .suspiciousCompression: "The ZIP has a suspicious expansion ratio and was blocked."
         }
     }
 }
@@ -48,6 +52,9 @@ enum StoredZIPError: LocalizedError {
 enum StoredZIPArchive {
     typealias Progress = @Sendable (_ completedBytes: Int64, _ totalBytes: Int64, _ completedItems: Int, _ totalItems: Int) async -> Void
     private static let chunkSize = 1024 * 1024
+    private static let maximumExtractedBytes: Int64 = 8 * 1024 * 1024 * 1024
+    private static let storageReserve: Int64 = 64 * 1024 * 1024
+    private static let maximumCompressionRatio: Int64 = 1_000
 
     nonisolated static func write(entries: [StoredZIPEntry], to destination: URL, progress: Progress) async throws {
         guard entries.count <= Int(UInt16.max) else { throw StoredZIPError.archiveTooLarge }
@@ -128,15 +135,32 @@ enum StoredZIPArchive {
     }
 
     nonisolated static func extract(_ archive: URL, to destination: URL, progress: Progress) async throws -> [StoredZIPExtractedEntry] {
-        let data = try Data(contentsOf: archive, options: .mappedIfSafe)
-        let records = try centralRecords(in: data)
+        let input = try FileHandle(forReadingFrom: archive)
+        defer { try? input.close() }
+        let archiveSize = try input.seekToEnd()
+        let records = try centralRecords(from: input, archiveSize: archiveSize)
+        guard records.count <= Int(UInt16.max) else { throw StoredZIPError.archiveTooLarge }
+        let normalizedPaths = try records.map { try safePath($0.path, directory: $0.isDirectory) }
+        guard normalizedPaths.count == Set(normalizedPaths).count else { throw StoredZIPError.invalidArchive }
+        let total = try records.reduce(Int64(0)) { partial, record in
+            let (next, overflow) = partial.addingReportingOverflow(Int64(record.size))
+            guard !overflow else { throw StoredZIPError.archiveTooLarge }
+            return next
+        }
+        guard total <= maximumExtractedBytes else { throw StoredZIPError.archiveTooLarge }
+        for record in records where !record.isDirectory && record.size > 64 * 1024 * 1024 {
+            if record.compressedSize == 0 || Int64(record.size) > Int64(record.compressedSize) * maximumCompressionRatio {
+                throw StoredZIPError.suspiciousCompression
+            }
+        }
+        try requireStorage(for: total, near: destination)
         try FileManager.default.createDirectory(at: destination, withIntermediateDirectories: true)
-        let total = records.reduce(Int64(0)) { $0 + Int64($1.size) }
         var completed: Int64 = 0
         var results: [StoredZIPExtractedEntry] = []
         for (index, record) in records.enumerated() {
             try Task.checkCancellation()
             guard record.method == 0 || record.method == 8 else { throw StoredZIPError.unsupportedCompression }
+            guard record.flags & 0x0001 == 0 else { throw StoredZIPError.encryptedArchive }
             guard !record.isSymbolicLink else { throw StoredZIPError.symbolicLink }
             let path = try safePath(record.path, directory: record.isDirectory)
             let target = destination.appending(path: path)
@@ -146,12 +170,26 @@ enum StoredZIPArchive {
             if record.isDirectory {
                 try FileManager.default.createDirectory(at: target, withIntermediateDirectories: true)
             } else {
-                let compressed = try payload(for: record, in: data)
-                let bytes = record.method == 8 ? try inflateRaw(compressed, expectedSize: Int(record.size)) : compressed
-                guard bytes.count == Int(record.size), updateCRC(0, bytes) == record.crc else { throw StoredZIPError.verificationFailed }
                 try FileManager.default.createDirectory(at: target.deletingLastPathComponent(), withIntermediateDirectories: true)
-                try bytes.write(to: target, options: .atomic)
-                completed += Int64(bytes.count)
+                let partial = target.deletingLastPathComponent().appending(path: ".\(target.lastPathComponent).partial-\(UUID().uuidString)")
+                do {
+                    guard FileManager.default.createFile(atPath: partial.path, contents: nil) else { throw CocoaError(.fileWriteUnknown) }
+                    let output = try FileHandle(forWritingTo: partial)
+                    defer { try? output.close() }
+                    let offset = try payloadOffset(for: record, from: input)
+                    try input.seek(toOffset: offset)
+                    let result = record.method == 8
+                        ? try await inflateRaw(from: input, compressedSize: Int64(record.compressedSize),
+                                               expectedSize: Int64(record.size), to: output)
+                        : try await copyStored(from: input, compressedSize: Int64(record.compressedSize), to: output)
+                    try output.synchronize()
+                    guard result.size == Int64(record.size), result.crc == record.crc else { throw StoredZIPError.verificationFailed }
+                    try FileManager.default.moveItem(at: partial, to: target)
+                    completed += result.size
+                } catch {
+                    try? FileManager.default.removeItem(at: partial)
+                    throw error
+                }
             }
             results.append(.init(archivePath: path, destinationURL: target, isDirectory: record.isDirectory,
                                  uncompressedSize: Int64(record.size)))
@@ -171,10 +209,11 @@ enum StoredZIPArchive {
         let method: UInt16
         let compressedSize: UInt32
         let isSymbolicLink: Bool
+        let flags: UInt16
 
         init(path: String = "", name: Data, crc: uLong, size: UInt32, offset: UInt32,
              date: (time: UInt16, date: UInt16), isDirectory: Bool, method: UInt16 = 0,
-             compressedSize: UInt32? = nil, isSymbolicLink: Bool = false) {
+             compressedSize: UInt32? = nil, isSymbolicLink: Bool = false, flags: UInt16 = 0) {
             self.path = path
             self.name = name
             self.crc = crc
@@ -185,22 +224,32 @@ enum StoredZIPArchive {
             self.method = method
             self.compressedSize = compressedSize ?? size
             self.isSymbolicLink = isSymbolicLink
+            self.flags = flags
         }
     }
 
-    private static func centralRecords(in data: Data) throws -> [CentralRecord] {
-        guard data.count >= 22 else { throw StoredZIPError.invalidArchive }
-        let minimum = max(0, data.count - 65_557)
+    private static func centralRecords(from handle: FileHandle, archiveSize: UInt64) throws -> [CentralRecord] {
+        guard archiveSize >= 22 else { throw StoredZIPError.invalidArchive }
+        let tailSize = Int(min(archiveSize, 65_557))
+        try handle.seek(toOffset: archiveSize - UInt64(tailSize))
+        let tail = try readExactly(tailSize, from: handle)
         var endOffset: Int?
-        if data.count >= 4 {
-            for offset in stride(from: data.count - 22, through: minimum, by: -1) where data.uint32LE(at: offset) == 0x06054b50 {
+        for offset in stride(from: tail.count - 22, through: 0, by: -1) where tail.uint32LE(at: offset) == 0x06054b50 {
+            if let commentLength = tail.uint16LE(at: offset + 20), offset + 22 + Int(commentLength) == tail.count {
                 endOffset = offset; break
             }
         }
         guard let endOffset,
-              let count = data.uint16LE(at: endOffset + 10),
-              let centralOffset = data.uint32LE(at: endOffset + 16) else { throw StoredZIPError.invalidArchive }
-        var cursor = Int(centralOffset)
+              tail.uint16LE(at: endOffset + 4) == 0,
+              tail.uint16LE(at: endOffset + 6) == 0,
+              let diskCount = tail.uint16LE(at: endOffset + 8),
+              let count = tail.uint16LE(at: endOffset + 10), diskCount == count,
+              let centralSize = tail.uint32LE(at: endOffset + 12),
+              let centralOffset = tail.uint32LE(at: endOffset + 16),
+              UInt64(centralOffset) + UInt64(centralSize) <= archiveSize else { throw StoredZIPError.invalidArchive }
+        try handle.seek(toOffset: UInt64(centralOffset))
+        let data = try readExactly(Int(centralSize), from: handle)
+        var cursor = 0
         var records: [CentralRecord] = []
         for _ in 0..<count {
             guard data.uint32LE(at: cursor) == 0x02014b50,
@@ -224,41 +273,105 @@ enum StoredZIPArchive {
             _ = flags
             records.append(.init(path: path, name: name, crc: uLong(crc), size: size, offset: offset,
                                  date: (0, 0), isDirectory: directory, method: method,
-                                 compressedSize: compressedSize, isSymbolicLink: symbolicLink))
+                                 compressedSize: compressedSize, isSymbolicLink: symbolicLink, flags: flags))
             cursor = nameEnd + Int(extraLength) + Int(commentLength)
         }
+        guard cursor <= data.count else { throw StoredZIPError.invalidArchive }
         return records
     }
 
-    private static func payload(for record: CentralRecord, in data: Data) throws -> Data {
-        let offset = Int(record.offset)
-        guard data.uint32LE(at: offset) == 0x04034b50,
-              let nameLength = data.uint16LE(at: offset + 26),
-              let extraLength = data.uint16LE(at: offset + 28) else { throw StoredZIPError.invalidArchive }
-        let start = offset + 30 + Int(nameLength) + Int(extraLength)
-        let end = start + Int(record.compressedSize)
-        guard start >= 0, end <= data.count else { throw StoredZIPError.invalidArchive }
-        return data.subdata(in: start..<end)
+    private static func payloadOffset(for record: CentralRecord, from handle: FileHandle) throws -> UInt64 {
+        try handle.seek(toOffset: UInt64(record.offset))
+        let header = try readExactly(30, from: handle)
+        guard header.uint32LE(at: 0) == 0x04034b50,
+              let flags = header.uint16LE(at: 6), flags & 0x0001 == 0,
+              header.uint16LE(at: 8) == record.method,
+              let nameLength = header.uint16LE(at: 26),
+              let extraLength = header.uint16LE(at: 28) else { throw StoredZIPError.invalidArchive }
+        let name = try readExactly(Int(nameLength), from: handle)
+        guard name == record.name else { throw StoredZIPError.invalidArchive }
+        return UInt64(record.offset) + 30 + UInt64(nameLength) + UInt64(extraLength)
     }
 
-    private static func inflateRaw(_ source: Data, expectedSize: Int) throws -> Data {
-        guard expectedSize >= 0, expectedSize <= 512 * 1024 * 1024 else { throw StoredZIPError.archiveTooLarge }
-        var output = Data(count: expectedSize)
-        let status: Int32 = source.withUnsafeBytes { inputBytes in
-            output.withUnsafeMutableBytes { outputBytes in
-                var stream = z_stream()
+    private static func copyStored(from input: FileHandle, compressedSize: Int64, to output: FileHandle) async throws -> (size: Int64, crc: uLong) {
+        var remaining = compressedSize
+        var written: Int64 = 0
+        var crc = crc32(0, nil, 0)
+        while remaining > 0 {
+            try Task.checkCancellation()
+            let data = try readExactly(Int(min(Int64(chunkSize), remaining)), from: input)
+            try output.write(contentsOf: data)
+            crc = updateCRC(crc, data)
+            written += Int64(data.count)
+            remaining -= Int64(data.count)
+        }
+        return (written, crc)
+    }
+
+    private static func inflateRaw(
+        from input: FileHandle,
+        compressedSize: Int64,
+        expectedSize: Int64,
+        to output: FileHandle
+    ) async throws -> (size: Int64, crc: uLong) {
+        var stream = z_stream()
+        guard inflateInit2_(&stream, -MAX_WBITS, ZLIB_VERSION, Int32(MemoryLayout<z_stream>.size)) == Z_OK else {
+            throw StoredZIPError.verificationFailed
+        }
+        defer { inflateEnd(&stream) }
+        var remaining = compressedSize
+        var written: Int64 = 0
+        var crc = crc32(0, nil, 0)
+        var reachedEnd = false
+        while remaining > 0, !reachedEnd {
+            try Task.checkCancellation()
+            let inputData = try readExactly(Int(min(Int64(chunkSize), remaining)), from: input)
+            remaining -= Int64(inputData.count)
+            try inputData.withUnsafeBytes { inputBytes in
                 stream.next_in = UnsafeMutablePointer<Bytef>(mutating: inputBytes.bindMemory(to: Bytef.self).baseAddress)
-                stream.avail_in = uInt(source.count)
-                stream.next_out = outputBytes.bindMemory(to: Bytef.self).baseAddress
-                stream.avail_out = uInt(expectedSize)
-                guard inflateInit2_(&stream, -MAX_WBITS, ZLIB_VERSION, Int32(MemoryLayout<z_stream>.size)) == Z_OK else { return Z_DATA_ERROR }
-                defer { inflateEnd(&stream) }
-                let result = inflate(&stream, Z_FINISH)
-                return result == Z_STREAM_END && stream.total_out == expectedSize ? Z_OK : Z_DATA_ERROR
+                stream.avail_in = uInt(inputData.count)
+                while stream.avail_in > 0 {
+                    var buffer = [UInt8](repeating: 0, count: chunkSize)
+                    let (status, produced): (Int32, Int) = buffer.withUnsafeMutableBytes { outputBytes in
+                        stream.next_out = outputBytes.bindMemory(to: Bytef.self).baseAddress
+                        stream.avail_out = uInt(chunkSize)
+                        let status = inflate(&stream, Z_NO_FLUSH)
+                        return (status, chunkSize - Int(stream.avail_out))
+                    }
+                    guard status == Z_OK || status == Z_STREAM_END else { throw StoredZIPError.verificationFailed }
+                    if produced > 0 {
+                        let data = Data(buffer.prefix(produced))
+                        try output.write(contentsOf: data)
+                        crc = updateCRC(crc, data)
+                        written += Int64(produced)
+                        guard written <= expectedSize else { throw StoredZIPError.verificationFailed }
+                    }
+                    if status == Z_STREAM_END { reachedEnd = true; break }
+                }
             }
         }
-        guard status == Z_OK else { throw StoredZIPError.verificationFailed }
-        return output
+        guard reachedEnd, remaining == 0, written == expectedSize else { throw StoredZIPError.verificationFailed }
+        return (written, crc)
+    }
+
+    private static func readExactly(_ count: Int, from handle: FileHandle) throws -> Data {
+        if count == 0 { return Data() }
+        guard count >= 0, let data = try handle.read(upToCount: count), data.count == count else {
+            throw StoredZIPError.invalidArchive
+        }
+        return data
+    }
+
+    private static func requireStorage(for bytes: Int64, near destination: URL) throws {
+        var probe = destination
+        while !FileManager.default.fileExists(atPath: probe.path), probe.path != "/" {
+            probe.deleteLastPathComponent()
+        }
+        let values = try probe.resourceValues(forKeys: [.volumeAvailableCapacityForImportantUsageKey])
+        if let available = values.volumeAvailableCapacityForImportantUsage,
+           available < bytes + storageReserve {
+            throw StoredZIPError.insufficientStorage
+        }
     }
 
     private static func safePath(_ raw: String, directory: Bool) throws -> String {

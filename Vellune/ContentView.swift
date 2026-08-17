@@ -1432,11 +1432,12 @@ private struct FileSelectionBar: View {
         HStack(spacing: 10) {
             Button("Select All", systemImage: "checkmark.circle") { model.selectAllFiles() }
                 .labelStyle(.iconOnly)
+                .disabled(model.isRunningFileOperation)
             Divider().frame(height: 24)
             Button("Copy", systemImage: "doc.on.doc") { model.copySelectedFiles(mode: .copy) }
-                .disabled(model.selectedFilePaths.isEmpty)
+                .disabled(model.selectedFilePaths.isEmpty || model.isRunningFileOperation)
             Button("Cut", systemImage: "scissors") { model.copySelectedFiles(mode: .cut) }
-                .disabled(model.selectedFilePaths.isEmpty)
+                .disabled(model.selectedFilePaths.isEmpty || model.isRunningFileOperation)
             Button("Compress", systemImage: "archivebox") { Task { await model.compressSelectedFiles() } }
                 .disabled(model.selectedFilePaths.isEmpty || model.isRunningFileOperation)
             Spacer()
@@ -1472,6 +1473,9 @@ private struct FileOperationProgressBanner: View {
                         .font(.caption.monospacedDigit())
                         .foregroundStyle(.secondary)
                 }
+                Button("Cancel", role: .cancel) { model.cancelFileOperation() }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
             }
             if let progress = model.fileOperationProgress, progress.totalBytes > 0 {
                 ProgressView(value: Double(progress.completedBytes), total: Double(progress.totalBytes))
@@ -1482,6 +1486,7 @@ private struct FileOperationProgressBanner: View {
         .shadow(radius: 12, y: 4)
         .frame(maxWidth: 560)
         .accessibilityElement(children: .combine)
+        .accessibilityAction(named: "Cancel") { model.cancelFileOperation() }
     }
 }
 

@@ -9,7 +9,16 @@ struct FileClipboard: Equatable, Sendable {
 
 struct FileOperationResult: Sendable {
     let affectedURLs: [URL]
+    let failures: [FileOperationFailure]
+    let skippedURLs: [URL]
     let safetyArchiveURL: URL?
+
+    var completedFully: Bool { failures.isEmpty && skippedURLs.isEmpty }
+}
+
+struct FileOperationFailure: Sendable {
+    let sourceURL: URL
+    let message: String
 }
 
 enum FileOperationError: LocalizedError {
@@ -45,21 +54,32 @@ enum FileOperationService {
         let grants = try acquireGrants(clipboard.sourceURLs.map { $0.deletingLastPathComponent() } + [destination])
         defer { grants.forEach(release) }
         var outputs: [URL] = []
-        for source in clipboard.sourceURLs {
-            var isDirectory: ObjCBool = false
-            guard FileManager.default.fileExists(atPath: source.path, isDirectory: &isDirectory) else { throw FileOperationError.sourceMissing }
-            if try source.resourceValues(forKeys: [.isSymbolicLinkKey]).isSymbolicLink == true { throw FileOperationError.symbolicLinkUnsupported }
-            if isDirectory.boolValue, destination.standardizedFileURL.path.hasPrefix(source.standardizedFileURL.path + "/") {
-                throw FileOperationError.destinationInsideSource
+        var failures: [FileOperationFailure] = []
+        for (index, source) in clipboard.sourceURLs.enumerated() {
+            if Task.isCancelled {
+                failures.append(contentsOf: clipboard.sourceURLs[index...].map {
+                    .init(sourceURL: $0, message: "Operation cancelled before this item was changed.")
+                })
+                break
             }
-            let target = uniqueDestination(for: source.lastPathComponent, in: destination)
-            switch clipboard.mode {
-            case .copy: try FileManager.default.copyItem(at: source, to: target)
-            case .cut: try FileManager.default.moveItem(at: source, to: target)
+            do {
+                var isDirectory: ObjCBool = false
+                guard FileManager.default.fileExists(atPath: source.path, isDirectory: &isDirectory) else { throw FileOperationError.sourceMissing }
+                if try source.resourceValues(forKeys: [.isSymbolicLinkKey]).isSymbolicLink == true { throw FileOperationError.symbolicLinkUnsupported }
+                if isDirectory.boolValue, canonicalPath(destination).hasPrefix(canonicalPath(source) + "/") {
+                    throw FileOperationError.destinationInsideSource
+                }
+                let target = uniqueDestination(for: source.lastPathComponent, in: destination)
+                switch clipboard.mode {
+                case .copy: try FileManager.default.copyItem(at: source, to: target)
+                case .cut: try FileManager.default.moveItem(at: source, to: target)
+                }
+                outputs.append(target)
+            } catch {
+                failures.append(.init(sourceURL: source, message: error.localizedDescription))
             }
-            outputs.append(target)
         }
-        return .init(affectedURLs: outputs, safetyArchiveURL: nil)
+        return .init(affectedURLs: outputs, failures: failures, skippedURLs: [], safetyArchiveURL: nil)
     }
 
     nonisolated static func compress(
@@ -67,15 +87,16 @@ enum FileOperationService {
         into destination: URL,
         named requestedName: String,
         progress: Progress
-    ) async throws -> URL {
+    ) async throws -> FileOperationResult {
         guard !items.isEmpty else { throw FileOperationError.emptySelection }
         let grants = try acquireGrants(items.map { $0.url.deletingLastPathComponent() } + [destination])
         defer { grants.forEach(release) }
-        let entries = try archiveEntries(for: items)
+        let archived = try archiveEntries(for: items)
+        guard !archived.entries.isEmpty else { throw FileOperationError.emptySelection }
         let name = requestedName.lowercased().hasSuffix(".zip") ? requestedName : requestedName + ".zip"
         let output = uniqueDestination(for: name, in: destination)
-        try await StoredZIPArchive.write(entries: entries, to: output, progress: progress)
-        return output
+        try await StoredZIPArchive.write(entries: archived.entries, to: output, progress: progress)
+        return .init(affectedURLs: [output], failures: [], skippedURLs: archived.skippedURLs, safetyArchiveURL: nil)
     }
 
     nonisolated static func extract(
@@ -92,7 +113,7 @@ enum FileOperationService {
         let output = uniqueDestination(for: base, in: destination)
         do {
             let extracted = try await StoredZIPArchive.extract(item.url, to: output, progress: progress)
-            return .init(affectedURLs: extracted.map(\.destinationURL), safetyArchiveURL: nil)
+            return .init(affectedURLs: extracted.map(\.destinationURL), failures: [], skippedURLs: [], safetyArchiveURL: nil)
         } catch {
             try? FileManager.default.removeItem(at: output)
             throw error
@@ -101,22 +122,40 @@ enum FileOperationService {
 
     nonisolated static func delete(_ items: [FileItem], progress: Progress) async throws -> FileOperationResult {
         guard !items.isEmpty else { throw FileOperationError.emptySelection }
-        guard !items.contains(where: \.isSymbolicLink) else { throw FileOperationError.symbolicLinkUnsupported }
         let grants = try acquireGrants(items.map { $0.url.deletingLastPathComponent() })
         defer { grants.forEach(release) }
-        let safetyRoot = try safetyDirectory()
-        let timestamp = ISO8601DateFormatter().string(from: .now).replacingOccurrences(of: ":", with: "-")
-        let archive = safetyRoot.appending(path: "Deleted Items \(timestamp).zip")
-        try await StoredZIPArchive.write(entries: try archiveEntries(for: items), to: archive, progress: progress)
-        for item in items { try FileManager.default.removeItem(at: item.url) }
-        return .init(affectedURLs: items.map(\.url), safetyArchiveURL: archive)
+        let deletable = items.filter { !$0.isSymbolicLink }
+        let skipped = items.filter(\.isSymbolicLink).map(\.url)
+        guard !deletable.isEmpty else { throw FileOperationError.symbolicLinkUnsupported }
+        let archive = try OperationSafetyStore.makeArchiveURL(category: .deletedItems, stem: "Deleted Items")
+        let archived = try archiveEntries(for: deletable)
+        try await StoredZIPArchive.write(entries: archived.entries, to: archive, progress: progress)
+        var removed: [URL] = []
+        var failures: [FileOperationFailure] = []
+        for (index, item) in deletable.enumerated() {
+            if Task.isCancelled {
+                failures.append(contentsOf: deletable[index...].map {
+                    .init(sourceURL: $0.url, message: "Operation cancelled before this item was deleted.")
+                })
+                break
+            }
+            do {
+                try FileManager.default.removeItem(at: item.url)
+                removed.append(item.url)
+            } catch {
+                failures.append(.init(sourceURL: item.url, message: error.localizedDescription))
+            }
+        }
+        return .init(affectedURLs: removed, failures: failures, skippedURLs: skipped + archived.skippedURLs,
+                     safetyArchiveURL: archive)
     }
 
-    private static func archiveEntries(for items: [FileItem]) throws -> [StoredZIPEntry] {
+    private static func archiveEntries(for items: [FileItem]) throws -> (entries: [StoredZIPEntry], skippedURLs: [URL]) {
         var entries: [StoredZIPEntry] = []
+        var skippedURLs: [URL] = []
         let keys: Set<URLResourceKey> = [.isDirectoryKey, .isSymbolicLinkKey, .contentModificationDateKey]
         for item in items {
-            guard !item.isSymbolicLink else { throw FileOperationError.symbolicLinkUnsupported }
+            if item.isSymbolicLink { skippedURLs.append(item.url); continue }
             if !item.isDirectory {
                 entries.append(.file(item.url, path: item.name, modifiedAt: item.modifiedAt))
                 continue
@@ -127,6 +166,7 @@ enum FileOperationService {
                 try Task.checkCancellation()
                 let values = try url.resourceValues(forKeys: keys)
                 if values.isSymbolicLink == true {
+                    skippedURLs.append(url)
                     if values.isDirectory == true { enumerator.skipDescendants() }
                     continue
                 }
@@ -138,7 +178,8 @@ enum FileOperationService {
                 }
             }
         }
-        return entries.sorted { $0.archivePath.localizedStandardCompare($1.archivePath) == .orderedAscending }
+        return (entries.sorted { $0.archivePath.localizedStandardCompare($1.archivePath) == .orderedAscending },
+                skippedURLs)
     }
 
     private static func relativePath(of child: URL, under root: URL) throws -> String {
@@ -161,12 +202,11 @@ enum FileOperationService {
         return candidate
     }
 
-    private static func safetyDirectory() throws -> URL {
-        let url = try FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask,
-                                              appropriateFor: nil, create: true)
-            .appending(path: "File Operation Safety Backups", directoryHint: .isDirectory)
-        try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
-        return url
+    private static func canonicalPath(_ url: URL) -> String {
+        var path = url.resolvingSymlinksInPath().standardizedFileURL.path
+        while path.count > 1, path.hasSuffix("/") { path.removeLast() }
+        if path == "/var" || path.hasPrefix("/var/") { path = "/private" + path }
+        return path
     }
 
     private static func acquireGrant(_ url: URL) throws -> BadQueryGrant? {

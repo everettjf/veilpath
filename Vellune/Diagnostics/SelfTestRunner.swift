@@ -72,7 +72,7 @@ enum SelfTestRunner {
         checks.append(testDirectorySorting())
 
         let report = SelfTestReport(
-            schemaVersion: 20,
+            schemaVersion: 21,
             appVersion: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "unknown",
             systemVersion: ProcessInfo.processInfo.operatingSystemVersionString,
             startedAt: startedAt,
@@ -539,7 +539,49 @@ enum SelfTestRunner {
                 try await StoredZIPArchive.write(entries: [.data(Data(), path: "../escape")], to: archive) { _, _, _, _ in }
                 throw SelfTestFailure("Unsafe ZIP path was accepted")
             } catch StoredZIPError.unsafePath(_) {}
-            return "files=2, hashes=true, exactRestore=true, safetyBackup=true, zipSlipRejected=true"
+
+            let badManifest = AppContainerBackupManifest(
+                schemaVersion: 1, createdAt: .now, bundleIdentifier: descriptor.identifier!, containerKind: .application,
+                sourceContainerUUID: descriptor.uuid, systemVersion: "test", appVersion: "test",
+                includedRoots: ["Documents", "Library", "tmp"], entries: []
+            )
+            let encoder = JSONEncoder(); encoder.dateEncodingStrategy = .iso8601
+            try await StoredZIPArchive.write(entries: [
+                .directory("Documents", modifiedAt: nil), .directory("Library", modifiedAt: nil),
+                .directory("tmp", modifiedAt: nil), .data(Data("undeclared".utf8), path: "Documents/rogue.txt"),
+                .data(try encoder.encode(badManifest), path: "manifest.json")
+            ], to: archive) { _, _, _, _ in }
+            do {
+                _ = try await AppContainerBackupService.inspect(archive)
+                throw SelfTestFailure("An undeclared backup payload was accepted")
+            } catch AppContainerBackupError.unexpectedPayload(_) {}
+
+            let selfDescriptor = ContainerDescriptor(path: NSHomeDirectory(), identifier: "com.eevv.Vellune",
+                                                     uuid: "self", kind: .application, metadataDiagnostic: nil)
+            do {
+                _ = try await AppContainerBackupService.restore(archive: archive, to: selfDescriptor) { _, _, _, _ in }
+                throw SelfTestFailure("A self restore was accepted")
+            } catch AppContainerBackupError.selfRestoreUnsupported {}
+            let firstSafety = try OperationSafetyStore.makeArchiveURL(category: .deletedItems, stem: "Collision")
+            let secondSafety = try OperationSafetyStore.makeArchiveURL(category: .deletedItems, stem: "Collision")
+            guard firstSafety != secondSafety else { throw SelfTestFailure("Safety backup names collided") }
+            let retention = FileManager.default.temporaryDirectory
+                .appending(path: "vellune-retention-\(UUID().uuidString)", directoryHint: .isDirectory)
+            defer { try? FileManager.default.removeItem(at: retention) }
+            try FileManager.default.createDirectory(at: retention, withIntermediateDirectories: true)
+            for index in 0..<12 {
+                let file = retention.appending(path: "backup-\(index).zip")
+                try Data().write(to: file)
+                let age = index == 11 ? -(31 * 24 * 60 * 60) : TimeInterval(-index)
+                try FileManager.default.setAttributes([.modificationDate: Date(timeIntervalSinceNow: age)],
+                                                      ofItemAtPath: file.path)
+            }
+            try OperationSafetyStore.prune(directory: retention, keepingAtMost: 10)
+            guard try FileManager.default.contentsOfDirectory(atPath: retention.path).count == 10,
+                  !FileManager.default.fileExists(atPath: retention.appending(path: "backup-11.zip").path) else {
+                throw SelfTestFailure("Safety backup count retention failed")
+            }
+            return "files=2, hashes=true, exactRestore=true, strictManifest=true, selfRestoreBlocked=true, safetyRetention=true"
         }
     }
 
@@ -565,8 +607,15 @@ enum SelfTestRunner {
             guard copy.affectedURLs.count == 1 else { throw SelfTestFailure("Copy/paste failed") }
             let cut = try FileOperationService.paste(.init(mode: .cut, sourceURLs: [duplicate]), into: destination)
             guard cut.affectedURLs.count == 1, !FileManager.default.fileExists(atPath: duplicate.path) else { throw SelfTestFailure("Cut/paste failed") }
+            let partial = try FileOperationService.paste(
+                .init(mode: .copy, sourceURLs: [alpha.url, source.appending(path: "missing.txt")]), into: destination
+            )
+            guard partial.affectedURLs.count == 1, partial.failures.count == 1 else {
+                throw SelfTestFailure("Partial paste results were not preserved")
+            }
 
-            let archive = try await FileOperationService.compress([folder, alpha], into: destination, named: "Batch") { _, _, _, _ in }
+            let compression = try await FileOperationService.compress([folder, alpha], into: destination, named: "Batch") { _, _, _, _ in }
+            guard let archive = compression.affectedURLs.first else { throw SelfTestFailure("Compression produced no archive") }
             let archiveItem = FileItem(url: archive, isDirectory: false, isSymbolicLink: false,
                                        size: Int64((try archive.resourceValues(forKeys: [.fileSizeKey])).fileSize ?? 0), modifiedAt: nil)
             let extraction = try await FileOperationService.extract(archiveItem, into: destination) { _, _, _, _ in }
@@ -586,12 +635,43 @@ enum SelfTestRunner {
                   try Data(contentsOf: deflatedText) == Data("deflate compatibility".utf8) else {
                 throw SelfTestFailure("Deflated ZIP extraction failed")
             }
+
+            let largeSource = source.appending(path: "large.bin")
+            FileManager.default.createFile(atPath: largeSource.path, contents: nil)
+            let largeHandle = try FileHandle(forWritingTo: largeSource)
+            for _ in 0..<24 { try largeHandle.write(contentsOf: Data(repeating: 0xA5, count: 1024 * 1024)) }
+            try largeHandle.close()
+            let largeItem = FileItem(url: largeSource, isDirectory: false, isSymbolicLink: false,
+                                     size: 24 * 1024 * 1024, modifiedAt: nil)
+            let largeCompression = try await FileOperationService.compress([largeItem], into: destination, named: "Large") { _, _, _, _ in }
+            guard let largeArchive = largeCompression.affectedURLs.first else { throw SelfTestFailure("Large ZIP was not created") }
+            let largeArchiveItem = FileItem(url: largeArchive, isDirectory: false, isSymbolicLink: false,
+                                            size: nil, modifiedAt: nil)
+            let largeExtraction = try await FileOperationService.extract(largeArchiveItem, into: source) { _, _, _, _ in }
+            guard let largeOutput = largeExtraction.affectedURLs.first,
+                  (try largeOutput.resourceValues(forKeys: [.fileSizeKey])).fileSize == 24 * 1024 * 1024 else {
+                throw SelfTestFailure("Large streaming extraction failed")
+            }
+
+            let cancellationDestination = root.appending(path: "Cancelled", directoryHint: .isDirectory)
+            try FileManager.default.createDirectory(at: cancellationDestination, withIntermediateDirectories: true)
+            let cancellation = Task {
+                try await FileOperationService.extract(largeArchiveItem, into: cancellationDestination) { _, _, _, _ in }
+            }
+            cancellation.cancel()
+            do {
+                _ = try await cancellation.value
+                throw SelfTestFailure("Cancelled extraction unexpectedly completed")
+            } catch is CancellationError {}
+            guard try FileManager.default.contentsOfDirectory(atPath: cancellationDestination.path).isEmpty else {
+                throw SelfTestFailure("Cancelled extraction left temporary output")
+            }
             let deletion = try await FileOperationService.delete([alpha]) { _, _, _, _ in }
             guard !FileManager.default.fileExists(atPath: alpha.url.path),
                   let safety = deletion.safetyArchiveURL,
                   FileManager.default.fileExists(atPath: safety.path) else { throw SelfTestFailure("Guarded delete or safety archive failed") }
             try? FileManager.default.removeItem(at: deletion.safetyArchiveURL!)
-            return "duplicate=true, copy=true, cut=true, batchZIP=true, storedAndDeflatedExtract=true, guardedDelete=true"
+            return "partialResults=true, batchZIP=true, storedDeflatedAndLargeExtract=true, cancellationCleanup=true, guardedDelete=true"
         }
     }
 

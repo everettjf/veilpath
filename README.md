@@ -76,11 +76,18 @@ sandbox boundary.
   directories, honoring the hidden-file setting, and skipping symbolic links.
 - Provides familiar multi-select file operations: copy, cut, paste, duplicate,
   batch ZIP compression, ZIP/IPA extraction, and guarded deletion. Deletes first
-  create a recoverable safety archive.
+  create a uniquely named recoverable safety archive. Batch operations report
+  per-item failures and preserve failed selections or cut sources for retry.
+- Extracts stored and Deflate ZIP entries with bounded streaming I/O. Extraction
+  verifies paths, sizes, and CRC-32, checks free space, rejects encrypted links,
+  oversized output, and suspicious expansion ratios, and cleans partial output
+  when cancelled.
 - Exports a complete Application data backup containing `Documents`, `Library`,
   `tmp`, and `manifest.json`. Every file is recorded with its SHA-256 digest.
 - Restores complete App backups only after validating the bundle identifier,
-  declared payload, file sizes, and every SHA-256. Restore first preserves the
+  exact root structure, declared payload, file sizes, and every SHA-256. A newly
+  created backup is extracted and verified before success is reported. Restore
+  blocks Vellune's own live container, checks staging space, and first preserves the
   current container as a safety backup, stages the replacement, and rolls back
   if the directory swap fails.
 - Exports the current directory as Markdown, with optional recursive traversal.
@@ -171,7 +178,8 @@ you own or are explicitly authorized to test.
 Browsing, previews, search, and export remain read-only. Write operations require
 an explicit user action. Structured edits use a temporary draft, validation,
 Version Vault history, and SHA-256 verification. File deletion first creates a
-recoverable ZIP. Complete App restore validates the manifest and every payload
+recoverable ZIP; operation safety archives are retained for up to 30 days with
+at most 10 archives in each category. Complete App restore validates the manifest and every payload
 hash, saves the current `Documents`, `Library`, and `tmp`, stages the replacement,
 then performs a rollback-capable directory swap. This is still sensitive research
 software; an in-app backup reduces risk but is not a substitute for a device

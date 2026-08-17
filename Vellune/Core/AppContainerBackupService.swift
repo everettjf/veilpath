@@ -36,6 +36,7 @@ struct AppContainerRestoreResult: Sendable {
 enum AppContainerBackupError: LocalizedError {
     case applicationContainerRequired, missingIdentifier, missingDataDirectories, malformedManifest
     case identifierMismatch(expected: String, actual: String), hashMismatch(String), unexpectedPayload(String), invalidSourcePath(String)
+    case duplicatePath(String), selfRestoreUnsupported, insufficientStorage, inconsistentSource(String)
 
     var errorDescription: String? {
         switch self {
@@ -47,6 +48,10 @@ enum AppContainerBackupError: LocalizedError {
         case .hashMismatch(let path): "SHA-256 verification failed for \(path)."
         case .unexpectedPayload(let path): "The backup contains an undeclared payload entry: \(path)."
         case .invalidSourcePath(let path): "A source item is outside the selected container: \(path)."
+        case .duplicatePath(let path): "The backup contains a duplicate path: \(path)."
+        case .selfRestoreUnsupported: "Vellune cannot restore its own active data container."
+        case .insufficientStorage: "There is not enough free storage to create the safety backup and stage this restore."
+        case .inconsistentSource(let path): "The source changed while it was being backed up: \(path). Close the target app and try again."
         }
     }
 }
@@ -67,6 +72,11 @@ enum AppContainerBackupService {
         defer { release(grant) }
         let collected = try collect(root: root)
         guard !collected.entries.isEmpty else { throw AppContainerBackupError.missingDataDirectories }
+        let (verificationBytes, overflow) = collected.totalBytes.multipliedReportingOverflow(by: 2)
+        guard !overflow else { throw AppContainerBackupError.insufficientStorage }
+        try requireStorage(for: verificationBytes + 64 * 1024 * 1024, near: destination)
+        try requireStorage(for: collected.totalBytes + 64 * 1024 * 1024,
+                           near: FileManager.default.temporaryDirectory.appending(path: "backup-verification"))
         let manifest = AppContainerBackupManifest(
             schemaVersion: 1, createdAt: .now, bundleIdentifier: identifier, containerKind: container.kind,
             sourceContainerUUID: container.uuid, systemVersion: ProcessInfo.processInfo.operatingSystemVersionString,
@@ -77,8 +87,22 @@ enum AppContainerBackupService {
         let encoder = JSONEncoder(); encoder.outputFormatting = [.prettyPrinted, .sortedKeys]; encoder.dateEncodingStrategy = .iso8601
         var zipEntries = collected.entries
         zipEntries.append(.data(try encoder.encode(manifest), path: "manifest.json"))
-        try await StoredZIPArchive.write(entries: zipEntries, to: destination, progress: progress)
-        return .init(url: destination, manifest: manifest, skippedSymbolicLinks: collected.skippedLinks)
+        do {
+            try await StoredZIPArchive.write(entries: zipEntries, to: destination, progress: progress)
+            let (verified, extraction) = try await inspect(destination)
+            defer { try? FileManager.default.removeItem(at: extraction) }
+            guard verified.entries.map(\.path) == manifest.entries.map(\.path),
+                  verified.entries.map(\.sha256) == manifest.entries.map(\.sha256) else {
+                throw AppContainerBackupError.malformedManifest
+            }
+            return .init(url: destination, manifest: manifest, skippedSymbolicLinks: collected.skippedLinks)
+        } catch AppContainerBackupError.hashMismatch(let path) {
+            try? FileManager.default.removeItem(at: destination)
+            throw AppContainerBackupError.inconsistentSource(path)
+        } catch {
+            try? FileManager.default.removeItem(at: destination)
+            throw error
+        }
     }
 
     nonisolated static func inspect(_ archive: URL) async throws -> (AppContainerBackupManifest, URL) {
@@ -108,18 +132,23 @@ enum AppContainerBackupService {
     ) async throws -> AppContainerRestoreResult {
         guard container.kind == .application else { throw AppContainerBackupError.applicationContainerRequired }
         guard let identifier = container.identifier else { throw AppContainerBackupError.missingIdentifier }
+        let root = URL(fileURLWithPath: container.path, isDirectory: true).standardizedFileURL
+        guard canonicalPath(root) != canonicalPath(URL(fileURLWithPath: NSHomeDirectory(), isDirectory: true)) else {
+            throw AppContainerBackupError.selfRestoreUnsupported
+        }
         let (manifest, extraction) = try await inspect(archive)
         defer { try? FileManager.default.removeItem(at: extraction) }
         guard manifest.bundleIdentifier == identifier else {
             throw AppContainerBackupError.identifierMismatch(expected: identifier, actual: manifest.bundleIdentifier)
         }
-        let root = URL(fileURLWithPath: container.path, isDirectory: true).standardizedFileURL
         let grant = try acquireGrant(root)
         defer { release(grant) }
 
-        let safetyDirectory = try safetyBackupDirectory()
-        let safetyName = safeName(identifier) + "-before-restore-" + ISO8601DateFormatter().string(from: .now).replacingOccurrences(of: ":", with: "-") + ".zip"
-        let safetyURL = safetyDirectory.appending(path: safetyName)
+        let restoreBytes = manifest.entries.reduce(Int64(0)) { $0 + max(0, $1.size) }
+        let currentBytes = try dataRootSize(root)
+        try requireStorage(for: restoreBytes + currentBytes + 128 * 1024 * 1024, near: root)
+
+        let safetyURL = try OperationSafetyStore.makeArchiveURL(category: .containerRestore, stem: safeName(identifier) + " before restore")
         _ = try await create(container: container, destination: safetyURL) { _, _, _, _ in }
 
         let operationID = UUID().uuidString
@@ -138,6 +167,7 @@ enum AppContainerBackupService {
                     try FileManager.default.createDirectory(at: target, withIntermediateDirectories: true)
                 }
             }
+            try restoreAttributes(manifest, staged: staged)
             for name in roots {
                 try Task.checkCancellation()
                 let current = root.appending(path: name, directoryHint: .isDirectory)
@@ -171,6 +201,7 @@ enum AppContainerBackupService {
         var manifestEntries: [AppContainerBackupManifest.Entry] = []
         var includedRoots: [String] = []
         var skippedLinks = 0
+        var totalBytes: Int64 = 0
     }
 
     private static func collect(root: URL) throws -> Collected {
@@ -178,10 +209,10 @@ enum AppContainerBackupService {
         let keys: Set<URLResourceKey> = [.isDirectoryKey, .isSymbolicLinkKey, .fileSizeKey, .contentModificationDateKey]
         for name in roots {
             let directory = root.appending(path: name, directoryHint: .isDirectory)
-            var isDirectory: ObjCBool = false
-            guard FileManager.default.fileExists(atPath: directory.path, isDirectory: &isDirectory), isDirectory.boolValue else { continue }
             result.includedRoots.append(name)
             result.entries.append(.directory(name, modifiedAt: try? directory.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate))
+            var isDirectory: ObjCBool = false
+            guard FileManager.default.fileExists(atPath: directory.path, isDirectory: &isDirectory), isDirectory.boolValue else { continue }
             guard let enumerator = FileManager.default.enumerator(at: directory, includingPropertiesForKeys: Array(keys), options: []) else { continue }
             while let url = enumerator.nextObject() as? URL {
                 try Task.checkCancellation()
@@ -202,6 +233,9 @@ enum AppContainerBackupService {
                     result.manifestEntries.append(.init(path: relative, size: size, sha256: digest,
                                                         modifiedAt: values.contentModificationDate,
                                                         permissions: (attributes[.posixPermissions] as? NSNumber)?.intValue))
+                    let (next, overflow) = result.totalBytes.addingReportingOverflow(max(0, size))
+                    guard !overflow else { throw AppContainerBackupError.insufficientStorage }
+                    result.totalBytes = next
                 }
             }
         }
@@ -225,12 +259,37 @@ enum AppContainerBackupService {
         extraction: URL,
         extracted: [StoredZIPExtractedEntry]
     ) throws {
-        let declared = Set(manifest.entries.map(\.path))
-        for entry in extracted where !entry.isDirectory && entry.archivePath != "manifest.json" {
-            guard declared.contains(entry.archivePath) else { throw AppContainerBackupError.unexpectedPayload(entry.archivePath) }
+        guard !manifest.includedRoots.isEmpty,
+              manifest.includedRoots.count == Set(manifest.includedRoots).count,
+              manifest.includedRoots.allSatisfy({ roots.contains($0) }) else {
+            throw AppContainerBackupError.malformedManifest
         }
+        let extractedDirectories = Set(extracted.filter(\.isDirectory).map { $0.archivePath.trimmingCharacters(in: CharacterSet(charactersIn: "/")) })
+        guard Set(manifest.includedRoots).isSubset(of: extractedDirectories) else {
+            throw AppContainerBackupError.malformedManifest
+        }
+        guard manifest.entries.count == Set(manifest.entries.map(\.path)).count else {
+            let duplicate = Dictionary(grouping: manifest.entries, by: \.path).first { $0.value.count > 1 }?.key ?? "unknown"
+            throw AppContainerBackupError.duplicatePath(duplicate)
+        }
+        guard extracted.count == Set(extracted.map(\.archivePath)).count else {
+            let duplicate = Dictionary(grouping: extracted, by: \.archivePath).first { $0.value.count > 1 }?.key ?? "unknown"
+            throw AppContainerBackupError.duplicatePath(duplicate)
+        }
+        let declared = Set(manifest.entries.map(\.path))
+        let payload = extracted.filter { $0.archivePath != "manifest.json" }
+        for entry in payload {
+            guard roots.contains(where: { entry.archivePath == $0 + "/" || entry.archivePath.hasPrefix($0 + "/") }) else {
+                throw AppContainerBackupError.unexpectedPayload(entry.archivePath)
+            }
+            if !entry.isDirectory, !declared.contains(entry.archivePath) {
+                throw AppContainerBackupError.unexpectedPayload(entry.archivePath)
+            }
+        }
+        guard Set(payload.filter { !$0.isDirectory }.map(\.archivePath)) == declared else { throw AppContainerBackupError.malformedManifest }
         for entry in manifest.entries {
-            guard roots.contains(where: { entry.path == $0 || entry.path.hasPrefix($0 + "/") }) else {
+            guard entry.size >= 0,
+                  roots.contains(where: { entry.path.hasPrefix($0 + "/") }) else {
                 throw AppContainerBackupError.unexpectedPayload(entry.path)
             }
             let url = extraction.appending(path: entry.path)
@@ -247,6 +306,55 @@ enum AppContainerBackupService {
         return hasher.finalize().map { String(format: "%02x", $0) }.joined()
     }
 
+    private static func restoreAttributes(_ manifest: AppContainerBackupManifest, staged: URL) throws {
+        for entry in manifest.entries {
+            let target = staged.appending(path: entry.path)
+            var attributes: [FileAttributeKey: Any] = [:]
+            if let permissions = entry.permissions { attributes[.posixPermissions] = permissions }
+            if let modifiedAt = entry.modifiedAt { attributes[.modificationDate] = modifiedAt }
+            if !attributes.isEmpty { try FileManager.default.setAttributes(attributes, ofItemAtPath: target.path) }
+        }
+    }
+
+    private static func dataRootSize(_ root: URL) throws -> Int64 {
+        var total: Int64 = 0
+        for name in roots {
+            let directory = root.appending(path: name, directoryHint: .isDirectory)
+            guard let enumerator = FileManager.default.enumerator(
+                at: directory,
+                includingPropertiesForKeys: [.isRegularFileKey, .fileSizeKey, .isSymbolicLinkKey],
+                options: []
+            ) else { continue }
+            while let url = enumerator.nextObject() as? URL {
+                try Task.checkCancellation()
+                let values = try url.resourceValues(forKeys: [.isRegularFileKey, .fileSizeKey, .isSymbolicLinkKey])
+                if values.isSymbolicLink == true { continue }
+                if values.isRegularFile == true {
+                    let (next, overflow) = total.addingReportingOverflow(Int64(values.fileSize ?? 0))
+                    guard !overflow else { throw AppContainerBackupError.insufficientStorage }
+                    total = next
+                }
+            }
+        }
+        return total
+    }
+
+    private static func requireStorage(for bytes: Int64, near url: URL) throws {
+        var probe = url.deletingLastPathComponent()
+        while !FileManager.default.fileExists(atPath: probe.path), probe.path != "/" { probe.deleteLastPathComponent() }
+        let values = try probe.resourceValues(forKeys: [.volumeAvailableCapacityForImportantUsageKey])
+        if let available = values.volumeAvailableCapacityForImportantUsage, available < bytes {
+            throw AppContainerBackupError.insufficientStorage
+        }
+    }
+
+    private static func canonicalPath(_ url: URL) -> String {
+        var path = url.resolvingSymlinksInPath().standardizedFileURL.path
+        while path.count > 1, path.hasSuffix("/") { path.removeLast() }
+        if path == "/var" || path.hasPrefix("/var/") { path = "/private" + path }
+        return path
+    }
+
     private static func acquireGrant(_ root: URL) throws -> BadQueryGrant? {
         #if targetEnvironment(simulator)
         nil
@@ -256,14 +364,6 @@ enum AppContainerBackupService {
     }
 
     private static func release(_ grant: BadQueryGrant?) { if let grant { BadQueryClient.release(grant) } }
-
-    private static func safetyBackupDirectory() throws -> URL {
-        let url = try FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask,
-                                              appropriateFor: nil, create: true)
-            .appending(path: "Container Restore Safety Backups", directoryHint: .isDirectory)
-        try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
-        return url
-    }
 
     private static func safeName(_ value: String) -> String {
         let invalid = CharacterSet(charactersIn: "/\\:\0").union(.controlCharacters)

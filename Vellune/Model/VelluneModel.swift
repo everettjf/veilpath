@@ -47,6 +47,7 @@ final class VelluneModel {
     @ObservationIgnored private var directorySummaryTask: Task<Void, Never>?
     @ObservationIgnored private var previewTask: Task<Void, Never>?
     @ObservationIgnored private var shareTask: Task<Void, Never>?
+    @ObservationIgnored private var fileOperationCancellation: (() -> Void)?
     @ObservationIgnored private var directorySummaryModificationDates: [String: Date] = [:]
     @ObservationIgnored private var directorySummaryIncludesHidden: Bool?
 
@@ -73,6 +74,7 @@ final class VelluneModel {
         selfTestReport = SelfTestRunner.loadPersistedReport()
         accessVerification = selfTestReport?.checks.first { $0.name == "Application container discovery" }
         ExportCache.removeExpired()
+        OperationSafetyStore.pruneAll()
         backupRecords = (try? FileBackupService.records()) ?? []
         log("Vellune started on \(ProcessInfo.processInfo.operatingSystemVersionString)")
         #if targetEnvironment(simulator)
@@ -93,7 +95,8 @@ final class VelluneModel {
         }
         #else
         let currentVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
-        if selfTestReport?.schemaVersion != 20
+        if ProcessInfo.processInfo.arguments.contains("--ui-testing-self-test")
+            || selfTestReport?.schemaVersion != 21
             || selfTestReport?.passed != true
             || selfTestReport?.appVersion != currentVersion
             || containers.isEmpty
@@ -613,20 +616,29 @@ final class VelluneModel {
     }
 
     func copySelectedFiles(mode: FileClipboardMode) {
-        let urls = selectedFiles.filter { !$0.isSymbolicLink }.map(\.url)
+        let selection = selectedFiles
+        let urls = selection.filter { !$0.isSymbolicLink }.map(\.url)
+        let skipped = selection.filter(\.isSymbolicLink).map(\.url.path)
         guard !urls.isEmpty else { return }
         fileClipboard = .init(mode: mode, sourceURLs: urls)
         log("Prepared \(urls.count) items to \(mode.rawValue)")
-        cancelFileSelection()
+        selectedFilePaths = Set(skipped)
+        isSelectingFiles = !skipped.isEmpty
+        if !skipped.isEmpty { reportSkipped(skipped.count) }
     }
 
     func pasteFiles() async {
         guard let fileClipboard, !path.isEmpty else { return }
         let destination = URL(fileURLWithPath: path, isDirectory: true)
         let title: LocalizedStringResource = fileClipboard.mode == .copy ? "Copying Items" : "Moving Items"
-        await performFileOperation(title: title) {
-            _ = try FileOperationService.paste(fileClipboard, into: destination)
-            if fileClipboard.mode == .cut { await MainActor.run { self.fileClipboard = nil } }
+        if let result = await performFileOperation(title: title, operation: { _ in
+            try FileOperationService.paste(fileClipboard, into: destination)
+        }) {
+            reportPartial(result)
+            if fileClipboard.mode == .cut {
+                let remaining = result.failures.map(\.sourceURL)
+                self.fileClipboard = remaining.isEmpty ? nil : .init(mode: .cut, sourceURLs: remaining)
+            }
         }
     }
 
@@ -640,11 +652,14 @@ final class VelluneModel {
         let selection = selectedFiles
         guard !selection.isEmpty else { return }
         let destination = URL(fileURLWithPath: path, isDirectory: true)
-        await performFileOperation(title: "Compressing \(selection.count) Items") { progress in
-            _ = try await FileOperationService.compress(selection, into: destination,
-                                                        named: "Archive", progress: progress)
+        if let result = await performFileOperation(title: "Compressing \(selection.count) Items", operation: { progress in
+            try await FileOperationService.compress(selection, into: destination,
+                                                    named: "Archive", progress: progress)
+        }) {
+            selectedFilePaths = Set(result.skippedURLs.map(\.path))
+            isSelectingFiles = !selectedFilePaths.isEmpty
+            reportPartial(result)
         }
-        cancelFileSelection()
     }
 
     func extract(_ item: FileItem) async {
@@ -657,11 +672,14 @@ final class VelluneModel {
     func deleteSelectedFiles() async {
         let selection = selectedFiles
         guard !selection.isEmpty else { return }
-        await performFileOperation(title: "Creating Safety Backup and Deleting") { progress in
-            let result = try await FileOperationService.delete(selection, progress: progress)
-            if let url = result.safetyArchiveURL { await MainActor.run { self.log("Deleted items are recoverable from \(url.lastPathComponent)") } }
+        if let result = await performFileOperation(title: "Creating Safety Backup and Deleting", operation: { progress in
+            try await FileOperationService.delete(selection, progress: progress)
+        }) {
+            if let url = result.safetyArchiveURL { log("Deleted items are recoverable from \(url.lastPathComponent)") }
+            selectedFilePaths = Set(result.failures.map(\.sourceURL.path) + result.skippedURLs.map(\.path))
+            isSelectingFiles = !selectedFilePaths.isEmpty
+            reportPartial(result)
         }
-        cancelFileSelection()
     }
 
     func restoreCompleteAppBackup(from source: URL) async {
@@ -674,35 +692,62 @@ final class VelluneModel {
         }
     }
 
-    private func performFileOperation(
+    func cancelFileOperation() {
+        fileOperationCancellation?()
+    }
+
+    private func performFileOperation<T: Sendable>(
         title: LocalizedStringResource,
-        operation: @escaping @Sendable () async throws -> Void
-    ) async {
+        operation: @escaping @Sendable () async throws -> T
+    ) async -> T? {
         await performFileOperation(title: title) { _ in try await operation() }
     }
 
-    private func performFileOperation(
+    private func performFileOperation<T: Sendable>(
         title: LocalizedStringResource,
-        operation: @escaping @Sendable (FileOperationService.Progress) async throws -> Void
-    ) async {
-        guard !isRunningFileOperation else { return }
+        operation: @escaping @Sendable (FileOperationService.Progress) async throws -> T
+    ) async -> T? {
+        guard !isRunningFileOperation else { return nil }
         isRunningFileOperation = true
         fileOperationTitle = title
         fileOperationProgress = .init(phase: .preparing, completedBytes: 0, totalBytes: 0, completedItems: 0, totalItems: 0)
+        defer {
+            fileOperationCancellation = nil
+            isRunningFileOperation = false
+            fileOperationTitle = nil
+            fileOperationProgress = nil
+        }
         do {
             let progress: FileOperationService.Progress = { completedBytes, totalBytes, completedItems, totalItems in
                 await MainActor.run {
-                    self.fileOperationProgress = .init(phase: .archiving, completedBytes: completedBytes, totalBytes: totalBytes,
-                                                       completedItems: completedItems, totalItems: totalItems)
+                    let next = ShareExportProgress(phase: .archiving, completedBytes: completedBytes, totalBytes: totalBytes,
+                                                   completedItems: completedItems, totalItems: totalItems)
+                    if self.fileOperationProgress != next { self.fileOperationProgress = next }
                 }
             }
-            try await operation(progress)
+            let task = Task { try await operation(progress) }
+            fileOperationCancellation = { task.cancel() }
+            let result = try await task.value
             await refresh()
             log("Completed: \(String(localized: title))")
+            return result
+        } catch is CancellationError {
+            log("Operation cancelled")
         } catch { report(error) }
-        isRunningFileOperation = false
-        fileOperationTitle = nil
-        fileOperationProgress = nil
+        return nil
+    }
+
+    private func reportPartial(_ result: FileOperationResult) {
+        if !result.skippedURLs.isEmpty { reportSkipped(result.skippedURLs.count) }
+        guard !result.failures.isEmpty else { return }
+        let message = "\(result.affectedURLs.count) completed, \(result.failures.count) failed. Failed items remain selected."
+        lastError = message
+        log(message, isError: true)
+    }
+
+    private func reportSkipped(_ count: Int) {
+        let message = "\(count) symbolic link\(count == 1 ? " was" : "s were") skipped for safety."
+        log(message)
     }
 
     func log(_ message: String, isError: Bool = false) {
