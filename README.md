@@ -75,8 +75,9 @@ sandbox boundary.
 - Archives the current folder or a selected folder as ZIP while preserving empty
   directories, honoring the hidden-file setting, and skipping symbolic links.
 - Exports the current directory as Markdown, with optional recursive traversal.
-- Keeps browsing read-only by default; explicit replacement first creates a
-  versioned backup, verifies SHA-256, and supports restore with a safety backup.
+- Keeps browsing read-only by default while allowing guarded JSON and plist
+  edits, versioned backup and replacement, SHA-256 verification, and restore
+  with a fresh safety backup.
 - Includes an on-device diagnostics suite with a structured JSON report.
 
 ## Compatibility
@@ -157,12 +158,14 @@ Vellune is experimental security-research software. It relies on private APIs
 and behavior that can differ between OS builds. Use it only on devices and data
 you own or are explicitly authorized to test.
 
-Browsing, previews, search, and export are read-only. The only write workflow is
-an explicit, confirmed replacement of one selected file. Vellune stores the
-original in its own versioned backup area, verifies writes with SHA-256, and
-creates another safety backup before a restore. This is still sensitive research
-software; a backup reduces risk but is not a substitute for a device backup.
-Diagnostics report failures explicitly instead of assuming a path is accessible.
+Browsing, previews, search, and export are read-only. Guarded writes are limited
+to explicit, confirmed JSON/plist edits or replacement of one selected file.
+Vellune edits a temporary draft, validates structured content, preserves the
+original and every pre-save revision in Version Vault, verifies writes with
+SHA-256, and creates another safety backup before a restore. This is still
+sensitive research software; a backup reduces risk but is not a substitute for
+a device backup. Diagnostics report failures explicitly instead of assuming a
+path is accessible.
 
 ## Acknowledgements
 

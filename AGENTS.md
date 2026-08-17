@@ -87,8 +87,9 @@ English is the app's source and default language. Simplified Chinese
 
 ## Security and compatibility constraints
 
-- Vellune is intentionally read-only. Export must copy data into Vellune's own
-  cache before invoking the share sheet.
+- Browsing, preview, search, and export are intentionally read-only. Export must
+  copy data into Vellune's own cache before invoking the share sheet. Guarded
+  edits, replacements, and restores must use the existing Version Vault path.
 - Acquire sandbox extensions only for the operation that needs them and release
   each grant immediately afterward.
 - Preserve the iOS 26 App Group compatibility path and keep
