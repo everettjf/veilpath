@@ -140,7 +140,12 @@ struct ContentView: View {
             Text("The current file will receive its own safety backup before restoration.")
         }
         .overlay(alignment: .bottom) {
-            if let screenshotFeedback {
+            if model.isRunningFileOperation {
+                FileOperationProgressBanner(model: model)
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 12)
+                    .zIndex(101)
+            } else if let screenshotFeedback {
                 ScreenshotFeedbackPrompt(
                     context: screenshotFeedback,
                     dismiss: { self.screenshotFeedback = nil }
@@ -1066,6 +1071,10 @@ private struct BrowserView: View {
     @State private var fileFilter = ""
     @State private var pathInput = ""
     @State private var isEditingPath = false
+    @State private var showingBackupImporter = false
+    @State private var pendingBackupURL: URL?
+    @State private var showingRestoreBackupConfirmation = false
+    @State private var showingDeleteConfirmation = false
 
     private var visibleItems: [FileItem] {
         guard !fileFilter.isEmpty else { return model.items }
@@ -1108,24 +1117,41 @@ private struct BrowserView: View {
             } else {
                 List(visibleItems) { item in
                     Button {
-                        Task {
-                            await model.open(item)
-                            if opensPreviewImmediately,
-                               !item.isDirectory,
-                               model.selectedItem == item {
-                                presentedPreview = item
+                        if model.isSelectingFiles {
+                            model.toggleFileSelection(item)
+                        } else {
+                            Task {
+                                await model.open(item)
+                                if opensPreviewImmediately,
+                                   !item.isDirectory,
+                                   model.selectedItem == item {
+                                    presentedPreview = item
+                                }
                             }
                         }
                     } label: {
-                        FileRow(item: item, directorySummary: model.directorySummaries[item.url.path])
+                        HStack(spacing: 12) {
+                            if model.isSelectingFiles {
+                                Image(systemName: model.selectedFilePaths.contains(item.url.path) ? "checkmark.circle.fill" : "circle")
+                                    .foregroundStyle(model.selectedFilePaths.contains(item.url.path) ? Color.accentColor : .secondary)
+                            }
+                            FileRow(item: item, directorySummary: model.directorySummaries[item.url.path])
+                        }
                     }
                     .buttonStyle(.plain)
-                    .listRowBackground(model.selectedItem == item ? Color.accentColor.opacity(0.12) : Color.clear)
-                    .accessibilityAddTraits(model.selectedItem == item ? .isSelected : [])
+                    .listRowBackground((model.selectedItem == item || model.selectedFilePaths.contains(item.url.path)) ? Color.accentColor.opacity(0.12) : Color.clear)
+                    .accessibilityAddTraits((model.selectedItem == item || model.selectedFilePaths.contains(item.url.path)) ? .isSelected : [])
                     .contextMenu {
+                        Button("Select", systemImage: "checkmark.circle") { model.beginFileSelection(with: item) }
                         Button(item.isDirectory ? "Share Folder as ZIP" : "Share File",
                                systemImage: item.isDirectory ? "archivebox" : "square.and.arrow.up") {
                             model.prepareShare(for: item)
+                        }
+                        if !item.isSymbolicLink {
+                            Button("Duplicate", systemImage: "plus.square.on.square") { Task { await model.duplicate(item) } }
+                        }
+                        if !item.isDirectory, ["zip", "ipa"].contains(item.url.pathExtension.lowercased()) {
+                            Button("Extract Here", systemImage: "archivebox.badge.plus") { Task { await model.extract(item) } }
                         }
                     }
                 }
@@ -1163,7 +1189,9 @@ private struct BrowserView: View {
                 }
             }
             ToolbarItem(placement: .topBarTrailing) {
-                if model.path.isEmpty {
+                if model.isSelectingFiles {
+                    Button("Done") { model.cancelFileSelection() }
+                } else if model.path.isEmpty {
                     if model.isWorking { ProgressView() }
                 } else {
                     Menu("View Options", systemImage: "ellipsis.circle") {
@@ -1196,6 +1224,22 @@ private struct BrowserView: View {
                             model.prepareCurrentDirectoryZIP()
                         }
                         .disabled(model.isPreparingShare)
+                        Divider()
+                        Button("Select Items", systemImage: "checkmark.circle") { model.beginFileSelection() }
+                        if model.fileClipboard != nil {
+                            Button("Paste", systemImage: "doc.on.clipboard") { Task { await model.pasteFiles() } }
+                                .disabled(model.isRunningFileOperation)
+                        }
+                        if model.selectedContainer?.kind == .application {
+                            Divider()
+                            Button("Back Up Complete App Data", systemImage: "externaldrive.badge.plus") {
+                                model.prepareCompleteAppBackup()
+                            }
+                            .disabled(model.isPreparingShare)
+                            Button("Restore Complete App Backup", systemImage: "arrow.counterclockwise.circle") {
+                                showingBackupImporter = true
+                            }
+                        }
                     }
                     .onChange(of: model.showHiddenFiles) {
                         Task { await model.refresh() }
@@ -1209,6 +1253,35 @@ private struct BrowserView: View {
         .searchable(text: $fileFilter, placement: .toolbar, prompt: "Filter Current Directory")
         .searchToolbarBehavior(.minimize)
         .sheet(isPresented: $showFileSearch) { ContainerSearchView(model: model) }
+        .fileImporter(isPresented: $showingBackupImporter, allowedContentTypes: [.zip]) { result in
+            switch result {
+            case .success(let url):
+                pendingBackupURL = url
+                showingRestoreBackupConfirmation = true
+            case .failure(let error): model.lastError = error.localizedDescription
+            }
+        }
+        .confirmationDialog("Restore Complete App Data?", isPresented: $showingRestoreBackupConfirmation, titleVisibility: .visible) {
+            Button("Create Safety Backup and Restore", role: .destructive) {
+                guard let pendingBackupURL else { return }
+                Task { await model.restoreCompleteAppBackup(from: pendingBackupURL) }
+                self.pendingBackupURL = nil
+            }
+            Button("Cancel", role: .cancel) { pendingBackupURL = nil }
+        } message: {
+            Text("Vellune will verify the manifest and every SHA-256, create a complete safety backup of the current app data, then replace Documents, Library, and tmp.")
+        }
+        .confirmationDialog("Delete Selected Items?", isPresented: $showingDeleteConfirmation, titleVisibility: .visible) {
+            Button("Back Up and Delete", role: .destructive) { Task { await model.deleteSelectedFiles() } }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("A recoverable ZIP safety archive will be created before deletion.")
+        }
+        .safeAreaInset(edge: .bottom) {
+            if model.isSelectingFiles {
+                FileSelectionBar(model: model, showDeleteConfirmation: $showingDeleteConfirmation)
+            }
+        }
         .onChange(of: model.path, initial: true) { _, newPath in
             if !pathFocused { pathInput = newPath }
         }
@@ -1348,6 +1421,67 @@ private struct BrowserView: View {
             pathInput = model.path
             isEditingPath = false
         }
+    }
+}
+
+private struct FileSelectionBar: View {
+    @Bindable var model: VelluneModel
+    @Binding var showDeleteConfirmation: Bool
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Button("Select All", systemImage: "checkmark.circle") { model.selectAllFiles() }
+                .labelStyle(.iconOnly)
+            Divider().frame(height: 24)
+            Button("Copy", systemImage: "doc.on.doc") { model.copySelectedFiles(mode: .copy) }
+                .disabled(model.selectedFilePaths.isEmpty)
+            Button("Cut", systemImage: "scissors") { model.copySelectedFiles(mode: .cut) }
+                .disabled(model.selectedFilePaths.isEmpty)
+            Button("Compress", systemImage: "archivebox") { Task { await model.compressSelectedFiles() } }
+                .disabled(model.selectedFilePaths.isEmpty || model.isRunningFileOperation)
+            Spacer()
+            Text("\(model.selectedFilePaths.count) selected")
+                .font(.caption.monospacedDigit())
+                .foregroundStyle(.secondary)
+            Button("Delete", systemImage: "trash", role: .destructive) { showDeleteConfirmation = true }
+                .labelStyle(.iconOnly)
+                .disabled(model.selectedFilePaths.isEmpty || model.isRunningFileOperation)
+        }
+        .buttonStyle(.bordered)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(.bar)
+    }
+}
+
+private struct FileOperationProgressBanner: View {
+    @Bindable var model: VelluneModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                ProgressView()
+                if let title = model.fileOperationTitle {
+                    Text(title).font(.subheadline.weight(.semibold))
+                } else {
+                    Text("Working…").font(.subheadline.weight(.semibold))
+                }
+                Spacer()
+                if let progress = model.fileOperationProgress, progress.totalItems > 0 {
+                    Text("\(progress.completedItems)/\(progress.totalItems)")
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                }
+            }
+            if let progress = model.fileOperationProgress, progress.totalBytes > 0 {
+                ProgressView(value: Double(progress.completedBytes), total: Double(progress.totalBytes))
+            }
+        }
+        .padding(14)
+        .background(.regularMaterial, in: .rect(cornerRadius: 16))
+        .shadow(radius: 12, y: 4)
+        .frame(maxWidth: 560)
+        .accessibilityElement(children: .combine)
     }
 }
 

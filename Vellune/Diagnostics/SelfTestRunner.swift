@@ -66,11 +66,13 @@ enum SelfTestRunner {
         checks.append(testDirectoryMarkdownExport())
         checks.append(testBackupReplaceAndRestore())
         checks.append(testSafeStructuredEditing())
+        checks.append(await testCompleteAppBackupAndRestore())
+        checks.append(await testGuardedFileOperations())
         checks.append(testLocalSearch())
         checks.append(testDirectorySorting())
 
         let report = SelfTestReport(
-            schemaVersion: 19,
+            schemaVersion: 20,
             appVersion: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "unknown",
             systemVersion: ProcessInfo.processInfo.operatingSystemVersionString,
             startedAt: startedAt,
@@ -497,6 +499,99 @@ enum SelfTestRunner {
             let savedPlist = try Data(contentsOf: plistURL)
             guard savedPlist.starts(with: Data("bplist".utf8)) else { throw SelfTestFailure("Binary plist was not written back in its original format") }
             return "draft=true, validation=true, conflict=true, atomicSave=true, binaryFormatPreserved=true"
+        }
+    }
+
+    nonisolated private static func testCompleteAppBackupAndRestore() async -> SelfTestReport.Check {
+        await timedAsyncCheck(name: "Complete app backup manifest and restore", path: "temporary fixture") {
+            let root = FileManager.default.temporaryDirectory
+                .appending(path: "vellune-app-backup-\(UUID().uuidString)", directoryHint: .isDirectory)
+            let archive = FileManager.default.temporaryDirectory.appending(path: "vellune-app-backup-\(UUID().uuidString).zip")
+            try FileManager.default.createDirectory(at: root.appending(path: "Documents", directoryHint: .isDirectory), withIntermediateDirectories: true)
+            try FileManager.default.createDirectory(at: root.appending(path: "Library/Preferences", directoryHint: .isDirectory), withIntermediateDirectories: true)
+            try FileManager.default.createDirectory(at: root.appending(path: "tmp/Empty", directoryHint: .isDirectory), withIntermediateDirectories: true)
+            try Data("document-original".utf8).write(to: root.appending(path: "Documents/note.txt"))
+            try Data("preference-original".utf8).write(to: root.appending(path: "Library/Preferences/state.plist"))
+            let descriptor = ContainerDescriptor(path: root.path, identifier: "com.example.BackupFixture",
+                                                 uuid: root.lastPathComponent, kind: .application, metadataDiagnostic: nil)
+            var safetyURL: URL?
+            defer {
+                try? FileManager.default.removeItem(at: root)
+                try? FileManager.default.removeItem(at: archive)
+                if let safetyURL { try? FileManager.default.removeItem(at: safetyURL) }
+            }
+            let backup = try await AppContainerBackupService.create(container: descriptor, destination: archive) { _, _, _, _ in }
+            guard backup.manifest.entries.count == 2,
+                  backup.manifest.includedRoots == ["Documents", "Library", "tmp"] else {
+                throw SelfTestFailure("Backup roots or manifest entry count was incorrect")
+            }
+            try Data("changed".utf8).write(to: root.appending(path: "Documents/note.txt"), options: .atomic)
+            try Data("extra".utf8).write(to: root.appending(path: "Documents/extra.txt"), options: .atomic)
+            let restored = try await AppContainerBackupService.restore(archive: archive, to: descriptor) { _, _, _, _ in }
+            safetyURL = restored.safetyBackupURL
+            guard try Data(contentsOf: root.appending(path: "Documents/note.txt")) == Data("document-original".utf8),
+                  !FileManager.default.fileExists(atPath: root.appending(path: "Documents/extra.txt").path),
+                  FileManager.default.fileExists(atPath: root.appending(path: "tmp/Empty").path),
+                  FileManager.default.fileExists(atPath: restored.safetyBackupURL.path) else {
+                throw SelfTestFailure("Exact restore, empty directory, or safety backup verification failed")
+            }
+            do {
+                try await StoredZIPArchive.write(entries: [.data(Data(), path: "../escape")], to: archive) { _, _, _, _ in }
+                throw SelfTestFailure("Unsafe ZIP path was accepted")
+            } catch StoredZIPError.unsafePath(_) {}
+            return "files=2, hashes=true, exactRestore=true, safetyBackup=true, zipSlipRejected=true"
+        }
+    }
+
+    nonisolated private static func testGuardedFileOperations() async -> SelfTestReport.Check {
+        await timedAsyncCheck(name: "Multi-item file operations and archive extraction", path: "temporary fixture") {
+            let root = FileManager.default.temporaryDirectory
+                .appending(path: "vellune-operations-\(UUID().uuidString)", directoryHint: .isDirectory)
+            let source = root.appending(path: "Source", directoryHint: .isDirectory)
+            let destination = root.appending(path: "Destination", directoryHint: .isDirectory)
+            try FileManager.default.createDirectory(at: source.appending(path: "Folder", directoryHint: .isDirectory), withIntermediateDirectories: true)
+            try FileManager.default.createDirectory(at: destination, withIntermediateDirectories: true)
+            try Data("alpha".utf8).write(to: source.appending(path: "alpha.txt"))
+            try Data("nested".utf8).write(to: source.appending(path: "Folder/nested.txt"))
+            defer { try? FileManager.default.removeItem(at: root) }
+
+            let items = try FileSystemReader.contents(at: source.path, showHidden: true)
+            guard let alpha = items.first(where: { $0.name == "alpha.txt" }),
+                  let folder = items.first(where: { $0.name == "Folder" }) else { throw SelfTestFailure("Operation fixtures missing") }
+            let duplicate = try FileOperationService.duplicate(alpha)
+            guard FileManager.default.fileExists(atPath: duplicate.path) else { throw SelfTestFailure("Duplicate failed") }
+
+            let copy = try FileOperationService.paste(.init(mode: .copy, sourceURLs: [alpha.url]), into: destination)
+            guard copy.affectedURLs.count == 1 else { throw SelfTestFailure("Copy/paste failed") }
+            let cut = try FileOperationService.paste(.init(mode: .cut, sourceURLs: [duplicate]), into: destination)
+            guard cut.affectedURLs.count == 1, !FileManager.default.fileExists(atPath: duplicate.path) else { throw SelfTestFailure("Cut/paste failed") }
+
+            let archive = try await FileOperationService.compress([folder, alpha], into: destination, named: "Batch") { _, _, _, _ in }
+            let archiveItem = FileItem(url: archive, isDirectory: false, isSymbolicLink: false,
+                                       size: Int64((try archive.resourceValues(forKeys: [.fileSizeKey])).fileSize ?? 0), modifiedAt: nil)
+            let extraction = try await FileOperationService.extract(archiveItem, into: destination) { _, _, _, _ in }
+            guard extraction.affectedURLs.contains(where: { $0.lastPathComponent == "nested.txt" }) else {
+                throw SelfTestFailure("ZIP extraction did not restore nested content")
+            }
+
+            let deflatedArchive = destination.appending(path: "Deflated.zip")
+            guard let deflatedData = Data(base64Encoded: "UEsDBBQAAAAIADtLEV3rJ0kGFwAAABUAAAATAAAAZm9sZGVyL2RlZmxhdGVkLnR4dEtJTctJLElVSM7PLUgsyUzKzMksqQQAUEsBAhQDFAAAAAgAO0sRXesnSQYXAAAAFQAAABMAAAAAAAAAAAAAAIABAAAAAGZvbGRlci9kZWZsYXRlZC50eHRQSwUGAAAAAAEAAQBBAAAASAAAAAAA") else {
+                throw SelfTestFailure("Deflated ZIP fixture was malformed")
+            }
+            try deflatedData.write(to: deflatedArchive, options: .atomic)
+            let deflatedItem = FileItem(url: deflatedArchive, isDirectory: false, isSymbolicLink: false,
+                                        size: Int64(deflatedData.count), modifiedAt: nil)
+            let deflatedExtraction = try await FileOperationService.extract(deflatedItem, into: source) { _, _, _, _ in }
+            guard let deflatedText = deflatedExtraction.affectedURLs.first(where: { $0.lastPathComponent == "deflated.txt" }),
+                  try Data(contentsOf: deflatedText) == Data("deflate compatibility".utf8) else {
+                throw SelfTestFailure("Deflated ZIP extraction failed")
+            }
+            let deletion = try await FileOperationService.delete([alpha]) { _, _, _, _ in }
+            guard !FileManager.default.fileExists(atPath: alpha.url.path),
+                  let safety = deletion.safetyArchiveURL,
+                  FileManager.default.fileExists(atPath: safety.path) else { throw SelfTestFailure("Guarded delete or safety archive failed") }
+            try? FileManager.default.removeItem(at: deletion.safetyArchiveURL!)
+            return "duplicate=true, copy=true, cut=true, batchZIP=true, storedAndDeflatedExtract=true, guardedDelete=true"
         }
     }
 

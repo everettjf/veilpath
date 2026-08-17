@@ -37,6 +37,12 @@ final class VelluneModel {
     var backupRecords: [FileBackupRecord] = []
     var isReplacingFile = false
     var sharePreparation: SharePreparation?
+    var selectedFilePaths: Set<String> = []
+    var isSelectingFiles = false
+    var fileClipboard: FileClipboard?
+    var fileOperationProgress: ShareExportProgress?
+    var fileOperationTitle: LocalizedStringResource?
+    var isRunningFileOperation = false
 
     @ObservationIgnored private var directorySummaryTask: Task<Void, Never>?
     @ObservationIgnored private var previewTask: Task<Void, Never>?
@@ -87,7 +93,7 @@ final class VelluneModel {
         }
         #else
         let currentVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
-        if selfTestReport?.schemaVersion != 19
+        if selfTestReport?.schemaVersion != 20
             || selfTestReport?.passed != true
             || selfTestReport?.appVersion != currentVersion
             || containers.isEmpty
@@ -210,6 +216,11 @@ final class VelluneModel {
         directoryExportURL = nil
         searchResults = []
         sharePreparation = nil
+        selectedFilePaths = []
+        isSelectingFiles = false
+        fileClipboard = nil
+        fileOperationProgress = nil
+        fileOperationTitle = nil
     }
 
     func acquireAndLoad() async {
@@ -249,6 +260,8 @@ final class VelluneModel {
 
     private func applyLoadedItems(_ loadedItems: [FileItem]) {
         items = loadedItems
+        selectedFilePaths = []
+        isSelectingFiles = false
         scheduleDirectorySummaries(for: loadedItems)
         selectedItem = nil
         selectedPreview = nil
@@ -463,6 +476,11 @@ final class VelluneModel {
                                          includeHidden: showHiddenFiles))
     }
 
+    func prepareCompleteAppBackup() {
+        guard let selectedContainer, selectedContainer.kind == .application else { return }
+        startSharePreparation(.appBackup(selectedContainer))
+    }
+
     func retrySharePreparation() {
         guard let request = sharePreparation?.request else { return }
         startSharePreparation(request)
@@ -501,6 +519,20 @@ final class VelluneModel {
                         at: url, named: name, includeHidden: includeHidden, progress: progress
                     )
                     var detail = "\(result.itemCount) items · \(ByteCountFormatter.string(fromByteCount: result.totalBytes, countStyle: .file))"
+                    if result.skippedSymbolicLinks > 0 { detail += " · \(result.skippedSymbolicLinks) links skipped" }
+                    ready = (result.url, detail)
+                case .appBackup(let container):
+                    let operation = try ExportCache.createOperationDirectory()
+                    let name = ExportCache.safeName(container.identifier ?? container.uuid) + " Backup.zip"
+                    let result = try await AppContainerBackupService.create(
+                        container: container,
+                        destination: operation.appending(path: name),
+                        progress: { completedBytes, totalBytes, completedItems, totalItems in
+                            await progress(.init(phase: .archiving, completedBytes: completedBytes, totalBytes: totalBytes,
+                                                 completedItems: completedItems, totalItems: totalItems))
+                        }
+                    )
+                    var detail = "\(result.manifest.entries.count) files · SHA-256 manifest"
                     if result.skippedSymbolicLinks > 0 { detail += " · \(result.skippedSymbolicLinks) links skipped" }
                     ready = (result.url, detail)
                 }
@@ -555,6 +587,122 @@ final class VelluneModel {
         backupRecords = (try? FileBackupService.records()) ?? []
         log("Safely edited and versioned \(item.name)")
         if selectedItem == item { await open(item) }
+    }
+
+    var selectedFiles: [FileItem] { items.filter { selectedFilePaths.contains($0.url.path) } }
+
+    func beginFileSelection(with item: FileItem? = nil) {
+        isSelectingFiles = true
+        if let item { selectedFilePaths.insert(item.url.path) }
+    }
+
+    func toggleFileSelection(_ item: FileItem) {
+        if selectedFilePaths.contains(item.url.path) { selectedFilePaths.remove(item.url.path) }
+        else { selectedFilePaths.insert(item.url.path) }
+        if selectedFilePaths.isEmpty { isSelectingFiles = false }
+    }
+
+    func selectAllFiles() {
+        isSelectingFiles = true
+        selectedFilePaths = Set(items.map { $0.url.path })
+    }
+
+    func cancelFileSelection() {
+        selectedFilePaths = []
+        isSelectingFiles = false
+    }
+
+    func copySelectedFiles(mode: FileClipboardMode) {
+        let urls = selectedFiles.filter { !$0.isSymbolicLink }.map(\.url)
+        guard !urls.isEmpty else { return }
+        fileClipboard = .init(mode: mode, sourceURLs: urls)
+        log("Prepared \(urls.count) items to \(mode.rawValue)")
+        cancelFileSelection()
+    }
+
+    func pasteFiles() async {
+        guard let fileClipboard, !path.isEmpty else { return }
+        let destination = URL(fileURLWithPath: path, isDirectory: true)
+        let title: LocalizedStringResource = fileClipboard.mode == .copy ? "Copying Items" : "Moving Items"
+        await performFileOperation(title: title) {
+            _ = try FileOperationService.paste(fileClipboard, into: destination)
+            if fileClipboard.mode == .cut { await MainActor.run { self.fileClipboard = nil } }
+        }
+    }
+
+    func duplicate(_ item: FileItem) async {
+        await performFileOperation(title: "Duplicating \(item.name)") {
+            _ = try FileOperationService.duplicate(item)
+        }
+    }
+
+    func compressSelectedFiles() async {
+        let selection = selectedFiles
+        guard !selection.isEmpty else { return }
+        let destination = URL(fileURLWithPath: path, isDirectory: true)
+        await performFileOperation(title: "Compressing \(selection.count) Items") { progress in
+            _ = try await FileOperationService.compress(selection, into: destination,
+                                                        named: "Archive", progress: progress)
+        }
+        cancelFileSelection()
+    }
+
+    func extract(_ item: FileItem) async {
+        let destination = URL(fileURLWithPath: path, isDirectory: true)
+        await performFileOperation(title: "Extracting \(item.name)") { progress in
+            _ = try await FileOperationService.extract(item, into: destination, progress: progress)
+        }
+    }
+
+    func deleteSelectedFiles() async {
+        let selection = selectedFiles
+        guard !selection.isEmpty else { return }
+        await performFileOperation(title: "Creating Safety Backup and Deleting") { progress in
+            let result = try await FileOperationService.delete(selection, progress: progress)
+            if let url = result.safetyArchiveURL { await MainActor.run { self.log("Deleted items are recoverable from \(url.lastPathComponent)") } }
+        }
+        cancelFileSelection()
+    }
+
+    func restoreCompleteAppBackup(from source: URL) async {
+        guard let selectedContainer else { return }
+        let accessed = source.startAccessingSecurityScopedResource()
+        defer { if accessed { source.stopAccessingSecurityScopedResource() } }
+        await performFileOperation(title: "Verifying and Restoring App Backup") { progress in
+            let result = try await AppContainerBackupService.restore(archive: source, to: selectedContainer, progress: progress)
+            await MainActor.run { self.log("Restored \(result.restoredFileCount) files; safety backup: \(result.safetyBackupURL.lastPathComponent)") }
+        }
+    }
+
+    private func performFileOperation(
+        title: LocalizedStringResource,
+        operation: @escaping @Sendable () async throws -> Void
+    ) async {
+        await performFileOperation(title: title) { _ in try await operation() }
+    }
+
+    private func performFileOperation(
+        title: LocalizedStringResource,
+        operation: @escaping @Sendable (FileOperationService.Progress) async throws -> Void
+    ) async {
+        guard !isRunningFileOperation else { return }
+        isRunningFileOperation = true
+        fileOperationTitle = title
+        fileOperationProgress = .init(phase: .preparing, completedBytes: 0, totalBytes: 0, completedItems: 0, totalItems: 0)
+        do {
+            let progress: FileOperationService.Progress = { completedBytes, totalBytes, completedItems, totalItems in
+                await MainActor.run {
+                    self.fileOperationProgress = .init(phase: .archiving, completedBytes: completedBytes, totalBytes: totalBytes,
+                                                       completedItems: completedItems, totalItems: totalItems)
+                }
+            }
+            try await operation(progress)
+            await refresh()
+            log("Completed: \(String(localized: title))")
+        } catch { report(error) }
+        isRunningFileOperation = false
+        fileOperationTitle = nil
+        fileOperationProgress = nil
     }
 
     func log(_ message: String, isError: Bool = false) {

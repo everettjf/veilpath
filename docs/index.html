@@ -52,15 +52,15 @@
         <div class="status-card status-one"><i></i><span>Version vault</span><b>Original preserved</b></div><div class="status-card status-two"><i></i><span>Large exports</span><b>1 MiB streaming</b></div>
       </div>
     </section>
-    <section class="marquee" aria-label="Vellune capabilities"><div><span>APP CONTAINERS</span><b>✦</b><span>SQLITE INSPECTION</span><b>✦</b><span>STREAMED SHARING</span><b>✦</b><span>FOLDER ZIP</span><b>✦</b><span>VERSION VAULT</span><b>✦</b><span>APP CONTAINERS</span><b>✦</b><span>SQLITE INSPECTION</span><b>✦</b><span>STREAMED SHARING</span><b>✦</b><span>FOLDER ZIP</span><b>✦</b><span>VERSION VAULT</span><b>✦</b></div></section>
+    <section class="marquee" aria-label="Vellune capabilities"><div><span>APP CONTAINERS</span><b>✦</b><span>SQLITE INSPECTION</span><b>✦</b><span>COMPLETE APP BACKUP</span><b>✦</b><span>MULTI-ITEM FILE OPS</span><b>✦</b><span>ROLLBACK-SAFE RESTORE</span><b>✦</b><span>APP CONTAINERS</span><b>✦</b><span>SQLITE INSPECTION</span><b>✦</b><span>COMPLETE APP BACKUP</span><b>✦</b><span>MULTI-ITEM FILE OPS</span><b>✦</b><span>ROLLBACK-SAFE RESTORE</span><b>✦</b></div></section>
     <section id="capabilities" class="section shell">
       <div class="section-heading"><p class="eyebrow"><span></span> Designed from the exploit outward</p><h2>From container discovery<br><em>to a guarded workspace.</em></h2><p>Every layer—from access grants and adaptive navigation to previews, sharing, and versioned replacement—is designed around the real behavior of <code>bad_query</code>.</p></div>
       <div class="feature-grid">
         <article class="feature featured"><div class="feature-number">01</div><div class="glyph layers"><i></i><i></i><i></i></div><h3>Container discovery</h3><p>Indexes Application, App Group, plugin, internal daemon, System Data, and System Group paths with direct access or <code>fsgetpath</code> fallback.</p><small>Short-lived grants · Capability-aware discovery</small></article>
         <article class="feature"><div class="feature-number">02</div><div class="glyph eye">◉</div><h3>App-first workspace</h3><p>Start from a grid or list of Apps. Keep files beside a resizable preview on iPad, or move through a focused full-screen flow on iPhone.</p><small>Adaptive navigation · Remembered layout</small></article>
         <article class="feature"><div class="feature-number">03</div><div class="glyph inspect">⌘</div><h3>Rich inspection</h3><p>Explore plist and JSON trees, text, images, PDF, Hex, SQLite, ZIP, fonts, cookies, Mach-O metadata, signatures, and entitlements.</p><small>Structure · Source · Preview · Hex</small></article>
-        <article class="feature"><div class="feature-number">04</div><div class="glyph export">↗</div><h3>Share without loading it all</h3><p>Prepare any file on demand, stream large copies in 1 MiB chunks, track progress, cancel cleanly, or archive a folder as ZIP.</p><small>Bounded memory · Empty folders preserved</small></article>
-        <article class="feature"><div class="feature-number">05</div><div class="glyph vault">◇</div><h3>Guarded editing</h3><p>Edit JSON and plist files through a temporary copy. The Version Vault preserves the original and every pre-save revision before verified replacement.</p><small>SHA-256 verified · Restore creates a safety backup</small></article>
+        <article class="feature"><div class="feature-number">04</div><div class="glyph export">↗</div><h3>Real file operations</h3><p>Select multiple items to copy, cut, paste, duplicate, compress, extract ZIP/IPA, or delete after creating a recoverable safety archive.</p><small>Stored + Deflate · ZIP Slip defended</small></article>
+        <article class="feature"><div class="feature-number">05</div><div class="glyph vault">◇</div><h3>Guarded backup and restore</h3><p>Back up Documents, Library, and tmp with a SHA-256 manifest. Restore verifies every payload, saves the current data, stages replacement, and can roll back a failed swap.</p><small>Complete App backup · Version Vault</small></article>
       </div>
     </section>
     <section class="proof-strip shell" aria-label="Verification summary">
@@ -83,9 +83,9 @@
 <i>PASS</i> Directory Markdown export
      current folder · recursive traversal
 
-<i>PASS</i> Backup, replace, and restore
+<i>PASS</i> Complete App backup and rollback-safe restore
      original retained · revisions deduplicated</code></pre></div>
-      <div class="evidence-copy"><p class="eyebrow"><span></span> Evidence, not assumptions</p><h2>Tested where it<br><em>actually runs.</em></h2><p>Vellune carries a schema-versioned on-device regression suite. Twenty checks verify access, discovery, previews, streamed export, ZIP policy, cancellation, Markdown, backup, restore, and safe editing.</p><ul><li>Structured JSON reports</li><li>iPhone and iPad coverage</li><li>External ZIP CRC validation</li><li>Explicit failure diagnostics</li></ul></div>
+      <div class="evidence-copy"><p class="eyebrow"><span></span> Evidence, not assumptions</p><h2>Tested where it<br><em>actually runs.</em></h2><p>Vellune carries a schema-versioned on-device regression suite. Twenty-two checks verify access, discovery, previews, streamed export, ZIP safety, stored and Deflate extraction, multi-item operations, complete backup, rollback-safe restore, Markdown, and guarded editing.</p><ul><li>Structured JSON reports</li><li>iPhone and iPad coverage</li><li>External ZIP CRC validation</li><li>Explicit failure diagnostics</li></ul></div>
     </section>
     <section id="build" class="section build shell">
       <div><p class="eyebrow"><span></span> Build it yourself</p><h2>Open the project.<br><em>Know what runs.</em></h2></div>

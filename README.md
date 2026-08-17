@@ -74,6 +74,15 @@ sandbox boundary.
   with progress, cancellation, verification, and automatic cache expiry.
 - Archives the current folder or a selected folder as ZIP while preserving empty
   directories, honoring the hidden-file setting, and skipping symbolic links.
+- Provides familiar multi-select file operations: copy, cut, paste, duplicate,
+  batch ZIP compression, ZIP/IPA extraction, and guarded deletion. Deletes first
+  create a recoverable safety archive.
+- Exports a complete Application data backup containing `Documents`, `Library`,
+  `tmp`, and `manifest.json`. Every file is recorded with its SHA-256 digest.
+- Restores complete App backups only after validating the bundle identifier,
+  declared payload, file sizes, and every SHA-256. Restore first preserves the
+  current container as a safety backup, stages the replacement, and rolls back
+  if the directory swap fails.
 - Exports the current directory as Markdown, with optional recursive traversal.
 - Keeps browsing read-only by default while allowing guarded JSON and plist
   edits, versioned backup and replacement, SHA-256 verification, and restore
@@ -104,8 +113,9 @@ outside this range are unsupported until confirmed by physical-device testing.
 
 Vellune includes an on-device regression suite that verifies sandbox access,
 container discovery, structured preview, file analysis, Mach-O parsing,
-streamed sharing, ZIP policy, cancellation cleanup, Markdown export, guarded
-editing, backup and restore, and local search. Results are written to
+streamed sharing, ZIP policy, stored and Deflate extraction, multi-item file
+operations, cancellation cleanup, Markdown export, guarded editing, complete
+App backup and rollback-safe restore, and local search. Results are written to
 `Documents/vellune-self-test.json` inside Vellune's own data container. Container
 counts are intentionally not presented as project-wide metrics because they
 depend entirely on the apps and system state of each device.
@@ -158,14 +168,15 @@ Vellune is experimental security-research software. It relies on private APIs
 and behavior that can differ between OS builds. Use it only on devices and data
 you own or are explicitly authorized to test.
 
-Browsing, previews, search, and export are read-only. Guarded writes are limited
-to explicit, confirmed JSON/plist edits or replacement of one selected file.
-Vellune edits a temporary draft, validates structured content, preserves the
-original and every pre-save revision in Version Vault, verifies writes with
-SHA-256, and creates another safety backup before a restore. This is still
-sensitive research software; a backup reduces risk but is not a substitute for
-a device backup. Diagnostics report failures explicitly instead of assuming a
-path is accessible.
+Browsing, previews, search, and export remain read-only. Write operations require
+an explicit user action. Structured edits use a temporary draft, validation,
+Version Vault history, and SHA-256 verification. File deletion first creates a
+recoverable ZIP. Complete App restore validates the manifest and every payload
+hash, saves the current `Documents`, `Library`, and `tmp`, stages the replacement,
+then performs a rollback-capable directory swap. This is still sensitive research
+software; an in-app backup reduces risk but is not a substitute for a device
+backup. Diagnostics report failures explicitly instead of assuming a path is
+accessible.
 
 ## Acknowledgements
 

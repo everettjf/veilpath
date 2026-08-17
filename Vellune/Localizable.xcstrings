@@ -1798,6 +1798,84 @@
         }
       }
     },
+    "%lld selected" : {
+      "localizations" : { "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "已选择 %lld 项" } } }
+    },
+    "A recoverable ZIP safety archive will be created before deletion." : {
+      "localizations" : { "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "删除前会创建一个可恢复的 ZIP 安全备份。" } } }
+    },
+    "Back Up and Delete" : {
+      "localizations" : { "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "备份并删除" } } }
+    },
+    "Back Up Complete App Data" : {
+      "localizations" : { "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "备份完整 App 数据" } } }
+    },
+    "Compress" : {
+      "localizations" : { "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "压缩" } } }
+    },
+    "Compressing %lld Items" : {
+      "localizations" : { "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "正在压缩 %lld 项" } } }
+    },
+    "Copy" : {
+      "localizations" : { "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "复制" } } }
+    },
+    "Copying Items" : {
+      "localizations" : { "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "正在复制项目" } } }
+    },
+    "Creating Safety Backup and Deleting" : {
+      "localizations" : { "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "正在创建安全备份并删除" } } }
+    },
+    "Cut" : {
+      "localizations" : { "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "剪切" } } }
+    },
+    "Delete" : {
+      "localizations" : { "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "删除" } } }
+    },
+    "Delete Selected Items?" : {
+      "localizations" : { "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "删除所选项目？" } } }
+    },
+    "Duplicate" : {
+      "localizations" : { "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "创建副本" } } }
+    },
+    "Duplicating %@" : {
+      "localizations" : { "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "正在创建 %@ 的副本" } } }
+    },
+    "Extract Here" : {
+      "localizations" : { "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "解压到此处" } } }
+    },
+    "Extracting %@" : {
+      "localizations" : { "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "正在解压 %@" } } }
+    },
+    "Moving Items" : {
+      "localizations" : { "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "正在移动项目" } } }
+    },
+    "Paste" : {
+      "localizations" : { "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "粘贴" } } }
+    },
+    "Restore Complete App Backup" : {
+      "localizations" : { "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "恢复完整 App 备份" } } }
+    },
+    "Restore Complete App Data?" : {
+      "localizations" : { "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "恢复完整 App 数据？" } } }
+    },
+    "Select" : {
+      "localizations" : { "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "选择" } } }
+    },
+    "Select All" : {
+      "localizations" : { "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "全选" } } }
+    },
+    "Select Items" : {
+      "localizations" : { "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "选择项目" } } }
+    },
+    "Vellune will verify the manifest and every SHA-256, create a complete safety backup of the current app data, then replace Documents, Library, and tmp." : {
+      "localizations" : { "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "Vellune 会验证清单和每个文件的 SHA-256，完整备份当前 App 数据，然后替换 Documents、Library 和 tmp。" } } }
+    },
+    "Verifying and Restoring App Backup" : {
+      "localizations" : { "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "正在验证并恢复 App 备份" } } }
+    },
+    "Working…" : {
+      "localizations" : { "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "正在处理…" } } }
+    },
     "Zoom" : {
 
     }
