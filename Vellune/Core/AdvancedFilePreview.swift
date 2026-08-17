@@ -70,12 +70,13 @@ enum AdvancedFileAnalyzer {
             database,
             sql: "SELECT name FROM sqlite_master WHERE type='index' AND name NOT LIKE 'sqlite_%' ORDER BY name LIMIT 500"
         )
-        let tables = tableNames.map { name in
+        let tables = tableNames.enumerated().map { index, name in
             let escaped = name.replacingOccurrences(of: "'", with: "''")
             let columns = strings(database, sql: "SELECT name FROM pragma_table_info('\(escaped)')")
             let quoted = name.replacingOccurrences(of: "\"", with: "\"\"")
-            let count = integer(database, sql: "SELECT count(*) FROM \"\(quoted)\"")
-            let rows = rows(database, sql: "SELECT * FROM \"\(quoted)\" LIMIT 100")
+            // Keep initial preview bounded. Remaining tables still expose their schema.
+            let count = index < 25 ? integer(database, sql: "SELECT count(*) FROM \"\(quoted)\"") : nil
+            let rows = index < 25 ? rows(database, sql: "SELECT * FROM \"\(quoted)\" LIMIT 100") : []
             return SQLiteSummary.Table(id: name, name: name, columns: columns, rowCount: count, sampleRows: rows)
         }
         return .init(

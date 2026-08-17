@@ -74,15 +74,14 @@ enum FilePreviewLoader {
     struct Result: Sendable {
         let preview: FilePreview
         let properties: FileProperties
-        let exportURL: URL
+        let exportURL: URL?
         let hexDump: String
     }
 
     nonisolated static func load(_ item: FileItem) throws -> Result {
+        try Task.checkCancellation()
         #if targetEnvironment(simulator)
-        let data = try Data(contentsOf: item.url, options: .mappedIfSafe)
-        let exportURL = try ExportCache.stage(data, named: item.name)
-        return .init(preview: try makePreview(item: item, data: data, exportURL: exportURL), properties: try FileAnalyzer.properties(for: item.url, data: data), exportURL: exportURL, hexDump: FileAnalyzer.hexDump(data: data))
+        return try loadGranted(item)
         #else
         let parentGrant = try BadQueryClient.acquire(.init(
             path: item.url.deletingLastPathComponent().path,
@@ -92,10 +91,41 @@ enum FilePreviewLoader {
         let fileGrant = try BadQueryClient.acquire(.init(path: item.url.path, createIfMissing: true))
         defer { BadQueryClient.release(fileGrant) }
         ExportCache.removeExpired()
-        let data = try Data(contentsOf: item.url, options: .mappedIfSafe)
-        let exportURL = try ExportCache.stage(data, named: item.name)
-        return .init(preview: try makePreview(item: item, data: data, exportURL: exportURL), properties: try FileAnalyzer.properties(for: item.url, data: data), exportURL: exportURL, hexDump: FileAnalyzer.hexDump(data: data))
+        return try loadGranted(item)
         #endif
+    }
+
+    private nonisolated static func loadGranted(_ item: FileItem) throws -> Result {
+        let attributes = try FileManager.default.attributesOfItem(atPath: item.url.path)
+        let size = (attributes[.size] as? NSNumber)?.int64Value ?? item.size ?? 0
+        try Task.checkCancellation()
+        if size > FilePreview.maximumInlineBytes {
+            let prefix = try readPrefix(of: item.url, maximumBytes: 1024 * 1024)
+            try Task.checkCancellation()
+            let preview: FilePreview
+            if prefix.starts(with: Data("SQLite format 3\0".utf8)) {
+                preview = .sqlite(try AdvancedFileAnalyzer.sqlite(at: item.url))
+            } else if let thumbnail = FileAnalyzer.imageThumbnail(at: item.url) {
+                preview = .image(thumbnail.0, thumbnail.1)
+            } else {
+                preview = .tooLarge(size)
+            }
+            return .init(preview: preview, properties: try FileAnalyzer.properties(for: item.url),
+                         exportURL: nil, hexDump: FileAnalyzer.hexDump(data: prefix))
+        }
+        let data = try Data(contentsOf: item.url, options: .mappedIfSafe)
+        try Task.checkCancellation()
+        let exportURL = try ExportCache.stage(data, named: item.name)
+        try Task.checkCancellation()
+        return .init(preview: try makePreview(item: item, data: data, exportURL: exportURL),
+                     properties: try FileAnalyzer.properties(for: item.url, data: data),
+                     exportURL: exportURL, hexDump: FileAnalyzer.hexDump(data: data))
+    }
+
+    private nonisolated static func readPrefix(of url: URL, maximumBytes: Int) throws -> Data {
+        let handle = try FileHandle(forReadingFrom: url)
+        defer { try? handle.close() }
+        return try handle.read(upToCount: maximumBytes) ?? Data()
     }
 
     static func makePreview(item: FileItem, data: Data, exportURL: URL) throws -> FilePreview {

@@ -59,6 +59,7 @@ enum SelfTestRunner {
         checks.append(testStructuredFormats())
         checks.append(testAdvancedPreviewFormats())
         checks.append(testFileAnalysis())
+        checks.append(testLargeFilePreviewBudget())
         checks.append(testMachOAnalysis())
         checks.append(testExportCache())
         checks.append(testDirectoryMarkdownExport())
@@ -67,7 +68,7 @@ enum SelfTestRunner {
         checks.append(testDirectorySorting())
 
         let report = SelfTestReport(
-            schemaVersion: 13,
+            schemaVersion: 14,
             appVersion: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "unknown",
             systemVersion: ProcessInfo.processInfo.operatingSystemVersionString,
             startedAt: startedAt,
@@ -118,13 +119,14 @@ enum SelfTestRunner {
                 modifiedAt: attributes[.modificationDate] as? Date
             )
             let result = try FilePreviewLoader.load(item)
-            guard FileManager.default.fileExists(atPath: result.exportURL.path) else {
+            guard let exportURL = result.exportURL,
+                  FileManager.default.fileExists(atPath: exportURL.path) else {
                 throw SelfTestFailure("Export cache file was not created")
             }
             guard case .structured(_, let text, _) = result.preview, text.contains("<plist") else {
                 throw SelfTestFailure("Property list preview was not converted to XML text")
             }
-            return "previewCharacters=\(text.count), export=\(result.exportURL.path)"
+            return "previewCharacters=\(text.count), export=\(exportURL.path)"
         }
     }
 
@@ -243,7 +245,29 @@ enum SelfTestRunner {
             guard properties.sha256 == "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad" else { throw SelfTestFailure("SHA-256 mismatch") }
             let hex = FileAnalyzer.hexDump(data: data)
             guard hex.contains("61 62 63"), hex.contains("|abc|") else { throw SelfTestFailure("Hex output mismatch") }
-            return "sha256=\(properties.sha256), permissions=\(String(format: "%04o", properties.posixPermissions))"
+            return "sha256=\(properties.sha256 ?? "missing"), permissions=\(String(format: "%04o", properties.posixPermissions))"
+        }
+    }
+
+    nonisolated private static func testLargeFilePreviewBudget() -> SelfTestReport.Check {
+        timedCheck(name: "Bounded large-file preview", path: "temporary sparse fixture") {
+            let url = FileManager.default.temporaryDirectory.appending(path: "vellune-large-\(UUID().uuidString).bin")
+            defer { try? FileManager.default.removeItem(at: url) }
+            FileManager.default.createFile(atPath: url.path, contents: Data("large-file-prefix".utf8))
+            let handle = try FileHandle(forWritingTo: url)
+            try handle.truncate(atOffset: UInt64(FilePreview.maximumInlineBytes + 1))
+            try handle.close()
+            let item = FileItem(url: url, isDirectory: false, isSymbolicLink: false,
+                                size: FilePreview.maximumInlineBytes + 1, modifiedAt: nil)
+            let result = try FilePreviewLoader.load(item)
+            guard case .tooLarge(let size) = result.preview,
+                  size == FilePreview.maximumInlineBytes + 1,
+                  result.exportURL == nil,
+                  result.properties.sha256 == nil,
+                  result.hexDump.contains("6C 61 72 67 65 2D 66 69 6C 65") else {
+                throw SelfTestFailure("Large file was fully processed instead of using the bounded path")
+            }
+            return "bytes=\(size), exportSkipped=true, hashSkipped=true, prefixBytes<=1048576"
         }
     }
 

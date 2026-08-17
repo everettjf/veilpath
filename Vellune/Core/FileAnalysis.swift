@@ -12,7 +12,7 @@ struct FileProperties: Equatable, Sendable {
     let group: String?
     let inode: UInt64?
     let typeIdentifier: String?
-    let sha256: String
+    let sha256: String?
 }
 
 struct StructuredNode: Identifiable, Equatable, Sendable {
@@ -92,11 +92,11 @@ struct MachOInfo: Equatable, Sendable {
 }
 
 enum FileAnalyzer {
-    static func properties(for url: URL, data: Data) throws -> FileProperties {
+    static func properties(for url: URL, data: Data? = nil) throws -> FileProperties {
         let attributes = try FileManager.default.attributesOfItem(atPath: url.path)
         let resource = try? url.resourceValues(forKeys: [.contentTypeKey])
         return FileProperties(
-            size: (attributes[.size] as? NSNumber)?.int64Value ?? Int64(data.count),
+            size: (attributes[.size] as? NSNumber)?.int64Value ?? Int64(data?.count ?? 0),
             createdAt: attributes[.creationDate] as? Date,
             modifiedAt: attributes[.modificationDate] as? Date,
             posixPermissions: (attributes[.posixPermissions] as? NSNumber)?.intValue ?? 0,
@@ -104,8 +104,30 @@ enum FileAnalyzer {
             group: attributes[.groupOwnerAccountName] as? String,
             inode: (attributes[.systemFileNumber] as? NSNumber)?.uint64Value,
             typeIdentifier: resource?.contentType?.identifier,
-            sha256: SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
+            sha256: data.map { SHA256.hash(data: $0).map { String(format: "%02x", $0) }.joined() }
         )
+    }
+
+    static func imageThumbnail(at url: URL, maximumPixelSize: Int = 2_400) -> (Data, ImageDetails)? {
+        guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
+              let raw = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [String: Any],
+              let image = CGImageSourceCreateThumbnailAtIndex(source, 0, [
+                kCGImageSourceCreateThumbnailFromImageAlways: true,
+                kCGImageSourceCreateThumbnailWithTransform: true,
+                kCGImageSourceThumbnailMaxPixelSize: maximumPixelSize,
+                kCGImageSourceShouldCacheImmediately: true
+              ] as CFDictionary) else { return nil }
+        let width = (raw[kCGImagePropertyPixelWidth as String] as? NSNumber)?.intValue ?? image.width
+        let height = (raw[kCGImagePropertyPixelHeight as String] as? NSNumber)?.intValue ?? image.height
+        var flattened: [String: String] = [:]
+        for (key, value) in raw where !(value is [String: Any]) { flattened[key] = String(describing: value) }
+        let output = NSMutableData()
+        guard let destination = CGImageDestinationCreateWithData(output, UTType.jpeg.identifier as CFString, 1, nil) else { return nil }
+        CGImageDestinationAddImage(destination, image, [kCGImageDestinationLossyCompressionQuality: 0.9] as CFDictionary)
+        guard CGImageDestinationFinalize(destination) else { return nil }
+        let details = ImageDetails(width: width, height: height, frameCount: CGImageSourceGetCount(source),
+                                   typeIdentifier: CGImageSourceGetType(source) as String?, properties: flattened)
+        return (output as Data, details)
     }
 
     static func imageDetails(data: Data) -> ImageDetails? {

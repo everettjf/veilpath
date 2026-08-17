@@ -38,6 +38,7 @@ final class VelluneModel {
     var isReplacingFile = false
 
     @ObservationIgnored private var directorySummaryTask: Task<Void, Never>?
+    @ObservationIgnored private var previewTask: Task<Void, Never>?
     @ObservationIgnored private var directorySummaryModificationDates: [String: Date] = [:]
     @ObservationIgnored private var directorySummaryIncludesHidden: Bool?
 
@@ -80,7 +81,8 @@ final class VelluneModel {
         }
         #else
         let currentVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
-        if selfTestReport?.schemaVersion != 13
+        if selfTestReport?.schemaVersion != 14
+            || selfTestReport?.passed != true
             || selfTestReport?.appVersion != currentVersion
             || containers.isEmpty
             || systemContainers.isEmpty {
@@ -309,6 +311,7 @@ final class VelluneModel {
 
     func open(_ item: FileItem) async {
         guard item.isDirectory else {
+            previewTask?.cancel()
             selectedItem = item
             selectedPreview = nil
             selectedProperties = nil
@@ -319,20 +322,27 @@ final class VelluneModel {
             defer {
                 if selectedItem == item { isLoadingPreview = false }
             }
-            do {
-                let result = try await Task.detached(priority: .userInitiated) {
+            let task = Task { [weak self] in
+                do {
+                    let result = try await Task.detached(priority: .userInitiated) {
                     try FilePreviewLoader.load(item)
-                }.value
-                guard selectedItem == item else { return }
-                selectedPreview = result.preview
-                selectedProperties = result.properties
-                selectedHexDump = result.hexDump
-                selectedExportURL = result.exportURL
-            } catch {
-                guard selectedItem == item else { return }
-                previewError = error.localizedDescription
-                log("Preview failed for \(item.url.path): \(error.localizedDescription)", isError: true)
+                    }.value
+                    try Task.checkCancellation()
+                    guard self?.selectedItem == item else { return }
+                    self?.selectedPreview = result.preview
+                    self?.selectedProperties = result.properties
+                    self?.selectedHexDump = result.hexDump
+                    self?.selectedExportURL = result.exportURL
+                } catch is CancellationError {
+                    return
+                } catch {
+                    guard self?.selectedItem == item else { return }
+                    self?.previewError = error.localizedDescription
+                    self?.log("Preview failed for \(item.url.path): \(error.localizedDescription)", isError: true)
+                }
             }
+            previewTask = task
+            await task.value
             return
         }
         await navigate(to: item.url.path)

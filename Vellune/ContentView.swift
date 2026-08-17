@@ -1865,7 +1865,11 @@ private struct FilePropertiesView: View {
                     if let createdAt = properties.createdAt { LabeledContent("Created", value: createdAt.formatted(date: .abbreviated, time: .standard)) }
                     if let modifiedAt = properties.modifiedAt { LabeledContent("Modified", value: modifiedAt.formatted(date: .abbreviated, time: .standard)) }
                 }
-                Section("SHA-256") { Text(properties.sha256).font(.caption.monospaced()).textSelection(.enabled) }
+                if let hash = properties.sha256 {
+                    Section("SHA-256") { Text(hash).font(.caption.monospaced()).textSelection(.enabled) }
+                } else {
+                    Section("SHA-256") { Text("Calculated on demand for large files").foregroundStyle(.secondary) }
+                }
             }
         }
     }
