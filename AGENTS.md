@@ -2,11 +2,13 @@
 
 ## Project overview
 
-Vellune is a native, read-only iOS and iPadOS container explorer built around
-the `bad_query` sandbox-extension technique. The app is written in SwiftUI and
-targets iOS/iPadOS 26 or newer. Treat it as security-research software: preserve
-the read-only product boundary and never add destructive file operations unless
-the project owner explicitly changes that policy.
+Vellune is a native iOS and iPadOS container explorer and guarded file workspace
+built around the `bad_query` sandbox-extension technique. The app is written in
+SwiftUI and targets iOS/iPadOS 26 or newer. Treat it as security-research
+software: keep browsing read-only by default, and route every explicit write
+through the existing backup, validation, verification, and recovery safeguards.
+Do not add unguarded or destructive file operations unless the project owner
+explicitly changes that policy.
 
 ## Repository layout
 
