@@ -23,10 +23,12 @@ struct ContentView: View {
             ZStack(alignment: .trailing) {
                 if model.currentContainerRoot.isEmpty {
                     ContainerHomeView(model: model)
-                        .transition(.opacity)
+                        .transition(homeTransition)
+                        .zIndex(0)
                 } else {
                     workspace
-                        .transition(.opacity)
+                        .transition(workspaceTransition)
+                        .zIndex(1)
                 }
 
                 if let presentedPreview {
@@ -59,6 +61,7 @@ struct ContentView: View {
                     }
                 }
             }
+            .animation(.snappy, value: model.currentContainerRoot.isEmpty)
             .animation(.snappy, value: presentedPreview?.id)
             .animation(.snappy, value: previewIsFullScreen)
         }
@@ -146,6 +149,16 @@ struct ContentView: View {
             }
             #endif
         }
+    }
+
+    private var homeTransition: AnyTransition {
+        guard horizontalSizeClass == .compact else { return .opacity }
+        return .move(edge: .leading).combined(with: .opacity)
+    }
+
+    private var workspaceTransition: AnyTransition {
+        guard horizontalSizeClass == .compact else { return .opacity }
+        return .move(edge: .trailing).combined(with: .opacity)
     }
 
     @ViewBuilder
