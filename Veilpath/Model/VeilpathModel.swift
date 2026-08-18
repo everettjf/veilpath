@@ -28,6 +28,10 @@ final class VeilpathModel {
     var lastError: String?
     var selfTestReport: SelfTestReport?
     var accessVerification: SelfTestReport.Check?
+
+    var isAccessVerificationPending: Bool {
+        isVerifyingAccess || (accessVerification == nil && isRunningDiagnostics)
+    }
     var containerIndexes: [ContainerKind: [ContainerDescriptor]] = [:]
     var searchResults: [FileItem] = []
     var isSearching = false
@@ -331,6 +335,22 @@ final class VeilpathModel {
     func refresh() async {
         guard !path.isEmpty else { return }
         await acquireAndLoad()
+    }
+
+    func refreshContainers(for kind: ContainerKind) async {
+        if kind == .application {
+            await verifyAccess()
+            return
+        }
+        guard !isWorking else { return }
+        isWorking = true
+        log("Refreshing \(kind.rawValue) containers")
+        let descriptors = await Task.detached(priority: .userInitiated) {
+            ContainerDiscoveryService.discover(kind)
+        }.value
+        containerIndexes[kind] = descriptors
+        log("Loaded \(descriptors.count) \(kind.rawValue) containers")
+        isWorking = false
     }
 
     func open(_ item: FileItem) async {

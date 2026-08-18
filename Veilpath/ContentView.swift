@@ -410,6 +410,7 @@ private struct ContainerHomeView: View {
     @Bindable var model: VeilpathModel
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @AppStorage("home.containerLayout") private var layoutRawValue = ContainerHomeLayout.grid.rawValue
+    @AppStorage("home.pinnedContainers") private var pinnedContainerIDsRawValue = ""
     @State private var searchText = ""
     @State private var selectedKind: ContainerKind = .application
     @State private var showSettings = false
@@ -429,12 +430,18 @@ private struct ContainerHomeView: View {
     }
 
     private var sections: [ContainerHomeSection] {
+        let pinned = filteredContainers.filter(isPinned)
+        let remaining = filteredContainers.filter { !isPinned($0) }
         guard selectedKind == .application else {
-            return [.init(id: selectedKind.rawValue, title: selectedKind.localizedContainerTitle, containers: filteredContainers)]
+            return [
+                .init(id: "pinned", title: "Pinned", containers: pinned),
+                .init(id: selectedKind.rawValue, title: selectedKind.localizedContainerTitle, containers: remaining)
+            ].filter { !$0.containers.isEmpty }
         }
-        let applications = filteredContainers.filter { $0.identifier?.hasPrefix("com.apple.") != true }
-        let appleApplications = filteredContainers.filter { $0.identifier?.hasPrefix("com.apple.") == true }
+        let applications = remaining.filter { $0.identifier?.hasPrefix("com.apple.") != true }
+        let appleApplications = remaining.filter { $0.identifier?.hasPrefix("com.apple.") == true }
         return [
+            .init(id: "pinned", title: "Pinned", containers: pinned),
             .init(id: "applications", title: "Applications", containers: applications),
             .init(id: "apple-applications", title: "Apple Applications", containers: appleApplications)
         ].filter { !$0.containers.isEmpty }
@@ -495,7 +502,12 @@ private struct ContainerHomeView: View {
                             spacing: 6
                         ) {
                             ForEach(section.containers) { container in
-                                ContainerTile(container: container) { open(container) }
+                                ContainerTile(
+                                    container: container,
+                                    isPinned: isPinned(container),
+                                    action: { open(container) },
+                                    pinAction: { togglePinned(container) }
+                                )
                             }
                         }
                     }
@@ -505,6 +517,7 @@ private struct ContainerHomeView: View {
             .padding(.vertical, 6)
         }
         .scrollEdgeEffectStyle(.soft, for: .top)
+        .refreshable { await model.refreshContainers(for: selectedKind) }
     }
 
     private var listContent: some View {
@@ -518,6 +531,14 @@ private struct ContainerHomeView: View {
                         Button { open(container) } label: { ContainerRow(container: container) }
                             .buttonStyle(.plain)
                             .accessibilityHint("Opens this app container")
+                            .swipeActions(edge: .trailing) {
+                                Button {
+                                    togglePinned(container)
+                                } label: {
+                                    Label(pinTitle(for: container), systemImage: isPinned(container) ? "pin.slash" : "pin")
+                                }
+                                .tint(isPinned(container) ? .secondary : .orange)
+                            }
                     }
                 } header: {
                     sectionHeader(section)
@@ -525,6 +546,7 @@ private struct ContainerHomeView: View {
             }
         }
         .listStyle(.insetGrouped)
+        .refreshable { await model.refreshContainers(for: selectedKind) }
     }
 
     private var homeGridColumns: [GridItem] {
@@ -581,6 +603,26 @@ private struct ContainerHomeView: View {
     private func open(_ container: ContainerDescriptor) {
         Task { await model.open(container) }
     }
+
+    private var pinnedContainerIDs: Set<String> {
+        Set(pinnedContainerIDsRawValue.split(separator: "\n").map(String.init))
+    }
+
+    private func isPinned(_ container: ContainerDescriptor) -> Bool {
+        pinnedContainerIDs.contains(container.pinIdentifier)
+    }
+
+    private func togglePinned(_ container: ContainerDescriptor) {
+        var identifiers = pinnedContainerIDs
+        if !identifiers.insert(container.pinIdentifier).inserted {
+            identifiers.remove(container.pinIdentifier)
+        }
+        pinnedContainerIDsRawValue = identifiers.sorted().joined(separator: "\n")
+    }
+
+    private func pinTitle(for container: ContainerDescriptor) -> LocalizedStringResource {
+        isPinned(container) ? "Unpin" : "Pin"
+    }
 }
 
 private struct ContainerHomeSection: Identifiable {
@@ -591,7 +633,9 @@ private struct ContainerHomeSection: Identifiable {
 
 private struct ContainerTile: View {
     let container: ContainerDescriptor
+    let isPinned: Bool
     let action: () -> Void
+    let pinAction: () -> Void
 
     var body: some View {
         Button(action: action) {
@@ -603,6 +647,11 @@ private struct ContainerTile: View {
                         .lineLimit(2)
                         .multilineTextAlignment(.leading)
                     Spacer(minLength: 8)
+                    if isPinned {
+                        Image(systemName: "pin.fill")
+                            .foregroundStyle(container.homeAccent)
+                            .accessibilityLabel("Pinned")
+                    }
                     if container.kind != .application {
                         ContainerKindBadge(container: container)
                     }
@@ -632,6 +681,11 @@ private struct ContainerTile: View {
         .buttonStyle(.plain)
         .accessibilityElement(children: .combine)
         .accessibilityHint("Opens this app container")
+        .contextMenu {
+            Button(isPinned ? LocalizedStringResource("Unpin") : LocalizedStringResource("Pin"),
+                   systemImage: isPinned ? "pin.slash" : "pin",
+                   action: pinAction)
+        }
     }
 
 }
@@ -650,6 +704,10 @@ private struct ContainerKindBadge: View {
 }
 
 private extension ContainerDescriptor {
+    var pinIdentifier: String {
+        "\(kind.rawValue)|\(identifier ?? uuid)"
+    }
+
     var homeTitle: String {
         guard let identifier else { return uuid }
         let components = identifier.split(separator: ".").map(String.init)
@@ -931,6 +989,10 @@ private struct SettingsView: View {
                         Spacer()
                         AccessStateLabel(model: model)
                     }
+                    Button("Verify Access", systemImage: "checkmark.shield") {
+                        Task { await model.verifyAccess() }
+                    }
+                    .disabled(model.isAccessVerificationPending)
                     LabeledContent("Grant policy", value: "Per operation")
                     LabeledContent("Mode", value: "Read only by default")
                 }
@@ -1011,25 +1073,25 @@ private struct AccessStatusView: View {
     }
 
     private var statusIcon: String {
-        if model.isVerifyingAccess { return "shield.lefthalf.filled.badge.checkmark" }
+        if model.isAccessVerificationPending { return "shield.lefthalf.filled.badge.checkmark" }
         if model.accessVerification == nil { return "shield.slash" }
         return "exclamationmark.shield.fill"
     }
 
     private var statusColor: Color {
-        if model.isVerifyingAccess { return .secondary }
+        if model.isAccessVerificationPending { return .secondary }
         if model.accessVerification == nil { return .secondary }
         return .orange
     }
 
     private var statusTitle: LocalizedStringResource {
-        if model.isVerifyingAccess { return "Verifying access…" }
+        if model.isAccessVerificationPending { return "Verifying access…" }
         if model.accessVerification == nil { return "Access not verified" }
         return "Access verification failed"
     }
 
     private var statusDetail: LocalizedStringResource {
-        if model.isVerifyingAccess { return "Testing application container access" }
+        if model.isAccessVerificationPending { return "Testing application container access" }
         if model.accessVerification == nil { return "Run the access check from Settings" }
         return "Open Settings to review diagnostics"
     }
@@ -2475,7 +2537,7 @@ private struct AccessStateLabel: View {
     let model: VeilpathModel
 
     var body: some View {
-        if model.isVerifyingAccess {
+        if model.isAccessVerificationPending {
             Label("Verifying…", systemImage: "progress.indicator")
                 .foregroundStyle(.secondary)
         } else if let check = model.accessVerification {
