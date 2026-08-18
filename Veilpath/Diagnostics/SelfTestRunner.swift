@@ -26,7 +26,7 @@ struct SelfTestReport: Codable, Sendable {
 }
 
 enum SelfTestRunner {
-    private static let logger = Logger(subsystem: "com.eevv.Veilpath", category: "SelfTest")
+    private static let logger = Logger(subsystem: "com.xnu.veilpath", category: "SelfTest")
 
     nonisolated static let reportURL: URL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
         .appending(path: "veilpath-self-test.json")
@@ -556,7 +556,7 @@ enum SelfTestRunner {
                 throw SelfTestFailure("An undeclared backup payload was accepted")
             } catch AppContainerBackupError.unexpectedPayload(_) {}
 
-            let selfDescriptor = ContainerDescriptor(path: NSHomeDirectory(), identifier: "com.eevv.Veilpath",
+            let selfDescriptor = ContainerDescriptor(path: NSHomeDirectory(), identifier: "com.xnu.veilpath",
                                                      uuid: "self", kind: .application, metadataDiagnostic: nil)
             do {
                 _ = try await AppContainerBackupService.restore(archive: archive, to: selfDescriptor) { _, _, _, _ in }
