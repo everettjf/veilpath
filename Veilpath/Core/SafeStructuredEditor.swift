@@ -65,7 +65,7 @@ enum SafeStructuredEditor {
             text = String(decoding: try PropertyListSerialization.data(fromPropertyList: plist, format: .xml, options: 0), as: UTF8.self)
         }
         let folder = FileManager.default.temporaryDirectory
-            .appending(path: "Vellune Edit Drafts", directoryHint: .isDirectory)
+            .appending(path: "Veilpath Edit Drafts", directoryHint: .isDirectory)
             .appending(path: UUID().uuidString, directoryHint: .isDirectory)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         let draft = folder.appending(path: target.lastPathComponent)

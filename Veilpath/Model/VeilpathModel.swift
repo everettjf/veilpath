@@ -3,7 +3,7 @@ import Observation
 
 @Observable
 @MainActor
-final class VelluneModel {
+final class VeilpathModel {
     var path = ""
     var currentContainerRoot = ""
     var selectedContainer: ContainerDescriptor?
@@ -76,7 +76,7 @@ final class VelluneModel {
         ExportCache.removeExpired()
         OperationSafetyStore.pruneAll()
         backupRecords = (try? FileBackupService.records()) ?? []
-        log("Vellune started on \(ProcessInfo.processInfo.operatingSystemVersionString)")
+        log("Veilpath started on \(ProcessInfo.processInfo.operatingSystemVersionString)")
         #if targetEnvironment(simulator)
         log("bad_query self-test skipped in Simulator")
         if ProcessInfo.processInfo.arguments.contains("--ui-testing") {

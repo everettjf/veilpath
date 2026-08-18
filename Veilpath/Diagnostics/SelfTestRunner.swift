@@ -26,10 +26,10 @@ struct SelfTestReport: Codable, Sendable {
 }
 
 enum SelfTestRunner {
-    private static let logger = Logger(subsystem: "com.eevv.Vellune", category: "SelfTest")
+    private static let logger = Logger(subsystem: "com.eevv.Veilpath", category: "SelfTest")
 
     nonisolated static let reportURL: URL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        .appending(path: "vellune-self-test.json")
+        .appending(path: "veilpath-self-test.json")
 
     nonisolated static func run() async -> SelfTestReport {
         let startedAt = Date()
@@ -151,20 +151,20 @@ enum SelfTestRunner {
 
     nonisolated private static func testStructuredFormats() -> SelfTestReport.Check {
         timedCheck(name: "Structured plist and JSON", path: "self-test fixtures") {
-            let plist: [String: Any] = ["name": "Vellune", "enabled": true, "items": [1, 2, 3]]
+            let plist: [String: Any] = ["name": "Veilpath", "enabled": true, "items": [1, 2, 3]]
             let plistData = try PropertyListSerialization.data(fromPropertyList: plist, format: .binary, options: 0)
             let parsed = try PropertyListSerialization.propertyList(from: plistData, format: nil)
             let root = StructuredNode.make(key: "Root", value: parsed)
-            guard root.searchableText.contains("Vellune"), root.matching("enabled") != nil else { throw SelfTestFailure("Plist tree search failed") }
+            guard root.searchableText.contains("Veilpath"), root.matching("enabled") != nil else { throw SelfTestFailure("Plist tree search failed") }
             let jsonData = try JSONSerialization.data(withJSONObject: plist)
-            guard let json = try JSONSerialization.jsonObject(with: jsonData) as? [String: Any], json["name"] as? String == "Vellune" else { throw SelfTestFailure("JSON parsing failed") }
+            guard let json = try JSONSerialization.jsonObject(with: jsonData) as? [String: Any], json["name"] as? String == "Veilpath" else { throw SelfTestFailure("JSON parsing failed") }
             return "binaryPlistBytes=\(plistData.count), treeChildren=\(root.children.count), jsonBytes=\(jsonData.count)"
         }
     }
 
     nonisolated private static func testAdvancedPreviewFormats() -> SelfTestReport.Check {
         timedCheck(name: "Advanced file format detection", path: "self-test fixtures") {
-            let root = FileManager.default.temporaryDirectory.appending(path: "vellune-formats-\(UUID().uuidString)", directoryHint: .isDirectory)
+            let root = FileManager.default.temporaryDirectory.appending(path: "veilpath-formats-\(UUID().uuidString)", directoryHint: .isDirectory)
             try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
             defer { try? FileManager.default.removeItem(at: root) }
 
@@ -226,7 +226,7 @@ enum SelfTestRunner {
             let databaseURL = root.appending(path: "fixture.sqlite")
             var database: OpaquePointer?
             guard sqlite3_open(databaseURL.path, &database) == SQLITE_OK, let database else { throw SelfTestFailure("SQLite fixture creation failed") }
-            guard sqlite3_exec(database, "CREATE TABLE sample(id INTEGER PRIMARY KEY, name TEXT); INSERT INTO sample(name) VALUES('Vellune');", nil, nil, nil) == SQLITE_OK else {
+            guard sqlite3_exec(database, "CREATE TABLE sample(id INTEGER PRIMARY KEY, name TEXT); INSERT INTO sample(name) VALUES('Veilpath');", nil, nil, nil) == SQLITE_OK else {
                 sqlite3_close(database)
                 throw SelfTestFailure("SQLite fixture population failed")
             }
@@ -242,7 +242,7 @@ enum SelfTestRunner {
     nonisolated private static func testFileAnalysis() -> SelfTestReport.Check {
         timedCheck(name: "File properties SHA-256 and hex", path: "temporary fixture") {
             let data = Data("abc".utf8)
-            let url = FileManager.default.temporaryDirectory.appending(path: "vellune-analysis-\(UUID().uuidString).txt")
+            let url = FileManager.default.temporaryDirectory.appending(path: "veilpath-analysis-\(UUID().uuidString).txt")
             defer { try? FileManager.default.removeItem(at: url) }
             try data.write(to: url)
             let properties = try FileAnalyzer.properties(for: url, data: data)
@@ -255,7 +255,7 @@ enum SelfTestRunner {
 
     nonisolated private static func testLargeFilePreviewBudget() -> SelfTestReport.Check {
         timedCheck(name: "Bounded large-file preview", path: "temporary sparse fixture") {
-            let url = FileManager.default.temporaryDirectory.appending(path: "vellune-large-\(UUID().uuidString).bin")
+            let url = FileManager.default.temporaryDirectory.appending(path: "veilpath-large-\(UUID().uuidString).bin")
             defer { try? FileManager.default.removeItem(at: url) }
             FileManager.default.createFile(atPath: url.path, contents: Data("large-file-prefix".utf8))
             let handle = try FileHandle(forWritingTo: url)
@@ -288,7 +288,7 @@ enum SelfTestRunner {
     nonisolated private static func testExportCache() -> SelfTestReport.Check {
         timedCheck(name: "Export cache lifecycle", path: ExportCache.directory.path) {
             try? ExportCache.removeAll()
-            let source = FileManager.default.temporaryDirectory.appending(path: "vellune-export-\(UUID().uuidString).txt")
+            let source = FileManager.default.temporaryDirectory.appending(path: "veilpath-export-\(UUID().uuidString).txt")
             defer { try? FileManager.default.removeItem(at: source); try? ExportCache.removeAll() }
             try Data("export".utf8).write(to: source)
             let first = try ExportCache.stage(source, named: "fixture.txt")
@@ -300,7 +300,7 @@ enum SelfTestRunner {
 
     nonisolated private static func testOnDemandShareExport() async -> SelfTestReport.Check {
         await timedAsyncCheck(name: "On-demand file and folder sharing", path: "temporary fixtures") {
-            let root = FileManager.default.temporaryDirectory.appending(path: "vellune-share-\(UUID().uuidString)", directoryHint: .isDirectory)
+            let root = FileManager.default.temporaryDirectory.appending(path: "veilpath-share-\(UUID().uuidString)", directoryHint: .isDirectory)
             try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
             defer { try? FileManager.default.removeItem(at: root) }
 
@@ -382,7 +382,7 @@ enum SelfTestRunner {
     nonisolated private static func testDirectoryMarkdownExport() -> SelfTestReport.Check {
         timedCheck(name: "Directory Markdown export", path: "temporary fixture") {
             let root = FileManager.default.temporaryDirectory
-                .appending(path: "vellune-markdown-\(UUID().uuidString)", directoryHint: .isDirectory)
+                .appending(path: "veilpath-markdown-\(UUID().uuidString)", directoryHint: .isDirectory)
             defer { try? FileManager.default.removeItem(at: root) }
             try FileManager.default.createDirectory(
                 at: root.appending(path: "Nested", directoryHint: .isDirectory),
@@ -420,7 +420,7 @@ enum SelfTestRunner {
     nonisolated private static func testBackupReplaceAndRestore() -> SelfTestReport.Check {
         timedCheck(name: "Backup, replace, verify, and restore", path: "temporary fixture") {
             let target = FileManager.default.temporaryDirectory
-                .appending(path: "vellune-replace-\(UUID().uuidString).txt")
+                .appending(path: "veilpath-replace-\(UUID().uuidString).txt")
             let original = Data("original".utf8)
             let replacement = Data("replacement".utf8)
             try original.write(to: target)
@@ -457,7 +457,7 @@ enum SelfTestRunner {
 
     nonisolated private static func testSafeStructuredEditing() -> SelfTestReport.Check {
         timedCheck(name: "JSON and plist safe editing", path: "temporary fixtures") {
-            let root = FileManager.default.temporaryDirectory.appending(path: "vellune-editor-\(UUID().uuidString)", directoryHint: .isDirectory)
+            let root = FileManager.default.temporaryDirectory.appending(path: "veilpath-editor-\(UUID().uuidString)", directoryHint: .isDirectory)
             try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
             defer { try? FileManager.default.removeItem(at: root) }
 
@@ -505,8 +505,8 @@ enum SelfTestRunner {
     nonisolated private static func testCompleteAppBackupAndRestore() async -> SelfTestReport.Check {
         await timedAsyncCheck(name: "Complete app backup manifest and restore", path: "temporary fixture") {
             let root = FileManager.default.temporaryDirectory
-                .appending(path: "vellune-app-backup-\(UUID().uuidString)", directoryHint: .isDirectory)
-            let archive = FileManager.default.temporaryDirectory.appending(path: "vellune-app-backup-\(UUID().uuidString).zip")
+                .appending(path: "veilpath-app-backup-\(UUID().uuidString)", directoryHint: .isDirectory)
+            let archive = FileManager.default.temporaryDirectory.appending(path: "veilpath-app-backup-\(UUID().uuidString).zip")
             try FileManager.default.createDirectory(at: root.appending(path: "Documents", directoryHint: .isDirectory), withIntermediateDirectories: true)
             try FileManager.default.createDirectory(at: root.appending(path: "Library/Preferences", directoryHint: .isDirectory), withIntermediateDirectories: true)
             try FileManager.default.createDirectory(at: root.appending(path: "tmp/Empty", directoryHint: .isDirectory), withIntermediateDirectories: true)
@@ -556,7 +556,7 @@ enum SelfTestRunner {
                 throw SelfTestFailure("An undeclared backup payload was accepted")
             } catch AppContainerBackupError.unexpectedPayload(_) {}
 
-            let selfDescriptor = ContainerDescriptor(path: NSHomeDirectory(), identifier: "com.eevv.Vellune",
+            let selfDescriptor = ContainerDescriptor(path: NSHomeDirectory(), identifier: "com.eevv.Veilpath",
                                                      uuid: "self", kind: .application, metadataDiagnostic: nil)
             do {
                 _ = try await AppContainerBackupService.restore(archive: archive, to: selfDescriptor) { _, _, _, _ in }
@@ -566,7 +566,7 @@ enum SelfTestRunner {
             let secondSafety = try OperationSafetyStore.makeArchiveURL(category: .deletedItems, stem: "Collision")
             guard firstSafety != secondSafety else { throw SelfTestFailure("Safety backup names collided") }
             let retention = FileManager.default.temporaryDirectory
-                .appending(path: "vellune-retention-\(UUID().uuidString)", directoryHint: .isDirectory)
+                .appending(path: "veilpath-retention-\(UUID().uuidString)", directoryHint: .isDirectory)
             defer { try? FileManager.default.removeItem(at: retention) }
             try FileManager.default.createDirectory(at: retention, withIntermediateDirectories: true)
             for index in 0..<12 {
@@ -588,7 +588,7 @@ enum SelfTestRunner {
     nonisolated private static func testGuardedFileOperations() async -> SelfTestReport.Check {
         await timedAsyncCheck(name: "Multi-item file operations and archive extraction", path: "temporary fixture") {
             let root = FileManager.default.temporaryDirectory
-                .appending(path: "vellune-operations-\(UUID().uuidString)", directoryHint: .isDirectory)
+                .appending(path: "veilpath-operations-\(UUID().uuidString)", directoryHint: .isDirectory)
             let source = root.appending(path: "Source", directoryHint: .isDirectory)
             let destination = root.appending(path: "Destination", directoryHint: .isDirectory)
             try FileManager.default.createDirectory(at: source.appending(path: "Folder", directoryHint: .isDirectory), withIntermediateDirectories: true)
@@ -677,7 +677,7 @@ enum SelfTestRunner {
 
     nonisolated private static func testLocalSearch() -> SelfTestReport.Check {
         timedCheck(name: "Recursive container search", path: FileManager.default.temporaryDirectory.path) {
-            let root = FileManager.default.temporaryDirectory.appending(path: "vellune-search-\(UUID().uuidString)", directoryHint: .isDirectory)
+            let root = FileManager.default.temporaryDirectory.appending(path: "veilpath-search-\(UUID().uuidString)", directoryHint: .isDirectory)
             defer { try? FileManager.default.removeItem(at: root) }
             try FileManager.default.createDirectory(at: root.appending(path: "nested", directoryHint: .isDirectory), withIntermediateDirectories: true)
             try Data().write(to: root.appending(path: "nested/UniqueNeedle.plist"))
@@ -689,7 +689,7 @@ enum SelfTestRunner {
 
     nonisolated private static func testDirectorySorting() -> SelfTestReport.Check {
         timedCheck(name: "Directory filtering and sorting", path: FileManager.default.temporaryDirectory.path) {
-            let root = FileManager.default.temporaryDirectory.appending(path: "vellune-sort-\(UUID().uuidString)", directoryHint: .isDirectory)
+            let root = FileManager.default.temporaryDirectory.appending(path: "veilpath-sort-\(UUID().uuidString)", directoryHint: .isDirectory)
             defer { try? FileManager.default.removeItem(at: root) }
             try FileManager.default.createDirectory(at: root.appending(path: "Folder", directoryHint: .isDirectory), withIntermediateDirectories: true)
             try Data(repeating: 1, count: 4).write(to: root.appending(path: "small.txt"))

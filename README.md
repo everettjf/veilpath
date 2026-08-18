@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="Vellune/Assets.xcassets/AppIcon.appiconset/AppIcon.png" width="112" alt="Vellune app icon">
+  <img src="Veilpath/Assets.xcassets/AppIcon.appiconset/AppIcon.png" width="112" alt="Veilpath app icon">
 </p>
 
-<h1 align="center">Vellune</h1>
+<h1 align="center">Veilpath</h1>
 
 <p align="center">
   English · <a href="README.zh-CN.md">简体中文</a>
@@ -14,7 +14,7 @@
 </p>
 
 <p align="center">
-  <a href="https://xnu.app/vellune/">Website</a> ·
+  <a href="https://xnu.app/veilpath/">Website</a> ·
   <a href="#compatibility">Compatibility</a> ·
   <a href="#building">Build</a> ·
   <a href="#acknowledgements">Acknowledgements</a>
@@ -26,27 +26,27 @@
 > **iPadOS 27 beta 3 (`24A5380l`)**. A physical device is required; Simulator
 > builds validate only compilation and UI. The upstream proof of concept lists
 > support through iOS 26.6.1 and iOS 27 beta 4, but those additional versions
-> have not all been validated in Vellune.
+> have not all been validated in Veilpath.
 
 <table>
   <tr>
-    <td width="68%"><img src="docs/assets/ipad-ui.png" alt="Vellune showing grouped application containers and a file list on iPad"></td>
-    <td width="32%"><img src="docs/assets/iphone-ui.png" alt="Vellune showing the compact file browser on iPhone"></td>
+    <td width="68%"><img src="docs/assets/ipad-ui.png" alt="Veilpath showing grouped application containers and a file list on iPad"></td>
+    <td width="32%"><img src="docs/assets/iphone-ui.png" alt="Veilpath showing the compact file browser on iPhone"></td>
   </tr>
 </table>
 
-## What is Vellune?
+## What is Veilpath?
 
-Vellune turns the `bad_query` proof of concept into a focused file-exploration
+Veilpath turns the `bad_query` proof of concept into a focused file-exploration
 interface for the iOS and iPadOS versions where the technique applies. It
 discovers otherwise inaccessible containers, resolves their identifiers, and
 lets you inspect, export, and deliberately replace individual files with a
 verified backup and restore path.
 
-The name **Vellune** is an invented word inspired by **veil** and **lune**
-(French for “moon”). Its intended image is *looking through a veil at what was
-previously hidden*—a fitting metaphor for exploring data beyond an app's normal
-sandbox boundary.
+The name **Veilpath** combines **veil** and **path**: a route into data that is
+normally hidden behind an app's sandbox boundary. It reflects the project's
+focus on deliberate exploration while keeping every write guarded and
+recoverable.
 
 ## Highlights
 
@@ -87,7 +87,7 @@ sandbox boundary.
 - Restores complete App backups only after validating the bundle identifier,
   exact root structure, declared payload, file sizes, and every SHA-256. A newly
   created backup is extracted and verified before success is reported. Restore
-  blocks Vellune's own live container, checks staging space, and first preserves the
+  blocks Veilpath's own live container, checks staging space, and first preserves the
   current container as a safety backup, stages the replacement, and rolls back
   if the directory swap fails.
 - Exports the current directory as Markdown, with optional recursive traversal.
@@ -98,10 +98,10 @@ sandbox boundary.
 
 ## Compatibility
 
-Vellune's stated support range is intentionally limited to versions covered by
+Veilpath's stated support range is intentionally limited to versions covered by
 its implementation and testing. **Do not assume that a newer beta or release is
 compatible solely because the app builds.** Run the on-device self-test after
-installing Vellune; private Container Manager behavior may change between OS
+installing Veilpath; private Container Manager behavior may change between OS
 builds.
 
 | Platform | Target | Validation |
@@ -112,18 +112,18 @@ builds.
 | Simulator | 26–27 | UI only; `bad_query` requires a physical device |
 
 The upstream project currently describes support through iOS 26.6.1 and iOS
-27 beta 4. Vellune deliberately documents the narrower range that has been
+27 beta 4. Veilpath deliberately documents the narrower range that has been
 implemented and validated here: **iOS/iPadOS 26 through 27 beta 3**. Versions
 outside this range are unsupported until confirmed by physical-device testing.
 
 ### Physical-device diagnostics
 
-Vellune includes an on-device regression suite that verifies sandbox access,
+Veilpath includes an on-device regression suite that verifies sandbox access,
 container discovery, structured preview, file analysis, Mach-O parsing,
 streamed sharing, ZIP policy, stored and Deflate extraction, multi-item file
 operations, cancellation cleanup, Markdown export, guarded editing, complete
 App backup and rollback-safe restore, and local search. Results are written to
-`Documents/vellune-self-test.json` inside Vellune's own data container. Container
+`Documents/veilpath-self-test.json` inside Veilpath's own data container. Container
 counts are intentionally not presented as project-wide metrics because they
 depend entirely on the apps and system state of each device.
 
@@ -141,25 +141,25 @@ depend entirely on the apps and system state of each device.
 1. Clone the repository:
 
    ```sh
-   git clone https://github.com/everettjf/vellune.git
-   cd vellune
+   git clone https://github.com/everettjf/veilpath.git
+   cd veilpath
    ```
 
-2. Open `Vellune.xcodeproj`.
-3. Select the `Vellune` scheme and an iPhone or iPad destination.
+2. Open `Veilpath.xcodeproj`.
+3. Select the `Veilpath` scheme and an iPhone or iPad destination.
 4. Choose your development team under **Signing & Capabilities**.
 5. Build and run.
 
-Vellune uses the App Group identifier `group.com.eevv.Vellune` for the iOS 26
+Veilpath uses the App Group identifier `group.com.eevv.Veilpath` for the iOS 26
 App Group access path. If you build under a different bundle identifier or
 team, replace it with an App Group owned by your account in both
-`Vellune/Vellune.entitlements` and `Vellune/Core/BadQueryClient.swift`.
+`Veilpath/Veilpath.entitlements` and `Veilpath/Core/BadQueryClient.swift`.
 
 ## Project structure
 
 ```text
-Vellune.xcodeproj/          Xcode project
-Vellune/
+Veilpath.xcodeproj/          Xcode project
+Veilpath/
   BadQuery/                 C bridge and sandbox-extension primitive
   Containers/               Container indexing and metadata resolution
   Core/                     File access, preview, and export
@@ -171,7 +171,7 @@ docs/                       GitHub Pages website
 
 ## Safety and scope
 
-Vellune is experimental security-research software. It relies on private APIs
+Veilpath is experimental security-research software. It relies on private APIs
 and behavior that can differ between OS builds. Use it only on devices and data
 you own or are explicitly authorized to test.
 
@@ -188,29 +188,29 @@ accessible.
 
 ## Acknowledgements
 
-Vellune exists because of the original
+Veilpath exists because of the original
 [`forcequitOS/bad_query`](https://github.com/forcequitOS/bad_query) sandbox
 escape proof of concept. Thank you to **forcequitOS** and the project's
 contributors for researching the issue and publishing a clear implementation
 for the community.
 
-The low-level container-query approach in Vellune is derived from that work.
+The low-level container-query approach in Veilpath is derived from that work.
 Please credit and support the upstream project when reusing or extending it.
 
 ## Licensing status
 
 The upstream `bad_query` repository does not currently declare an open-source
-license. Consequently, the derived files under `Vellune/BadQuery/` are **not**
+license. Consequently, the derived files under `Veilpath/BadQuery/` are **not**
 implicitly covered by a permissive license, and this repository intentionally
 does not claim otherwise.
 
 Before assigning a single open-source license to the complete repository,
 obtain permission or a license clarification from the upstream author. The
-remaining original Vellune code can be licensed separately once that boundary
+remaining original Veilpath code can be licensed separately once that boundary
 is documented explicitly.
 
 ## Disclaimer
 
 This project is provided for research and development. There is no warranty of
 compatibility, reliability, or fitness for a particular purpose. Apple can
-change or remove the private behavior Vellune depends on at any time.
+change or remove the private behavior Veilpath depends on at any time.

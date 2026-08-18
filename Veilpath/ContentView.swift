@@ -5,7 +5,7 @@ import PDFKit
 import QuickLook
 
 struct ContentView: View {
-    @Bindable var model: VelluneModel
+    @Bindable var model: VeilpathModel
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var showInspector = false
     @State private var presentedPreview: FileItem?
@@ -362,7 +362,7 @@ private struct ScreenshotFeedbackPrompt: View {
             HStack(spacing: 10) {
                 ShareLink(
                     item: context.screenshotURL,
-                    preview: SharePreview("Vellune Screenshot", image: Image(uiImage: context.previewImage))
+                    preview: SharePreview("Veilpath Screenshot", image: Image(uiImage: context.previewImage))
                 ) {
                     Label("Share", systemImage: "square.and.arrow.up")
                         .frame(maxWidth: .infinity)
@@ -407,7 +407,7 @@ private enum ContainerHomeLayout: String, CaseIterable, Identifiable {
 }
 
 private struct ContainerHomeView: View {
-    @Bindable var model: VelluneModel
+    @Bindable var model: VeilpathModel
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @AppStorage("home.containerLayout") private var layoutRawValue = ContainerHomeLayout.grid.rawValue
     @State private var searchText = ""
@@ -454,7 +454,7 @@ private struct ContainerHomeView: View {
                     listContent
                 }
             }
-            .navigationTitle("Vellune")
+            .navigationTitle("Veilpath")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) { locationsMenu }
                 ToolbarItemGroup(placement: .topBarTrailing) {
@@ -689,7 +689,7 @@ private extension ContainerDescriptor {
 }
 
 private struct PreviewFileList: View {
-    @Bindable var model: VelluneModel
+    @Bindable var model: VeilpathModel
     @Binding var presentedPreview: FileItem?
 
     var body: some View {
@@ -727,7 +727,7 @@ private struct PreviewFileList: View {
 }
 
 private struct SidebarView: View {
-    @Bindable var model: VelluneModel
+    @Bindable var model: VeilpathModel
     @Binding var columnVisibility: NavigationSplitViewVisibility
     @Binding var preferredCompactColumn: NavigationSplitViewColumn
     let usesCompactNavigation: Bool
@@ -776,7 +776,7 @@ private struct SidebarView: View {
         }
         .listStyle(.sidebar)
         .searchable(text: $searchText, placement: .sidebar, prompt: "Container name or UUID")
-        .navigationTitle("Vellune")
+        .navigationTitle("Veilpath")
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
                 locationsMenu
@@ -909,7 +909,7 @@ private struct SidebarView: View {
 }
 
 private struct SettingsView: View {
-    @Bindable var model: VelluneModel
+    @Bindable var model: VeilpathModel
     @Environment(\.dismiss) private var dismiss
     @State private var cacheMessage: String?
     @AppStorage("feedback.screenshotPromptEnabled") private var screenshotPromptEnabled = true
@@ -957,10 +957,10 @@ private struct SettingsView: View {
                         forInfoDictionaryKey: "CFBundleShortVersionString"
                     ) as? String ?? "Unknown")
                     LabeledContent("System", value: ProcessInfo.processInfo.operatingSystemVersionString)
-                    Link(destination: URL(string: "https://xnu.app/vellune/")!) {
-                        Label("Vellune Website", systemImage: "safari")
+                    Link(destination: URL(string: "https://xnu.app/veilpath/")!) {
+                        Label("Veilpath Website", systemImage: "safari")
                     }
-                    Link(destination: URL(string: "https://github.com/everettjf/vellune")!) {
+                    Link(destination: URL(string: "https://github.com/everettjf/veilpath")!) {
                         Label("Source Code", systemImage: "chevron.left.forwardslash.chevron.right")
                     }
                 }
@@ -970,7 +970,7 @@ private struct SettingsView: View {
                     Link(destination: FeedbackSupport.issueURL()) {
                         Label("Report an Issue", systemImage: "exclamationmark.bubble")
                     }
-                    Text("After you take a screenshot in Vellune, show quick actions to share it or report an issue.")
+                    Text("After you take a screenshot in Veilpath, show quick actions to share it or report an issue.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     Text("GitHub reports include app and system versions. Review screenshots for sensitive information before attaching them.")
@@ -990,7 +990,7 @@ private struct SettingsView: View {
 }
 
 private struct AccessStatusView: View {
-    let model: VelluneModel
+    let model: VeilpathModel
 
     var body: some View {
         HStack(spacing: 10) {
@@ -1061,7 +1061,7 @@ private struct ContainerRow: View {
 }
 
 private struct BrowserView: View {
-    @Bindable var model: VelluneModel
+    @Bindable var model: VeilpathModel
     @Binding var presentedPreview: FileItem?
     let opensPreviewImmediately: Bool
     let closeWorkspace: () -> Void
@@ -1269,7 +1269,7 @@ private struct BrowserView: View {
             }
             Button("Cancel", role: .cancel) { pendingBackupURL = nil }
         } message: {
-            Text("Vellune will verify the manifest and every SHA-256, create a complete safety backup of the current app data, then replace Documents, Library, and tmp.")
+            Text("Veilpath will verify the manifest and every SHA-256, create a complete safety backup of the current app data, then replace Documents, Library, and tmp.")
         }
         .confirmationDialog("Delete Selected Items?", isPresented: $showingDeleteConfirmation, titleVisibility: .visible) {
             Button("Back Up and Delete", role: .destructive) { Task { await model.deleteSelectedFiles() } }
@@ -1425,7 +1425,7 @@ private struct BrowserView: View {
 }
 
 private struct FileSelectionBar: View {
-    @Bindable var model: VelluneModel
+    @Bindable var model: VeilpathModel
     @Binding var showDeleteConfirmation: Bool
 
     var body: some View {
@@ -1456,7 +1456,7 @@ private struct FileSelectionBar: View {
 }
 
 private struct FileOperationProgressBanner: View {
-    @Bindable var model: VelluneModel
+    @Bindable var model: VeilpathModel
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -1566,7 +1566,7 @@ private struct DirectorySummaryLabel: View {
 }
 
 private struct SharePreparationView: View {
-    @Bindable var model: VelluneModel
+    @Bindable var model: VeilpathModel
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -2376,7 +2376,7 @@ private struct FilePropertiesView: View {
 }
 
 private struct ContainerSearchView: View {
-    @Bindable var model: VelluneModel
+    @Bindable var model: VeilpathModel
     @Environment(\.dismiss) private var dismiss
     @State private var query = ""
     var body: some View {
@@ -2392,7 +2392,7 @@ private struct ContainerSearchView: View {
 }
 
 private struct DiagnosticsView: View {
-    @Bindable var model: VelluneModel
+    @Bindable var model: VeilpathModel
     var showsDismissButton = true
     @Environment(\.dismiss) private var dismiss
 
@@ -2470,7 +2470,7 @@ private struct TestResultText: View {
 }
 
 private struct AccessStateLabel: View {
-    let model: VelluneModel
+    let model: VeilpathModel
 
     var body: some View {
         if model.isVerifyingAccess {
@@ -2514,5 +2514,5 @@ private extension SelfTestReport.Check {
 }
 
 #Preview {
-    ContentView(model: VelluneModel())
+    ContentView(model: VeilpathModel())
 }

@@ -1,8 +1,8 @@
 import SwiftUI
 
 @main
-struct VelluneApp: App {
-    @State private var model = VelluneModel()
+struct VeilpathApp: App {
+    @State private var model = VeilpathModel()
 
     var body: some Scene {
         WindowGroup {

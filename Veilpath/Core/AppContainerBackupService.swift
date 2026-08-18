@@ -49,7 +49,7 @@ enum AppContainerBackupError: LocalizedError {
         case .unexpectedPayload(let path): "The backup contains an undeclared payload entry: \(path)."
         case .invalidSourcePath(let path): "A source item is outside the selected container: \(path)."
         case .duplicatePath(let path): "The backup contains a duplicate path: \(path)."
-        case .selfRestoreUnsupported: "Vellune cannot restore its own active data container."
+        case .selfRestoreUnsupported: "Veilpath cannot restore its own active data container."
         case .insufficientStorage: "There is not enough free storage to create the safety backup and stage this restore."
         case .inconsistentSource(let path): "The source changed while it was being backed up: \(path). Close the target app and try again."
         }
@@ -107,7 +107,7 @@ enum AppContainerBackupService {
 
     nonisolated static func inspect(_ archive: URL) async throws -> (AppContainerBackupManifest, URL) {
         let extraction = FileManager.default.temporaryDirectory
-            .appending(path: "Vellune Backup Inspection", directoryHint: .isDirectory)
+            .appending(path: "Veilpath Backup Inspection", directoryHint: .isDirectory)
             .appending(path: UUID().uuidString, directoryHint: .isDirectory)
         do {
             let entries = try await StoredZIPArchive.extract(archive, to: extraction) { _, _, _, _ in }
@@ -152,8 +152,8 @@ enum AppContainerBackupService {
         _ = try await create(container: container, destination: safetyURL) { _, _, _, _ in }
 
         let operationID = UUID().uuidString
-        let staged = root.appending(path: ".vellune-restore-stage-\(operationID)", directoryHint: .isDirectory)
-        let rollback = root.appending(path: ".vellune-restore-rollback-\(operationID)", directoryHint: .isDirectory)
+        let staged = root.appending(path: ".veilpath-restore-stage-\(operationID)", directoryHint: .isDirectory)
+        let rollback = root.appending(path: ".veilpath-restore-rollback-\(operationID)", directoryHint: .isDirectory)
         try FileManager.default.createDirectory(at: staged, withIntermediateDirectories: false)
         try FileManager.default.createDirectory(at: rollback, withIntermediateDirectories: false)
         var swapped: [String] = []

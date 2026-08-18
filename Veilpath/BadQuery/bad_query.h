@@ -1,5 +1,5 @@
-#ifndef VELLUNE_BAD_QUERY_H
-#define VELLUNE_BAD_QUERY_H
+#ifndef VEILPATH_BAD_QUERY_H
+#define VEILPATH_BAD_QUERY_H
 
 #include <stdbool.h>
 #include <stdint.h>

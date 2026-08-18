@@ -1,8 +1,8 @@
-# Vellune Contributor Guide
+# Veilpath Contributor Guide
 
 ## Project overview
 
-Vellune is a native iOS and iPadOS container explorer and guarded file workspace
+Veilpath is a native iOS and iPadOS container explorer and guarded file workspace
 built around the `bad_query` sandbox-extension technique. The app is written in
 SwiftUI and targets iOS/iPadOS 26 or newer. Treat it as security-research
 software: keep browsing read-only by default, and route every explicit write
@@ -12,33 +12,33 @@ explicitly changes that policy.
 
 ## Repository layout
 
-- `Vellune.xcodeproj/`: Xcode project and build settings.
-- `Vellune/BadQuery/`: low-level C bridge and code derived from `bad_query`.
-- `Vellune/Containers/`: container discovery and metadata resolution.
-- `Vellune/Core/`: sandbox access, file models, preview, and export.
-- `Vellune/Diagnostics/`: physical-device self-test and persisted JSON report.
-- `Vellune/Model/`: observable application state and orchestration.
-- `Vellune/ContentView.swift`: adaptive navigation, browser, settings, and diagnostics UI.
-- `Vellune/Localizable.xcstrings`: English source strings and Simplified Chinese translations.
+- `Veilpath.xcodeproj/`: Xcode project and build settings.
+- `Veilpath/BadQuery/`: low-level C bridge and code derived from `bad_query`.
+- `Veilpath/Containers/`: container discovery and metadata resolution.
+- `Veilpath/Core/`: sandbox access, file models, preview, and export.
+- `Veilpath/Diagnostics/`: physical-device self-test and persisted JSON report.
+- `Veilpath/Model/`: observable application state and orchestration.
+- `Veilpath/ContentView.swift`: adaptive navigation, browser, settings, and diagnostics UI.
+- `Veilpath/Localizable.xcstrings`: English source strings and Simplified Chinese translations.
 - `docs/`: the static GitHub Pages site.
 - `README.md`: canonical English documentation.
 - `README.zh-CN.md`: Simplified Chinese documentation.
 
 The Xcode project uses a file-system-synchronized source group. New files placed
-under `Vellune/` are normally discovered automatically; do not add redundant
+under `Veilpath/` are normally discovered automatically; do not add redundant
 PBX file references without confirming they are necessary.
 
 ## Build and validation
 
-Use the `Vellune` scheme. A signing-free simulator build is the baseline check:
+Use the `Veilpath` scheme. A signing-free simulator build is the baseline check:
 
 ```sh
 xcodebuild \
-  -project Vellune.xcodeproj \
-  -scheme Vellune \
+  -project Veilpath.xcodeproj \
+  -scheme Veilpath \
   -sdk iphonesimulator \
   -configuration Debug \
-  -derivedDataPath /tmp/vellune-build \
+  -derivedDataPath /tmp/veilpath-build \
   CODE_SIGNING_ALLOWED=NO \
   build
 ```
@@ -46,7 +46,7 @@ xcodebuild \
 Before committing, also run:
 
 ```sh
-jq empty Vellune/Localizable.xcstrings
+jq empty Veilpath/Localizable.xcstrings
 git diff --check
 ```
 
@@ -75,7 +75,7 @@ as proof that the exploit path works.
 English is the app's source and default language. Simplified Chinese
 (`zh-Hans`) is supported.
 
-- Add every new user-facing string to `Vellune/Localizable.xcstrings` with a
+- Add every new user-facing string to `Veilpath/Localizable.xcstrings` with a
   complete `zh-Hans` translation.
 - Pass string literals directly to SwiftUI text APIs so the compiler can extract
   them. Use `LocalizedStringResource` for known runtime choices and
@@ -88,18 +88,18 @@ English is the app's source and default language. Simplified Chinese
 ## Security and compatibility constraints
 
 - Browsing, preview, search, and export are intentionally read-only. Export must
-  copy data into Vellune's own cache before invoking the share sheet. Guarded
+  copy data into Veilpath's own cache before invoking the share sheet. Guarded
   edits, replacements, and restores must use the existing Version Vault path.
 - Acquire sandbox extensions only for the operation that needs them and release
   each grant immediately afterward.
 - Preserve the iOS 26 App Group compatibility path and keep
-  `group.com.eevv.Vellune` synchronized between entitlements and source code.
+  `group.com.eevv.Veilpath` synchronized between entitlements and source code.
 - Do not silently broaden supported OS claims. Update compatibility statements
   only from verified device results.
 - Preserve structured self-test output and schema compatibility. Increment the
   schema version only when the persisted report format or required checks change.
 - The upstream `forcequitOS/bad_query` repository currently has no declared
-  open-source license. Do not claim that derived files under `Vellune/BadQuery/`
+  open-source license. Do not claim that derived files under `Veilpath/BadQuery/`
   are covered by a permissive license without upstream clarification.
 
 ## Change hygiene
