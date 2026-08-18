@@ -47,7 +47,7 @@ struct BadQueryRequest: Equatable, Sendable {
     static func forPath(_ path: String) -> Self {
         if ProcessInfo.processInfo.operatingSystemVersion.majorVersion == 26,
            path.hasPrefix(ContainerKind.appGroup.rootPath) {
-            return .init(path: path, groupIdentifier: "group.com.eevv.Veilpath", targetsAppGroup: true)
+            return .init(path: path, groupIdentifier: "group.com.xnu.veilpath", targetsAppGroup: true)
         }
         return .init(path: path)
     }

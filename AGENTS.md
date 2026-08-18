@@ -93,7 +93,7 @@ English is the app's source and default language. Simplified Chinese
 - Acquire sandbox extensions only for the operation that needs them and release
   each grant immediately afterward.
 - Preserve the iOS 26 App Group compatibility path and keep
-  `group.com.eevv.Veilpath` synchronized between entitlements and source code.
+  `group.com.xnu.veilpath` synchronized between entitlements and source code.
 - Do not silently broaden supported OS claims. Update compatibility statements
   only from verified device results.
 - Preserve structured self-test output and schema compatibility. Increment the

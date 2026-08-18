@@ -28,8 +28,8 @@
 
 <table>
   <tr>
-    <td width="68%"><img src="docs/assets/ipad-ui.png" alt="Veilpath 在 iPad 上显示分组应用容器和文件列表"></td>
-    <td width="32%"><img src="docs/assets/iphone-ui.png" alt="Veilpath 在 iPhone 上显示紧凑文件浏览界面"></td>
+    <td width="68%"><img src="docs/assets/ipad-ui.webp" alt="Veilpath 在 iPad 上显示分组应用容器和文件列表"></td>
+    <td width="32%"><img src="docs/assets/iphone-ui.webp" alt="Veilpath 在 iPhone 上显示紧凑文件浏览界面"></td>
   </tr>
 </table>
 
@@ -129,7 +129,7 @@ Markdown 导出、安全编辑、完整 App 备份、可回滚恢复及本地搜
 5. 构建并运行。
 
 Veilpath 在 iOS 26 的 App Group 访问路径中使用
-`group.com.eevv.Veilpath`。如果你使用不同的 Bundle ID 或开发团队构建，
+`group.com.xnu.veilpath`。如果你使用不同的 Bundle ID 或开发团队构建，
 请在 `Veilpath/Veilpath.entitlements` 和
 `Veilpath/Core/BadQueryClient.swift` 中将其替换为你的账户所拥有的
 App Group。

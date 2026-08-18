@@ -926,7 +926,9 @@ private struct SettingsView: View {
                 }
 
                 Section("Access") {
-                    LabeledContent("Status") {
+                    HStack {
+                        Text("Status")
+                        Spacer()
                         AccessStateLabel(model: model)
                     }
                     LabeledContent("Grant policy", value: "Per operation")

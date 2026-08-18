@@ -30,8 +30,8 @@
 
 <table>
   <tr>
-    <td width="68%"><img src="docs/assets/ipad-ui.png" alt="Veilpath showing grouped application containers and a file list on iPad"></td>
-    <td width="32%"><img src="docs/assets/iphone-ui.png" alt="Veilpath showing the compact file browser on iPhone"></td>
+    <td width="68%"><img src="docs/assets/ipad-ui.webp" alt="Veilpath showing grouped application containers and a file list on iPad"></td>
+    <td width="32%"><img src="docs/assets/iphone-ui.webp" alt="Veilpath showing the compact file browser on iPhone"></td>
   </tr>
 </table>
 
@@ -150,7 +150,7 @@ depend entirely on the apps and system state of each device.
 4. Choose your development team under **Signing & Capabilities**.
 5. Build and run.
 
-Veilpath uses the App Group identifier `group.com.eevv.Veilpath` for the iOS 26
+Veilpath uses the App Group identifier `group.com.xnu.veilpath` for the iOS 26
 App Group access path. If you build under a different bundle identifier or
 team, replace it with an App Group owned by your account in both
 `Veilpath/Veilpath.entitlements` and `Veilpath/Core/BadQueryClient.swift`.

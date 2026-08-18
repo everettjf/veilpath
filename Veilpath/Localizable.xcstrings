@@ -1,219 +1,27 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
-    "After you take a screenshot in Veilpath, show quick actions to share it or report an issue." : {
+    "·" : {
+
+    },
+    "%@ · compressed %@" : {
       "localizations" : {
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "在 Veilpath 中截屏后，显示分享截图或反馈问题的快捷操作。" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ · compressed %2$@"
+          }
+        }
       }
     },
-    "Closes the screenshot actions." : {
+    "%@ · Modified %@" : {
       "localizations" : {
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "关闭截屏快捷操作。" } }
-      }
-    },
-    "GitHub reports include app and system versions. Review screenshots for sensitive information before attaching them." : {
-      "localizations" : {
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "GitHub 反馈会包含 App 与系统版本。附加截图前，请检查其中是否包含敏感信息。" } }
-      }
-    },
-    "Report Issue" : {
-      "localizations" : {
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "反馈问题" } }
-      }
-    },
-    "Screenshot captured" : {
-      "localizations" : {
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "截屏已完成" } }
-      }
-    },
-    "Screenshot feedback prompt" : {
-      "localizations" : {
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "截屏后显示反馈操作" } }
-      }
-    },
-    "Share it or report an issue while the context is fresh." : {
-      "localizations" : {
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "趁当前操作还清晰，分享截图或反馈问题。" } }
-      }
-    },
-    "Share" : {
-      "localizations" : {
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "分享" } }
-      }
-    },
-    "The current screen could not be captured." : {
-      "localizations" : {
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "无法捕获当前画面。" } }
-      }
-    },
-    "The screenshot could not be prepared for sharing." : {
-      "localizations" : {
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "无法准备要分享的截图。" } }
-      }
-    },
-    "Veilpath Screenshot" : {
-      "localizations" : {
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "Veilpath 截图" } }
-      }
-    },
-    "Empty" : {
-      "localizations" : {
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "空文件夹" } }
-      }
-    },
-    "file" : {
-      "localizations" : {
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "个文件" } }
-      }
-    },
-    "files" : {
-      "localizations" : {
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "个文件" } }
-      }
-    },
-    "folder" : {
-      "localizations" : {
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "个文件夹" } }
-      }
-    },
-    "folders" : {
-      "localizations" : {
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "个文件夹" } }
-      }
-    },
-    "Feedback" : {
-      "localizations" : {
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "反馈" } }
-      }
-    },
-    "Opens GitHub with your app and system versions included." : {
-      "localizations" : {
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "打开 GitHub，并自动附带 App 与系统版本。" } }
-      }
-    },
-    "Report an Issue" : {
-      "localizations" : {
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "反馈问题" } }
-      }
-    },
-    "App name or Bundle ID" : {
-      "localizations" : {
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "App 名称或 Bundle ID" } }
-      }
-    },
-    "Choose a file to inspect its properties or open a preview." : {
-      "localizations" : {
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "选择一个文件以查看属性或打开预览。" } }
-      }
-    },
-    "Grid" : {
-      "localizations" : {
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "网格" } }
-      }
-    },
-    "Layout" : {
-      "localizations" : {
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "布局" } }
-      }
-    },
-    "List" : {
-      "localizations" : {
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "列表" } }
-      }
-    },
-    "Loading containers…" : {
-      "localizations" : {
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "正在载入容器…" } }
-      }
-    },
-    "Opens this app container" : {
-      "localizations" : {
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "打开这个 App 容器" } }
-      }
-    },
-    "Read only by default" : {
-      "localizations" : {
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "默认只读" } }
-      }
-    },
-    "Back Up and Replace" : {
-      "localizations" : {
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "备份并替换" } }
-      }
-    },
-    "Close Preview" : {
-      "localizations" : {
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "关闭预览" } }
-      }
-    },
-    "Create Safety Backup and Restore" : {
-      "localizations" : {
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "创建安全备份并恢复" } }
-      }
-    },
-    "Drag horizontally to resize the preview panel" : {
-      "localizations" : {
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "水平拖动以调整预览面板宽度" } }
-      }
-    },
-    "Full Screen" : {
-      "localizations" : {
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "全屏" } }
-      }
-    },
-    "Open Preview" : {
-      "localizations" : {
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "打开预览" } }
-      }
-    },
-    "Prepare Markdown Listing" : {
-      "localizations" : {
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "生成 Markdown 列表" } }
-      }
-    },
-    "Recursive Markdown Export" : {
-      "localizations" : {
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "递归导出 Markdown" } }
-      }
-    },
-    "Replace Selected File?" : {
-      "localizations" : {
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "替换所选文件？" } }
-      }
-    },
-    "Resize Preview" : {
-      "localizations" : {
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "调整预览宽度" } }
-      }
-    },
-    "Restore Latest Backup" : {
-      "localizations" : {
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "恢复最近备份" } }
-      }
-    },
-    "Restore Preview Size" : {
-      "localizations" : {
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "恢复预览大小" } }
-      }
-    },
-    "Restore This Backup?" : {
-      "localizations" : {
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "恢复此备份？" } }
-      }
-    },
-    "Share Markdown Listing" : {
-      "localizations" : {
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "分享 Markdown 列表" } }
-      }
-    },
-    "The current file will receive its own safety backup before restoration." : {
-      "localizations" : {
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "恢复前会先为当前文件创建独立的安全备份。" } }
-      }
-    },
-    "The original file will be backed up and verified before replacement." : {
-      "localizations" : {
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "替换前会先备份并校验原文件。" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ · Modified %2$@"
+          }
+        }
       }
     },
     "%@: %@" : {
@@ -236,6 +44,9 @@
         }
       }
     },
+    "%lld archive entries" : {
+
+    },
     "%lld frame(s)" : {
 
     },
@@ -248,6 +59,52 @@
           }
         }
       }
+    },
+    "%lld of %lld items" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld of %2$lld items"
+          }
+        }
+      }
+    },
+    "%lld percent" : {
+
+    },
+    "%lld selected" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已选择 %lld 项"
+          }
+        }
+      }
+    },
+    "%lld/%lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld/%2$lld"
+          }
+        }
+      }
+    },
+    "A recoverable ZIP safety archive will be created before deletion." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "删除前会创建一个可恢复的 ZIP 安全备份。"
+          }
+        }
+      }
+    },
+    "Aa Bb Cc 123 中文" : {
+
     },
     "About" : {
       "localizations" : {
@@ -330,6 +187,16 @@
         }
       }
     },
+    "After you take a screenshot in Veilpath, show quick actions to share it or report an issue." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在 Veilpath 中截屏后，显示分享截图或反馈问题的快捷操作。"
+          }
+        }
+      }
+    },
     "App Group" : {
       "localizations" : {
         "zh-Hans" : {
@@ -346,6 +213,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "App 组容器"
+          }
+        }
+      }
+    },
+    "App name or Bundle ID" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "App 名称或 Bundle ID"
           }
         }
       }
@@ -420,6 +297,45 @@
         }
       }
     },
+    "Back Up and Delete" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "备份并删除"
+          }
+        }
+      }
+    },
+    "Back Up and Replace" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "备份并替换"
+          }
+        }
+      }
+    },
+    "Back Up Complete App Data" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "备份完整 App 数据"
+          }
+        }
+      }
+    },
+    "Back Up Original and Save" : {
+
+    },
+    "Best Match" : {
+
+    },
+    "Binary Cookies" : {
+
+    },
     "Binary File" : {
       "localizations" : {
         "zh-Hans" : {
@@ -430,6 +346,9 @@
         }
       }
     },
+    "Calculated on demand for large files" : {
+
+    },
     "Cancel" : {
       "localizations" : {
         "zh-Hans" : {
@@ -439,6 +358,12 @@
           }
         }
       }
+    },
+    "Cancel Export" : {
+
+    },
+    "Cannot Edit This File" : {
+
     },
     "Checks" : {
       "localizations" : {
@@ -460,6 +385,16 @@
         }
       }
     },
+    "Choose a file to inspect its properties or open a preview." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "选择一个文件以查看属性或打开预览。"
+          }
+        }
+      }
+    },
     "Clear Export Cache" : {
       "localizations" : {
         "zh-Hans" : {
@@ -470,12 +405,55 @@
         }
       }
     },
+    "Close Preview" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "关闭预览"
+          }
+        }
+      }
+    },
+    "Closes the screenshot actions." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "关闭截屏快捷操作。"
+          }
+        }
+      }
+    },
     "Code Signature" : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "代码签名"
+          }
+        }
+      }
+    },
+    "Columns (%lld)" : {
+
+    },
+    "Compress" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "压缩"
+          }
+        }
+      }
+    },
+    "Compressing %lld Items" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在压缩 %lld 项"
           }
         }
       }
@@ -534,6 +512,19 @@
         }
       }
     },
+    "Cookies" : {
+
+    },
+    "Copy" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "复制"
+          }
+        }
+      }
+    },
     "Copy Path" : {
       "localizations" : {
         "zh-Hans" : {
@@ -554,6 +545,26 @@
         }
       }
     },
+    "Copying Items" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在复制项目"
+          }
+        }
+      }
+    },
+    "Create Safety Backup and Restore" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "创建安全备份并恢复"
+          }
+        }
+      }
+    },
     "Created" : {
       "localizations" : {
         "zh-Hans" : {
@@ -564,12 +575,55 @@
         }
       }
     },
+    "Creating Safety Backup and Deleting" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在创建安全备份并删除"
+          }
+        }
+      }
+    },
+    "Cut" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "剪切"
+          }
+        }
+      }
+    },
+    "Database" : {
+
+    },
     "Date Modified" : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "修改日期"
+          }
+        }
+      }
+    },
+    "Delete" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "删除"
+          }
+        }
+      }
+    },
+    "Delete Selected Items?" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "删除所选项目？"
           }
         }
       }
@@ -608,6 +662,12 @@
         }
       }
     },
+    "Dismiss" : {
+
+    },
+    "Domain" : {
+
+    },
     "Done" : {
       "localizations" : {
         "zh-Hans" : {
@@ -618,12 +678,55 @@
         }
       }
     },
+    "Drag horizontally to resize the preview panel" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "水平拖动以调整预览面板宽度"
+          }
+        }
+      }
+    },
+    "Duplicate" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "创建副本"
+          }
+        }
+      }
+    },
+    "Duplicating %@" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在创建 %@ 的副本"
+          }
+        }
+      }
+    },
+    "Edit Safely" : {
+
+    },
     "Edit the absolute path" : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "编辑绝对路径"
+          }
+        }
+      }
+    },
+    "Empty" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "空文件夹"
           }
         }
       }
@@ -658,7 +761,11 @@
         }
       }
     },
+    "Expires" : {
+
+    },
     "Export" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -688,12 +795,55 @@
         }
       }
     },
+    "Export progress" : {
+
+    },
+    "Extract Here" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "解压到此处"
+          }
+        }
+      }
+    },
+    "Extracting %@" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在解压 %@"
+          }
+        }
+      }
+    },
     "Failed" : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "失败"
+          }
+        }
+      }
+    },
+    "Feedback" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "反馈"
+          }
+        }
+      }
+    },
+    "file" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "个文件"
           }
         }
       }
@@ -758,6 +908,16 @@
         }
       }
     },
+    "files" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "个文件"
+          }
+        }
+      }
+    },
     "Files" : {
       "localizations" : {
         "zh-Hans" : {
@@ -788,6 +948,29 @@
         }
       }
     },
+    "folder" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "个文件夹"
+          }
+        }
+      }
+    },
+    "folders" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "个文件夹"
+          }
+        }
+      }
+    },
+    "Font" : {
+
+    },
     "Forward" : {
       "localizations" : {
         "zh-Hans" : {
@@ -797,6 +980,32 @@
           }
         }
       }
+    },
+    "Full Name" : {
+
+    },
+    "Full Screen" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "全屏"
+          }
+        }
+      }
+    },
+    "GitHub reports include app and system versions. Review screenshots for sensitive information before attaching them." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GitHub 反馈会包含 App 与系统版本。附加截图前，请检查其中是否包含敏感信息。"
+          }
+        }
+      }
+    },
+    "Glyphs" : {
+
     },
     "Grant policy" : {
       "localizations" : {
@@ -815,6 +1024,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "每次操作完成后都会释放授权"
+          }
+        }
+      }
+    },
+    "Grid" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "网格"
           }
         }
       }
@@ -841,6 +1060,9 @@
           }
         }
       }
+    },
+    "Indexes" : {
+
     },
     "Info" : {
       "localizations" : {
@@ -892,12 +1114,45 @@
         }
       }
     },
+    "Journal Mode" : {
+
+    },
     "Kind" : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "类型"
+          }
+        }
+      }
+    },
+    "Layout" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "布局"
+          }
+        }
+      }
+    },
+    "List" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "列表"
+          }
+        }
+      }
+    },
+    "Loading containers…" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在载入容器…"
           }
         }
       }
@@ -982,6 +1237,9 @@
         }
       }
     },
+    "Modified %@" : {
+
+    },
     "More" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -989,6 +1247,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "更多"
+          }
+        }
+      }
+    },
+    "Moving Items" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在移动项目"
           }
         }
       }
@@ -1034,6 +1302,9 @@
         }
       }
     },
+    "No Versions Yet" : {
+
+    },
     "Not verified" : {
       "localizations" : {
         "zh-Hans" : {
@@ -1074,12 +1345,36 @@
         }
       }
     },
+    "Open Preview" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "打开预览"
+          }
+        }
+      }
+    },
     "Open Settings to review diagnostics" : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "打开设置以查看诊断信息"
+          }
+        }
+      }
+    },
+    "Open Share Sheet" : {
+
+    },
+    "Opens GitHub with your app and system versions included." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "打开 GitHub，并自动附带 App 与系统版本。"
           }
         }
       }
@@ -1093,6 +1388,19 @@
           }
         }
       }
+    },
+    "Opens this app container" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "打开这个 App 容器"
+          }
+        }
+      }
+    },
+    "Original" : {
+
     },
     "Overview" : {
       "localizations" : {
@@ -1114,12 +1422,31 @@
         }
       }
     },
+    "Page %lld" : {
+
+    },
+    "Page Sizes" : {
+
+    },
+    "Pages" : {
+
+    },
     "Passed" : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "已通过"
+          }
+        }
+      }
+    },
+    "Paste" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "粘贴"
           }
         }
       }
@@ -1186,6 +1513,25 @@
         }
       }
     },
+    "PostScript Name" : {
+
+    },
+    "Prepare Markdown Listing" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "生成 Markdown 列表"
+          }
+        }
+      }
+    },
+    "Prepare to Share" : {
+
+    },
+    "Preparing" : {
+
+    },
     "Preview" : {
 
     },
@@ -1240,12 +1586,63 @@
         }
       }
     },
+    "Read only by default" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "默认只读"
+          }
+        }
+      }
+    },
     "Recursive Container Search" : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "容器递归搜索"
+          }
+        }
+      }
+    },
+    "Recursive Markdown Export" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "递归导出 Markdown"
+          }
+        }
+      }
+    },
+    "Replace Selected File?" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "替换所选文件？"
+          }
+        }
+      }
+    },
+    "Report an Issue" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "反馈问题"
+          }
+        }
+      }
+    },
+    "Report Issue" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "反馈问题"
           }
         }
       }
@@ -1269,6 +1666,79 @@
           }
         }
       }
+    },
+    "Resize Preview" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "调整预览宽度"
+          }
+        }
+      }
+    },
+    "Restore" : {
+
+    },
+    "Restore Complete App Backup" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "恢复完整 App 备份"
+          }
+        }
+      }
+    },
+    "Restore Complete App Data?" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "恢复完整 App 数据？"
+          }
+        }
+      }
+    },
+    "Restore Latest Backup" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "恢复最近备份"
+          }
+        }
+      }
+    },
+    "Restore Preview Size" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "恢复预览大小"
+          }
+        }
+      }
+    },
+    "Restore This Backup?" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "恢复此备份？"
+          }
+        }
+      }
+    },
+    "Row %lld" : {
+
+    },
+    "Rows" : {
+
+    },
+    "Rows (first %lld)" : {
+
     },
     "RPATHs" : {
 
@@ -1329,6 +1799,41 @@
         }
       }
     },
+    "Safe Edit" : {
+
+    },
+    "Sample" : {
+
+    },
+    "Save" : {
+
+    },
+    "Save This Version?" : {
+
+    },
+    "Saved Version" : {
+
+    },
+    "Screenshot captured" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "截屏已完成"
+          }
+        }
+      }
+    },
+    "Screenshot feedback prompt" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "截屏后显示反馈操作"
+          }
+        }
+      }
+    },
     "SDK" : {
       "localizations" : {
         "zh-Hans" : {
@@ -1377,6 +1882,16 @@
     "Searching…" : {
 
     },
+    "Select" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "选择"
+          }
+        }
+      }
+    },
     "Select a container in the sidebar to browse its files." : {
       "localizations" : {
         "zh-Hans" : {
@@ -1393,6 +1908,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "选择文件"
+          }
+        }
+      }
+    },
+    "Select All" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "全选"
+          }
+        }
+      }
+    },
+    "Select Items" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "选择项目"
           }
         }
       }
@@ -1427,6 +1962,45 @@
         }
       }
     },
+    "Share" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "分享"
+          }
+        }
+      }
+    },
+    "Share File" : {
+
+    },
+    "Share Folder as ZIP" : {
+
+    },
+    "Share it or report an issue while the context is fresh." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "趁当前操作还清晰，分享截图或反馈问题。"
+          }
+        }
+      }
+    },
+    "Share Markdown Listing" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "分享 Markdown 列表"
+          }
+        }
+      }
+    },
+    "Share Preparation Ended" : {
+
+    },
     "Shared files are copied to a private cache and automatically removed after 24 hours." : {
       "localizations" : {
         "zh-Hans" : {
@@ -1436,6 +2010,9 @@
           }
         }
       }
+    },
+    "SHM" : {
+
     },
     "Show Hidden Files" : {
       "localizations" : {
@@ -1567,6 +2144,9 @@
         }
       }
     },
+    "Tables" : {
+
+    },
     "Testing application container access" : {
       "localizations" : {
         "zh-Hans" : {
@@ -1576,6 +2156,9 @@
           }
         }
       }
+    },
+    "Text Preview" : {
+
     },
     "The access query could not allocate required memory." : {
       "localizations" : {
@@ -1587,12 +2170,58 @@
         }
       }
     },
+    "The current file will receive its own safety backup before restoration." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "恢复前会先为当前文件创建独立的安全备份。"
+          }
+        }
+      }
+    },
+    "The current screen could not be captured." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法捕获当前画面。"
+          }
+        }
+      }
+    },
+    "The first edit or replacement permanently saves the original file." : {
+
+    },
     "The kernel refused to issue a sandbox extension." : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "内核拒绝签发沙盒扩展。"
+          }
+        }
+      }
+    },
+    "The original and every pre-save version remain available in Version Vault. The target is replaced only after validation and conflict checks pass." : {
+
+    },
+    "The original file will be backed up and verified before replacement." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "替换前会先备份并校验原文件。"
+          }
+        }
+      }
+    },
+    "The screenshot could not be prepared for sharing." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法准备要分享的截图。"
           }
         }
       }
@@ -1626,6 +2255,9 @@
           }
         }
       }
+    },
+    "Try Again" : {
+
     },
     "Type" : {
       "localizations" : {
@@ -1689,6 +2321,7 @@
       }
     },
     "Use the Hex view to inspect this file." : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -1708,6 +2341,12 @@
         }
       }
     },
+    "Validate" : {
+
+    },
+    "Value" : {
+
+    },
     "Veilpath" : {
       "localizations" : {
         "zh-Hans" : {
@@ -1718,12 +2357,32 @@
         }
       }
     },
+    "Veilpath Screenshot" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Veilpath 截图"
+          }
+        }
+      }
+    },
     "Veilpath Website" : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Veilpath 官方网站"
+          }
+        }
+      }
+    },
+    "Veilpath will verify the manifest and every SHA-256, create a complete safety backup of the current app data, then replace Documents, Library, and tmp." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Veilpath 会验证清单和每个文件的 SHA-256，完整备份当前 App 数据，然后替换 Documents、Library 和 tmp。"
           }
         }
       }
@@ -1748,6 +2407,16 @@
         }
       }
     },
+    "Verifying and Restoring App Backup" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在验证并恢复 App 备份"
+          }
+        }
+      }
+    },
     "Verifying…" : {
       "localizations" : {
         "zh-Hans" : {
@@ -1768,7 +2437,14 @@
         }
       }
     },
+    "Version History" : {
+
+    },
+    "Version Vault" : {
+
+    },
     "View" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -1778,12 +2454,28 @@
         }
       }
     },
+    "View As" : {
+
+    },
     "View Options" : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "查看选项"
+          }
+        }
+      }
+    },
+    "WAL" : {
+
+    },
+    "Working…" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在处理…"
           }
         }
       }
@@ -1797,84 +2489,6 @@
           }
         }
       }
-    },
-    "%lld selected" : {
-      "localizations" : { "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "已选择 %lld 项" } } }
-    },
-    "A recoverable ZIP safety archive will be created before deletion." : {
-      "localizations" : { "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "删除前会创建一个可恢复的 ZIP 安全备份。" } } }
-    },
-    "Back Up and Delete" : {
-      "localizations" : { "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "备份并删除" } } }
-    },
-    "Back Up Complete App Data" : {
-      "localizations" : { "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "备份完整 App 数据" } } }
-    },
-    "Compress" : {
-      "localizations" : { "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "压缩" } } }
-    },
-    "Compressing %lld Items" : {
-      "localizations" : { "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "正在压缩 %lld 项" } } }
-    },
-    "Copy" : {
-      "localizations" : { "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "复制" } } }
-    },
-    "Copying Items" : {
-      "localizations" : { "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "正在复制项目" } } }
-    },
-    "Creating Safety Backup and Deleting" : {
-      "localizations" : { "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "正在创建安全备份并删除" } } }
-    },
-    "Cut" : {
-      "localizations" : { "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "剪切" } } }
-    },
-    "Delete" : {
-      "localizations" : { "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "删除" } } }
-    },
-    "Delete Selected Items?" : {
-      "localizations" : { "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "删除所选项目？" } } }
-    },
-    "Duplicate" : {
-      "localizations" : { "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "创建副本" } } }
-    },
-    "Duplicating %@" : {
-      "localizations" : { "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "正在创建 %@ 的副本" } } }
-    },
-    "Extract Here" : {
-      "localizations" : { "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "解压到此处" } } }
-    },
-    "Extracting %@" : {
-      "localizations" : { "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "正在解压 %@" } } }
-    },
-    "Moving Items" : {
-      "localizations" : { "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "正在移动项目" } } }
-    },
-    "Paste" : {
-      "localizations" : { "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "粘贴" } } }
-    },
-    "Restore Complete App Backup" : {
-      "localizations" : { "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "恢复完整 App 备份" } } }
-    },
-    "Restore Complete App Data?" : {
-      "localizations" : { "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "恢复完整 App 数据？" } } }
-    },
-    "Select" : {
-      "localizations" : { "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "选择" } } }
-    },
-    "Select All" : {
-      "localizations" : { "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "全选" } } }
-    },
-    "Select Items" : {
-      "localizations" : { "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "选择项目" } } }
-    },
-    "Veilpath will verify the manifest and every SHA-256, create a complete safety backup of the current app data, then replace Documents, Library, and tmp." : {
-      "localizations" : { "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "Veilpath 会验证清单和每个文件的 SHA-256，完整备份当前 App 数据，然后替换 Documents、Library 和 tmp。" } } }
-    },
-    "Verifying and Restoring App Backup" : {
-      "localizations" : { "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "正在验证并恢复 App 备份" } } }
-    },
-    "Working…" : {
-      "localizations" : { "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "正在处理…" } } }
     },
     "Zoom" : {
 
