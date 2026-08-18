@@ -10,7 +10,7 @@ struct ScreenshotFeedbackContext: Identifiable {
 
 enum FeedbackSupport {
     static func issueURL(screenDescription: String? = nil) -> URL {
-        var components = URLComponents(string: "https://github.com/everettjf/vellune/issues/new")!
+        var components = URLComponents(string: "https://github.com/everettjf/veilpath/issues/new")!
         let appVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "Unknown"
         let appBuild = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "Unknown"
         let device = UIDevice.current
@@ -29,13 +29,13 @@ enum FeedbackSupport {
                 \(contextLine)- Device: \(device.model) (\(hardwareIdentifier))
                 - Operating System: \(device.systemName) \(device.systemVersion)
                 - System Build: \(ProcessInfo.processInfo.operatingSystemVersionString)
-                - Vellune: \(appVersion) (\(appBuild))
+                - Veilpath: \(appVersion) (\(appBuild))
 
                 If this report is related to a screenshot, please attach it here after reviewing it for sensitive information.
                 """
             )
         ]
-        return components.url ?? URL(string: "https://github.com/everettjf/vellune/issues/new")!
+        return components.url ?? URL(string: "https://github.com/everettjf/veilpath/issues/new")!
     }
 
     @MainActor
@@ -57,7 +57,7 @@ enum FeedbackSupport {
             window.drawHierarchy(in: window.bounds, afterScreenUpdates: true)
         }
         guard let data = image.pngData() else { throw CaptureError.encodingFailed }
-        let url = try ExportCache.stage(data, named: "Vellune Screenshot \(UUID().uuidString).png")
+        let url = try ExportCache.stage(data, named: "Veilpath Screenshot \(UUID().uuidString).png")
         return (url, image)
     }
 

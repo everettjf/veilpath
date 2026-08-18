@@ -1,9 +1,9 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
-    "After you take a screenshot in Vellune, show quick actions to share it or report an issue." : {
+    "After you take a screenshot in Veilpath, show quick actions to share it or report an issue." : {
       "localizations" : {
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "在 Vellune 中截屏后，显示分享截图或反馈问题的快捷操作。" } }
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "在 Veilpath 中截屏后，显示分享截图或反馈问题的快捷操作。" } }
       }
     },
     "Closes the screenshot actions." : {
@@ -51,9 +51,9 @@
         "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "无法准备要分享的截图。" } }
       }
     },
-    "Vellune Screenshot" : {
+    "Veilpath Screenshot" : {
       "localizations" : {
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "Vellune 截图" } }
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "Veilpath 截图" } }
       }
     },
     "Empty" : {
@@ -1708,22 +1708,22 @@
         }
       }
     },
-    "Vellune" : {
+    "Veilpath" : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vellune"
+            "value" : "Veilpath"
           }
         }
       }
     },
-    "Vellune Website" : {
+    "Veilpath Website" : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vellune 官方网站"
+            "value" : "Veilpath 官方网站"
           }
         }
       }
@@ -1867,8 +1867,8 @@
     "Select Items" : {
       "localizations" : { "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "选择项目" } } }
     },
-    "Vellune will verify the manifest and every SHA-256, create a complete safety backup of the current app data, then replace Documents, Library, and tmp." : {
-      "localizations" : { "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "Vellune 会验证清单和每个文件的 SHA-256，完整备份当前 App 数据，然后替换 Documents、Library 和 tmp。" } } }
+    "Veilpath will verify the manifest and every SHA-256, create a complete safety backup of the current app data, then replace Documents, Library, and tmp." : {
+      "localizations" : { "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "Veilpath 会验证清单和每个文件的 SHA-256，完整备份当前 App 数据，然后替换 Documents、Library 和 tmp。" } } }
     },
     "Verifying and Restoring App Backup" : {
       "localizations" : { "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "正在验证并恢复 App 备份" } } }
