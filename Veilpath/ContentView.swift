@@ -1017,6 +1017,7 @@ private struct SettingsView: View {
                 }
 
                 Section("About") {
+                    Link("Discord", destination: URL(string: "https://discord.gg/eGzEaP6TzR")!)
                     LabeledContent("Version", value: Bundle.main.object(
                         forInfoDictionaryKey: "CFBundleShortVersionString"
                     ) as? String ?? "Unknown")
