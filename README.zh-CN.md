@@ -10,7 +10,7 @@
 
 <p align="center">
   一款适用于 iPhone 和 iPad 的原生容器浏览器与受保护文件工作区，<br>
-  基于 <a href="https://github.com/forcequitOS/bad_query"><code>bad_query</code></a> 沙盒逃逸技术构建。
+  支持 <a href="https://github.com/forcequitOS/bad_query"><code>bad_query</code></a> 和 <a href="https://github.com/forcequitOS/worse_query"><code>worse_query</code></a> 双访问后端。
 </p>
 
 <p align="center">
@@ -24,7 +24,9 @@
 > [!IMPORTANT]
 > **支持版本：iOS / iPadOS 26 至 27 beta 3。** 完整的 `bad_query` 访问路径
 > 已在运行 **iPadOS 27 beta 3（`24A5380l`）** 的 iPad Air 真机上验证。
-> 实际功能必须使用真机，模拟器只能验证编译和界面。上游概念验证项目标注支持
+> 两个后端及默认自动选择也已在 **iPhone 11、iOS 26.0.1（`23A355`）** 上通过
+> 支持范围内的检查。实际功能必须使用真机，模拟器验证编译、界面及本地测试数据。
+> 旧版 `bad_query` 概念验证项目标注支持
 > 至 iOS 26.6.1 和 iOS 27 beta 4，但这些额外版本尚未全部经过 Veilpath 验证。
 
 <table>
@@ -36,7 +38,7 @@
 
 ## Veilpath 是什么？
 
-Veilpath 将 `bad_query` 概念验证项目转化为一个专注于文件探索的界面，
+Veilpath 将 `bad_query` 和 `worse_query` 概念验证项目转化为一个专注于文件探索的界面，
 适用于该技术能够生效的 iOS 和 iPadOS 版本。它可以发现通常无法访问的容器、
 解析容器标识符，并可查看、导出文件，或在具备校验、备份与恢复路径的前提下，
 有意识地替换单个文件。
@@ -91,19 +93,39 @@ Container Manager 的私有行为可能在不同系统构建版本之间发生�
 | --- | --- | --- |
 | iPadOS | 27 beta 3（`24A5380l`） | 已在 iPad Air（`iPad15,3`）真机完整测试 |
 | iOS / iPadOS | 26.x | 部署目标及 App Group 兼容路径 |
+| iPhone 11 | 26.0.1（`23A355`） | Schema 22：bad_query、worse_query、自动模式各 20 项通过、3 项不支持、0 失败 |
 | iPhone | 27 beta 3（`24A5390f`） | 已在 iPhone 17 Pro（`iPhone18,1`）真机完整测试 |
-| 模拟器 | 26–27 | 仅验证界面；`bad_query` 需要真机 |
+| 模拟器 | 26–27 | 验证界面和本地测试数据；两个访问后端均需要真机 |
 
-上游项目目前说明支持至 iOS 26.6.1 和 iOS 27 beta 4。Veilpath 在此有意只记录
+旧版 bad_query 上游目前说明支持至 iOS 26.6.1 和 iOS 27 beta 4。Veilpath 在此有意只记录
 已经实现并验证的较窄范围：**iOS/iPadOS 26 至 27 beta 3**。超出这个范围的版本，
 在完成真机测试之前均视为不受支持。
+
+### 访问后端
+
+Veilpath 自动选择访问后端：起初优先使用 worse_query，在本次运行中按容器类别
+记住成功的后端，并在获取授权失败时回退到 bad_query。界面不提供手动切换，
+旧版保存的手动偏好也不会影响自动选择。诊断页面记录最近实际授予访问权限的后端。
+Debug 构建仅为回归测试保留后端覆盖能力。
+
+两个后端均按操作申请和释放授权，共用现有的备份、校验、验证及回滚保护。
+文件操作失败后不会换后端自动重放。worse_query 的每次请求均需要签名中可用的
+App Group；Veilpath 会先重命名保留原缓存目录，再临时建立链接，串行处理请求，
+并在使用前恢复中断的工作区，不删除原始缓存内容。
+
+上游 worse_query 声明支持 iOS 26.0–26.7.2 和 27.2；这属于上游声明，
+不代表 Veilpath 扩大兼容保证。iOS 26 仍不支持 System Data 和 System Group 访问。
+已在 iOS 26.0.1（`23A355`）的 iPhone 11 真机上，通过开发测试分别验证两个强制后端
+和默认自动选择，均通过 Schema 22
+支持范围内的检查，包括外部 App Group 元数据预览与导出，以及临时测试数据的
+备份恢复。自动模式选择了 worse_query。新版后端尚未在 Veilpath 的 iOS 27 真机上验证。
 
 ### 真机诊断
 
 Veilpath 内置真机回归套件，用于验证沙盒访问、容器发现、结构化预览、文件分析、
 Mach-O 解析、流式分享、ZIP 策略、stored/Deflate 解压、多项文件操作、取消清理、
 Markdown 导出、安全编辑、完整 App 备份、可回滚恢复及本地搜索。结果会写入 Veilpath 自身数据容器内的
-`Documents/veilpath-self-test.json`。容器数量完全取决于每台设备安装的应用和
+`Documents/veilpath-self-test.json`。Schema 22 记录所选后端和最近授权后端，仍可解码旧报告。容器数量完全取决于每台设备安装的应用和
 系统状态，因此文档不再把某一台设备的数量作为项目的通用指标。
 
 ## 构建
@@ -129,25 +151,39 @@ Markdown 导出、安全编辑、完整 App 备份、可回滚恢复及本地搜
 4. 在 **Signing & Capabilities** 中选择你的开发团队。
 5. 构建并运行。
 
-Veilpath 在 iOS 26 的 App Group 访问路径中使用
+Veilpath 在每次 worse_query 请求和旧版 iOS 26 的 App Group 访问路径中使用
 `group.com.xnu.veilpath`。如果你使用不同的 Bundle ID 或开发团队构建，
 请在 `Veilpath/Veilpath.entitlements` 和
-`Veilpath/Core/BadQueryClient.swift` 中将其替换为你的账户所拥有的
+`Veilpath/Core/SandboxAccessClient.swift` 中将其替换为你的账户所拥有的
 App Group。
+
+后端选择和工作区恢复测试也可以在 macOS 上独立运行，使用仅供测试的桥接替身：
+
+```sh
+xcrun swiftc -D DEBUG Veilpath/Core/WorseQueryWorkspace.swift \
+  Veilpath/Core/SandboxAccessClient.swift tests/SandboxAccessTests.swift \
+  -o /tmp/veilpath-access-tests
+/tmp/veilpath-access-tests
+```
 
 ## 项目结构
 
 ```text
 Veilpath.xcodeproj/          Xcode 工程
 Veilpath/
-  BadQuery/                 C 桥接与沙盒扩展原语
+  BadQuery/                 旧版 C 桥接与沙盒扩展原语
+  WorseQuery/               App Group 查询桥接与上游许可证
   Containers/               容器索引与元数据解析
   Core/                     文件访问、预览与导出
   Diagnostics/              真机回归测试套件
   Model/                    Observable 应用状态
   ContentView.swift         自适应 iPad/iPhone 界面
 docs/                       GitHub Pages 网站
+tests/                      独立后端与工作区回归测试
 ```
+
+贡献规范、验证命令和访问保护要求见 [`AGENTS.md`](AGENTS.md)。公开行为或兼容性
+发生变化时，应同步更新中英文文档和 GitHub Pages 网站。
 
 ## 安全与范围
 
@@ -170,6 +206,10 @@ Veilpath 的诞生离不开原始的
 
 Veilpath 的底层容器查询方式源自该项目。复用或扩展相关实现时，请注明并支持
 上游项目。
+
+新增的 [`forcequitOS/worse_query`](https://github.com/forcequitOS/worse_query)
+后端源自 Taj C（forcequit）的研究，其 GPL-3.0-or-later 声明和许可证保留在
+`Veilpath/WorseQuery/`。
 
 ## 许可状态
 

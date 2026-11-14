@@ -46,7 +46,7 @@ enum SafeStructuredEditor {
     nonisolated static func open(target: URL) throws -> StructuredEditSession {
         let target = target.standardizedFileURL
         let grants = try acquireGrants(for: target)
-        defer { grants.forEach(BadQueryClient.release) }
+        defer { grants.forEach(SandboxAccessClient.release) }
         let attributes = try FileManager.default.attributesOfItem(atPath: target.path)
         let size = (attributes[.size] as? NSNumber)?.int64Value ?? 0
         guard size <= maximumEditableBytes else { throw StructuredEditorError.tooLarge(size) }
@@ -99,7 +99,7 @@ enum SafeStructuredEditor {
     @discardableResult
     nonisolated static func save(_ session: StructuredEditSession, text: String) throws -> FileBackupRecord {
         let grants = try acquireGrants(for: session.targetURL)
-        defer { grants.forEach(BadQueryClient.release) }
+        defer { grants.forEach(SandboxAccessClient.release) }
         let current = try Data(contentsOf: session.targetURL, options: .mappedIfSafe)
         guard hash(current) == session.originalSHA256 else { throw StructuredEditorError.externalModification }
         let validated = try validate(session, text: text)
@@ -117,13 +117,13 @@ enum SafeStructuredEditor {
         SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
     }
 
-    private nonisolated static func acquireGrants(for target: URL) throws -> [BadQueryGrant] {
+    private nonisolated static func acquireGrants(for target: URL) throws -> [SandboxAccessGrant] {
         #if targetEnvironment(simulator)
         return []
         #else
-        let parent = try BadQueryClient.acquire(.forPath(target.deletingLastPathComponent().path))
-        do { return [parent, try BadQueryClient.acquire(.forPath(target.path))] }
-        catch { BadQueryClient.release(parent); throw error }
+        let parent = try SandboxAccessClient.acquire(.forPath(target.deletingLastPathComponent().path))
+        do { return [parent, try SandboxAccessClient.acquire(.forPath(target.path))] }
+        catch { SandboxAccessClient.release(parent); throw error }
         #endif
     }
 }

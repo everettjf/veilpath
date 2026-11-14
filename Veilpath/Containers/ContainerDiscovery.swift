@@ -72,7 +72,7 @@ enum ContainerDiscoveryService {
 
     nonisolated static func discoverApplications(maximumInode: Int64) -> [ContainerDescriptor] {
         let root = ContainerKind.application.rootPath
-        let paths = BadQueryClient.inodeChildren(at: root, maximumInode: maximumInode)
+        let paths = SandboxAccessClient.inodeChildren(at: root, maximumInode: maximumInode)
         let descriptors = paths.compactMap { descriptor(path: $0, kind: .application) }
             .sorted { $0.displayName.localizedStandardCompare($1.displayName) == .orderedAscending }
         persist(descriptors, kind: .application)
@@ -83,12 +83,17 @@ enum ContainerDiscoveryService {
         if kind == .application { return discoverApplications(maximumInode: 5_000_000) }
         let root = kind.rootPath
         let paths: [String]
-        if let rootGrant = try? BadQueryClient.acquire(.forPath(root)) {
-            defer { BadQueryClient.release(rootGrant) }
-            let names = (try? FileManager.default.contentsOfDirectory(atPath: root)) ?? []
-            paths = names.map { URL(fileURLWithPath: root).appending(path: $0).path }
+        if let rootGrant = try? SandboxAccessClient.acquire(.forPath(root)) {
+            defer { SandboxAccessClient.release(rootGrant) }
+            if let names = try? FileManager.default.contentsOfDirectory(atPath: root) {
+                paths = names.map { URL(fileURLWithPath: root).appending(path: $0).path }
+            } else {
+                // A consumed token need not permit listing the container parent.
+                // Discover children independently and acquire each child grant.
+                paths = SandboxAccessClient.inodeChildren(at: root, maximumInode: 5_000_000)
+            }
         } else {
-            paths = BadQueryClient.inodeChildren(at: root, maximumInode: 5_000_000)
+            paths = SandboxAccessClient.inodeChildren(at: root, maximumInode: 5_000_000)
         }
         let descriptors = paths.compactMap {
             descriptor(path: $0, kind: kind)
@@ -117,16 +122,16 @@ enum ContainerDiscoveryService {
         path: String,
         kind: ContainerKind
     ) -> ContainerDescriptor? {
-        guard let grant = try? BadQueryClient.acquire(.forPath(path)) else { return nil }
-        defer { BadQueryClient.release(grant) }
+        guard let grant = try? SandboxAccessClient.acquire(.forPath(path)) else { return nil }
+        defer { SandboxAccessClient.release(grant) }
 
         let metadataURL = URL(fileURLWithPath: path)
             .appending(path: ".com.apple.mobile_container_manager.metadata.plist")
         let identifier: String?
         let metadataDiagnostic: String?
         do {
-            let metadataGrant = try BadQueryClient.acquire(.forPath(metadataURL.path))
-            defer { BadQueryClient.release(metadataGrant) }
+            let metadataGrant = try SandboxAccessClient.acquire(.forPath(metadataURL.path))
+            defer { SandboxAccessClient.release(metadataGrant) }
             let data = try Data(contentsOf: metadataURL)
             let plist = try PropertyListSerialization.propertyList(from: data, format: nil)
             guard let dictionary = plist as? [String: Any] else {

@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#050607">
   <meta name="color-scheme" content="dark">
   <title>Veilpath — Beyond the sandbox</title>
-  <meta name="description" content="A native container explorer and guarded file workspace for iPhone and iPad, powered by bad_query.">
+  <meta name="description" content="A native container explorer and guarded file workspace for iPhone and iPad, with bad_query and worse_query access backends.">
   <link rel="canonical" href="https://xnu.app/veilpath/">
   <meta property="og:title" content="Veilpath — Beyond the sandbox">
   <meta property="og:description" content="Browse read-only by default, inspect rich formats, stream exports, and make verified edits with permanent version history.">
@@ -23,7 +23,7 @@
   <meta name="twitter:image" content="https://xnu.app/veilpath/assets/og-star.jpg">
   <link rel="icon" href="assets/icon.png">
   <link rel="stylesheet" href="styles.css">
-  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Veilpath","applicationCategory":"DeveloperApplication","operatingSystem":"iOS 26–27 beta 3, iPadOS 26–27 beta 3","description":"A native container explorer and guarded file workspace for iPhone and iPad, powered by bad_query.","url":"https://xnu.app/veilpath/","codeRepository":"https://github.com/everettjf/veilpath"}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Veilpath","applicationCategory":"DeveloperApplication","operatingSystem":"iOS 26–27 beta 3, iPadOS 26–27 beta 3","description":"A native container explorer and guarded file workspace for iPhone and iPad, with bad_query and worse_query access backends.","url":"https://xnu.app/veilpath/","codeRepository":"https://github.com/everettjf/veilpath"}</script>
 </head>
 <body>
   <div class="sky" aria-hidden="true"><div class="stars stars-near"></div><div class="stars stars-far"></div><div class="starlight"></div></div>
@@ -36,7 +36,7 @@
       <div class="hero-copy">
         <p class="eyebrow"><span></span> Native on iPhone &amp; iPad</p>
         <h1>Look beyond<br><em>the sandbox.</em></h1>
-        <p class="lede">Veilpath turns <code>bad_query</code> into a guarded file workspace—discover containers, inspect rich formats, stream exports, archive folders, and make verified edits with a permanent version history.</p>
+        <p class="lede">Veilpath turns <code>bad_query</code> and <code>worse_query</code> into a guarded file workspace—discover containers, inspect rich formats, stream exports, archive folders, and make verified edits with a permanent version history.</p>
         <a class="support-banner" href="#compatibility" aria-label="View operating system compatibility details">
           <span class="support-icon">✓</span>
           <span><small>Verified on physical devices</small><strong>iPhone + iPad · 20 / 20 checks</strong></span>
@@ -54,7 +54,7 @@
     </section>
     <section class="marquee" aria-label="Veilpath capabilities"><div><span>APP CONTAINERS</span><b>✦</b><span>SQLITE INSPECTION</span><b>✦</b><span>COMPLETE APP BACKUP</span><b>✦</b><span>MULTI-ITEM FILE OPS</span><b>✦</b><span>ROLLBACK-SAFE RESTORE</span><b>✦</b><span>APP CONTAINERS</span><b>✦</b><span>SQLITE INSPECTION</span><b>✦</b><span>COMPLETE APP BACKUP</span><b>✦</b><span>MULTI-ITEM FILE OPS</span><b>✦</b><span>ROLLBACK-SAFE RESTORE</span><b>✦</b></div></section>
     <section id="capabilities" class="section shell">
-      <div class="section-heading"><p class="eyebrow"><span></span> Designed from the exploit outward</p><h2>From container discovery<br><em>to a guarded workspace.</em></h2><p>Every layer—from access grants and adaptive navigation to previews, sharing, and versioned replacement—is designed around the real behavior of <code>bad_query</code>.</p></div>
+      <div class="section-heading"><p class="eyebrow"><span></span> Designed from the exploit outward</p><h2>From container discovery<br><em>to a guarded workspace.</em></h2><p>Every layer—from access grants and adaptive navigation to previews, sharing, and versioned replacement—is designed around operation-scoped access through <code>bad_query</code> and <code>worse_query</code>.</p></div>
       <div class="feature-grid">
         <article class="feature featured"><div class="feature-number">01</div><div class="glyph layers"><i></i><i></i><i></i></div><h3>Container discovery</h3><p>Indexes Application, App Group, plugin, internal daemon, System Data, and System Group paths with direct access or <code>fsgetpath</code> fallback.</p><small>Short-lived grants · Capability-aware discovery</small></article>
         <article class="feature"><div class="feature-number">02</div><div class="glyph eye">◉</div><h3>App-first workspace</h3><p>Start from a grid or list of Apps. Keep files beside a resizable preview on iPad, or move through a focused full-screen flow on iPhone.</p><small>Adaptive navigation · Remembered layout</small></article>
@@ -65,13 +65,13 @@
     </section>
     <section class="proof-strip shell" aria-label="Verification summary">
       <article><strong>20 / 20</strong><span>On-device checks</span></article>
-      <article><strong>2</strong><span>Physical devices verified</span></article>
+      <article><strong>3</strong><span>Physical devices verified</span></article>
       <article><strong>1 MiB</strong><span>Streaming export chunks</span></article>
       <article><strong>24 h</strong><span>Automatic share-cache expiry</span></article>
     </section>
     <section id="compatibility" class="section compatibility shell">
-      <div class="compat-copy"><p class="eyebrow"><span></span> Compatibility</p><h2>Built for the<br><em>narrow window.</em></h2><p><strong>Veilpath supports iOS and iPadOS 26 through 27 beta 3.</strong> This is a deliberately conservative range based on the versions implemented and tested in Veilpath—not merely the broader range reported by the upstream proof of concept.</p><div class="device-required"><b>Physical device required</b><span>Simulator builds validate the interface only. They cannot verify the <code>bad_query</code> access path.</span></div></div>
-      <div class="matrix"><div class="matrix-head"><span>Platform</span><span>Verified build</span><span>Status</span></div><div><strong>iPad Air</strong><span>iPadOS 27 beta 3 <small>24A5380l</small></span><mark>20 / 20</mark></div><div><strong>iPhone 17 Pro</strong><span>iOS 27 beta 3 <small>24A5390f</small></span><mark>20 / 20</mark></div><div><strong>iOS / iPadOS</strong><span>26.x</span><mark class="pending">Supported</mark></div><div><strong>Simulator</strong><span>26–27</span><mark class="neutral">UI only</mark></div><p>Both adaptive interfaces and the complete schema 19 regression suite are verified on physical devices. Exact behavior can still change between OS builds.</p></div>
+      <div class="compat-copy"><p class="eyebrow"><span></span> Compatibility</p><h2>Built for the<br><em>narrow window.</em></h2><p><strong>Veilpath supports iOS and iPadOS 26 through 27 beta 3.</strong> This is a deliberately conservative range based on the versions implemented and tested in Veilpath—not merely the broader range reported by the upstream proof of concept.</p><p>Veilpath automatically chooses between worse_query and bad_query, with fallback when access cannot be granted. Both backends retain per-operation grants and guarded backup and restore. The new backend does not extend the verified version range without device testing.</p><div class="device-required"><b>Physical device required</b><span>Simulator builds validate the interface only. They cannot verify either sandbox access backend.</span></div></div>
+      <div class="matrix"><div class="matrix-head"><span>Platform</span><span>Verified build</span><span>Status</span></div><div><strong>iPad Air</strong><span>iPadOS 27 beta 3 <small>24A5380l</small></span><mark>20 / 20</mark></div><div><strong>iPhone 17 Pro</strong><span>iOS 27 beta 3 <small>24A5390f</small></span><mark>20 / 20</mark></div><div><strong>iPhone 11</strong><span>iOS 26.0.1 <small>23A355 · both backends + Automatic</small></span><mark>20 passed</mark></div><div><strong>iOS / iPadOS</strong><span>26.x</span><mark class="pending">Supported</mark></div><div><strong>Simulator</strong><span>26–27</span><mark class="neutral">UI only</mark></div><p>Earlier iPhone and iPad runs verified schema 19. On iPhone 11, developer regression tests of both backends and automatic selection each passed 20 schema 22 checks, with 3 unsupported iOS 26 capabilities and no failures. External App Group metadata preview and export were verified. worse_query on iOS 27 remains unverified in Veilpath.</p></div>
     </section>
     <section class="section evidence shell">
       <div class="terminal"><div class="terminal-bar"><span></span><span></span><span></span><b>veilpath-self-test.json</b></div><pre><code><i>PASS</i> MobileGestalt file access
@@ -85,7 +85,7 @@
 
 <i>PASS</i> Complete App backup and rollback-safe restore
      original retained · revisions deduplicated</code></pre></div>
-      <div class="evidence-copy"><p class="eyebrow"><span></span> Evidence, not assumptions</p><h2>Tested where it<br><em>actually runs.</em></h2><p>Veilpath carries a schema-versioned on-device regression suite. Twenty-two checks verify access, discovery, previews, streamed export, ZIP safety, stored and Deflate extraction, multi-item operations, complete backup, rollback-safe restore, Markdown, and guarded editing.</p><ul><li>Structured JSON reports</li><li>iPhone and iPad coverage</li><li>External ZIP CRC validation</li><li>Explicit failure diagnostics</li></ul></div>
+      <div class="evidence-copy"><p class="eyebrow"><span></span> Evidence, not assumptions</p><h2>Tested where it<br><em>actually runs.</em></h2><p>Veilpath carries a schema-versioned on-device regression suite. The checks verify access, discovery, previews, streamed export, ZIP safety, stored and Deflate extraction, multi-item operations, complete backup, rollback-safe restore, Markdown, and guarded editing.</p><ul><li>Structured JSON reports</li><li>iPhone and iPad coverage</li><li>External ZIP CRC validation</li><li>Explicit failure diagnostics</li></ul></div>
     </section>
     <section id="build" class="section build shell">
       <div><p class="eyebrow"><span></span> Build it yourself</p><h2>Open the project.<br><em>Know what runs.</em></h2></div>
@@ -93,6 +93,6 @@
     </section>
     <section class="cta shell"><img src="assets/icon.png" alt="" width="100" height="100"><p class="eyebrow">Veilpath 1.1</p><h2>There is more beneath<br><em>the surface.</em></h2><a class="primary" href="https://github.com/everettjf/veilpath">Explore on GitHub <span>↗</span></a></section>
   </main>
-  <footer class="shell"><div class="brand"><img src="assets/icon.png" alt="" width="32" height="32"><span>Veilpath</span></div><p>Built around <a href="https://github.com/forcequitOS/bad_query">bad_query</a>. Experimental software for research and development.</p><a href="https://discord.gg/eGzEaP6TzR" target="_blank" rel="noopener noreferrer">Discord</a><a href="#top">Back to top ↑</a></footer>
+  <footer class="shell"><div class="brand"><img src="assets/icon.png" alt="" width="32" height="32"><span>Veilpath</span></div><p>Built around <a href="https://github.com/forcequitOS/bad_query">bad_query</a> and <a href="https://github.com/forcequitOS/worse_query">worse_query</a>. Experimental software for research and development.</p><a href="https://discord.gg/eGzEaP6TzR" target="_blank" rel="noopener noreferrer">Discord</a><a href="#top">Back to top ↑</a></footer>
 </body>
 </html>

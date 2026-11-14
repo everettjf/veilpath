@@ -11,6 +11,18 @@ The following files are derived from the upstream [`forcequitOS/bad_query`](http
 
 The upstream repository did not declare a license when this notice was written. Public source availability alone does not grant permission to redistribute, modify, or relicense derived code. These two files therefore remain outside any future license applied only to Veilpath's original code unless the upstream author grants permission or publishes compatible terms.
 
+## worse_query boundary
+
+`Veilpath/WorseQuery/worse_query.m` and `worse_query.h` are derived from
+[`forcequitOS/worse_query`](https://github.com/forcequitOS/worse_query),
+Copyright (C) 2026 Taj C (forcequit), under **GPL-3.0-or-later**.
+The upstream license is retained in `Veilpath/WorseQuery/LICENSE.txt`.
+Veilpath modifications dated 2026-11-14 move workspace preservation and recovery
+into Swift and retain the upstream container-query technique. These explicit
+terms do not resolve the separate, undeclared bad_query licensing boundary.
+Before distributing a combined build, resolve that boundary and ensure the
+complete distribution and corresponding source satisfy the GPL terms.
+
 ## Original Veilpath code
 
 The remaining original Veilpath code has not yet been assigned a separate license. Until an explicit license file is added, no open-source license grant should be inferred for it either.

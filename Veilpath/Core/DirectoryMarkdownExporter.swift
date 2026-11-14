@@ -17,8 +17,8 @@ enum DirectoryMarkdownExporter {
     ) throws -> DirectoryMarkdownExportResult {
         let root = URL(fileURLWithPath: path, isDirectory: true).standardizedFileURL
         #if !targetEnvironment(simulator)
-        let grant = try BadQueryClient.acquire(.forPath(root.path))
-        defer { BadQueryClient.release(grant) }
+        let grant = try SandboxAccessClient.acquire(.forPath(root.path))
+        defer { SandboxAccessClient.release(grant) }
         #endif
 
         let enumerationOptions: FileManager.DirectoryEnumerationOptions = options.includeHidden ? [] : [.skipsHiddenFiles]

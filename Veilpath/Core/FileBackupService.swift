@@ -56,7 +56,7 @@ enum FileBackupService {
         let target = target.standardizedFileURL
         try validate(target)
         let grants = try acquireGrants(for: target)
-        defer { grants.forEach(BadQueryClient.release) }
+        defer { grants.forEach(SandboxAccessClient.release) }
         let record = try createSnapshot(of: target)
         do {
             try replacementData.write(to: target, options: .atomic)
@@ -76,7 +76,7 @@ enum FileBackupService {
         let source = try contentURL(for: record)
         guard try hash(source) == record.manifest.originalSHA256 else { throw FileBackupError.malformedBackup }
         let grants = try acquireGrants(for: target)
-        defer { grants.forEach(BadQueryClient.release) }
+        defer { grants.forEach(SandboxAccessClient.release) }
         let safetySnapshot = try createSnapshot(of: target)
         do {
             try Data(contentsOf: source, options: .mappedIfSafe).write(to: target, options: .atomic)
@@ -143,13 +143,13 @@ enum FileBackupService {
         }
     }
 
-    private nonisolated static func acquireGrants(for target: URL) throws -> [BadQueryGrant] {
+    private nonisolated static func acquireGrants(for target: URL) throws -> [SandboxAccessGrant] {
         #if targetEnvironment(simulator)
         return []
         #else
-        let parent = try BadQueryClient.acquire(.forPath(target.deletingLastPathComponent().path))
-        do { return [parent, try BadQueryClient.acquire(.forPath(target.path))] }
-        catch { BadQueryClient.release(parent); throw error }
+        let parent = try SandboxAccessClient.acquire(.forPath(target.deletingLastPathComponent().path))
+        do { return [parent, try SandboxAccessClient.acquire(.forPath(target.path))] }
+        catch { SandboxAccessClient.release(parent); throw error }
         #endif
     }
 

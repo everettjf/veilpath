@@ -10,7 +10,7 @@
 
 <p align="center">
   A native container explorer and guarded file workspace for iPhone and iPad,<br>
-  built around the <a href="https://github.com/forcequitOS/bad_query"><code>bad_query</code></a> sandbox escape.
+  with <a href="https://github.com/forcequitOS/bad_query"><code>bad_query</code></a> and <a href="https://github.com/forcequitOS/worse_query"><code>worse_query</code></a> access backends.
 </p>
 
 <p align="center">
@@ -24,8 +24,10 @@
 > [!IMPORTANT]
 > **Supported versions: iOS / iPadOS 26 through 27 beta 3.** The complete
 > `bad_query` access path has been validated on a physical iPad Air running
-> **iPadOS 27 beta 3 (`24A5380l`)**. A physical device is required; Simulator
-> builds validate only compilation and UI. The upstream proof of concept lists
+> **iPadOS 27 beta 3 (`24A5380l`)**. Both backends and default automatic selection
+> have also passed the supported checks on **iPhone 11, iOS 26.0.1 (`23A355`)**.
+> A physical device is required; Simulator builds validate compilation, UI,
+> and local fixtures only. The legacy `bad_query` proof of concept lists
 > support through iOS 26.6.1 and iOS 27 beta 4, but those additional versions
 > have not all been validated in Veilpath.
 
@@ -38,7 +40,7 @@
 
 ## What is Veilpath?
 
-Veilpath turns the `bad_query` proof of concept into a focused file-exploration
+Veilpath turns the `bad_query` and `worse_query` proofs of concept into a focused file-exploration
 interface for the iOS and iPadOS versions where the technique applies. It
 discovers otherwise inaccessible containers, resolves their identifiers, and
 lets you inspect, export, and deliberately replace individual files with a
@@ -62,6 +64,8 @@ recoverable.
   opened directly.
 - Acquires a sandbox extension for each operation and releases it immediately
   afterward.
+- Automatically chooses between `worse_query` and `bad_query`, with grant-time
+  fallback and no manual backend selector.
 - Browses with directory history, back/forward/up navigation, local filtering,
   recursive container search, and name/date/size sorting.
 - Previews searchable plist and JSON trees, XML, text, images, hexadecimal data,
@@ -109,13 +113,39 @@ builds.
 | --- | --- | --- |
 | iPadOS | 27 beta 3 (`24A5380l`) | Fully tested on physical iPad Air (`iPad15,3`) |
 | iOS / iPadOS | 26.x | Deployment target and App Group compatibility path |
+| iPhone 11 | 26.0.1 (`23A355`) | Schema 22: bad_query, worse_query, and Automatic each passed 20 checks; 3 unsupported, 0 failed |
 | iPhone | 27 beta 3 (`24A5390f`) | Fully tested on physical iPhone 17 Pro (`iPhone18,1`) |
-| Simulator | 26–27 | UI only; `bad_query` requires a physical device |
+| Simulator | 26–27 | UI and local fixtures only; both access backends require a physical device |
 
-The upstream project currently describes support through iOS 26.6.1 and iOS
+The legacy bad_query upstream currently describes support through iOS 26.6.1 and iOS
 27 beta 4. Veilpath deliberately documents the narrower range that has been
 implemented and validated here: **iOS/iPadOS 26 through 27 beta 3**. Versions
 outside this range are unsupported until confirmed by physical-device testing.
+
+### Access backends
+
+Veilpath automatically chooses its access backend. It initially prefers
+worse_query, remembers a working backend for each container category during the
+session, and falls back to bad_query when acquiring access fails. There is no
+manual backend selector, and preferences saved by earlier builds are ignored.
+The last backend that actually granted access is recorded in Diagnostics.
+Debug builds retain backend overrides for regression testing only.
+
+Both backends keep per-operation grants and share the existing backup,
+validation, verification, and rollback safeguards. A failed file operation is
+never replayed through another backend. worse_query requires a usable signed
+App Group for every request; Veilpath preserves its cache directory by renaming
+it before staging the temporary link, serializes requests, and recovers an
+interrupted workspace before use. Original cache contents are never deleted.
+
+The worse_query upstream declares iOS 26.0–26.7.2 and 27.2 support. That is an
+upstream claim, not an expanded Veilpath compatibility guarantee. On iOS 26,
+System Data and System Group capabilities remain unavailable. On a physical
+iPhone 11 running iOS 26.0.1 (`23A355`), developer tests of both forced backends
+and default automatic selection passed the supported
+schema 22 checks, including external App Group metadata preview/export and
+temporary-fixture backup/restore tests. Automatic selected worse_query. The new
+backend has not yet been verified in Veilpath on iOS 27 devices.
 
 ### Physical-device diagnostics
 
@@ -123,7 +153,8 @@ Veilpath includes an on-device regression suite that verifies sandbox access,
 container discovery, structured preview, file analysis, Mach-O parsing,
 streamed sharing, ZIP policy, stored and Deflate extraction, multi-item file
 operations, cancellation cleanup, Markdown export, guarded editing, complete
-App backup and rollback-safe restore, and local search. Results are written to
+App backup and rollback-safe restore, and local search. Schema 22 records the selected and last granted backends;
+older reports remain decodable. Results are written to
 `Documents/veilpath-self-test.json` inside Veilpath's own data container. Container
 counts are intentionally not presented as project-wide metrics because they
 depend entirely on the apps and system state of each device.
@@ -151,24 +182,40 @@ depend entirely on the apps and system state of each device.
 4. Choose your development team under **Signing & Capabilities**.
 5. Build and run.
 
-Veilpath uses the App Group identifier `group.com.xnu.veilpath` for the iOS 26
-App Group access path. If you build under a different bundle identifier or
+Veilpath uses the App Group identifier `group.com.xnu.veilpath` for every
+worse_query request and the legacy iOS 26 App Group access path. If you build under a different bundle identifier or
 team, replace it with an App Group owned by your account in both
-`Veilpath/Veilpath.entitlements` and `Veilpath/Core/BadQueryClient.swift`.
+`Veilpath/Veilpath.entitlements` and `Veilpath/Core/SandboxAccessClient.swift`.
+
+The backend and workspace regression checks can also run on macOS without
+a device (using test-only bridge stubs):
+
+```sh
+xcrun swiftc -D DEBUG Veilpath/Core/WorseQueryWorkspace.swift \
+  Veilpath/Core/SandboxAccessClient.swift tests/SandboxAccessTests.swift \
+  -o /tmp/veilpath-access-tests
+/tmp/veilpath-access-tests
+```
 
 ## Project structure
 
 ```text
 Veilpath.xcodeproj/          Xcode project
 Veilpath/
-  BadQuery/                 C bridge and sandbox-extension primitive
+  BadQuery/                 Legacy C sandbox-extension primitive
+  WorseQuery/               App Group query bridge and upstream license
   Containers/               Container indexing and metadata resolution
   Core/                     File access, preview, and export
   Diagnostics/              On-device regression suite
   Model/                    Observable application state
   ContentView.swift         Adaptive iPad/iPhone interface
 docs/                       GitHub Pages website
+tests/                      Standalone backend and workspace regression checks
 ```
+
+Contributor instructions, validation commands, and access safeguards are in
+[`AGENTS.md`](AGENTS.md). Keep the English and Simplified Chinese documentation
+and the GitHub Pages site aligned when changing public behavior or compatibility.
 
 ## Safety and scope
 
@@ -197,6 +244,10 @@ for the community.
 
 The low-level container-query approach in Veilpath is derived from that work.
 Please credit and support the upstream project when reusing or extending it.
+
+The additional [`forcequitOS/worse_query`](https://github.com/forcequitOS/worse_query)
+backend is derived from Taj C (forcequit)'s work and retains its GPL-3.0-or-later
+notice and license in `Veilpath/WorseQuery/`.
 
 ## Licensing status
 

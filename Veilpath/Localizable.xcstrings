@@ -1,6 +1,86 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "worse_query cannot stage access inside its own App Group Library." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "worse_query 无法在自身 App Group 的 Library 内暂存访问授权。"
+          }
+        }
+      }
+    },
+    "Last Granted Backend" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "最近授权后端"
+          }
+        }
+      }
+    },
+    "No usable App Group is available. Re-sign Veilpath with its App Group entitlement." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "没有可用的 App Group。请保留 App Group 权限并重新签名 Veilpath。"
+          }
+        }
+      }
+    },
+    "Wait for file operations to finish before changing the access backend." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "请等待文件操作完成后再切换访问后端。"
+          }
+        }
+      }
+    },
+    "worse_query could not grant access (code: %lld)." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "worse_query 无法授予访问权限（错误码：%lld）。"
+          }
+        }
+      }
+    },
+    "Both access backends failed. worse_query: %@ bad_query: %@" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "两个访问后端均失败。worse_query：%1$@ bad_query：%2$@"
+          }
+        }
+      }
+    },
+    "The App Group access workspace needs recovery. Its original contents have been preserved." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "App Group 访问工作区需要恢复，原始内容已保留。"
+          }
+        }
+      }
+    },
+    "Sandbox Access Backend" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "沙盒访问后端"
+          }
+        }
+      }
+    },
     "Discord" : {
       "localizations" : {
         "en" : {

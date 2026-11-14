@@ -281,15 +281,15 @@ enum ShareExportService {
         return (time, day)
     }
 
-    private static func acquireGrant(for url: URL, directory: Bool) throws -> BadQueryGrant? {
+    private static func acquireGrant(for url: URL, directory: Bool) throws -> SandboxAccessGrant? {
         #if targetEnvironment(simulator)
         return nil
         #else
-        return try BadQueryClient.acquire(.init(path: directory ? url.path : url.deletingLastPathComponent().path, createIfMissing: true))
+        return try SandboxAccessClient.acquire(.init(path: directory ? url.path : url.deletingLastPathComponent().path, createIfMissing: true))
         #endif
     }
 
-    private static func release(_ grant: BadQueryGrant?) { if let grant { BadQueryClient.release(grant) } }
+    private static func release(_ grant: SandboxAccessGrant?) { if let grant { SandboxAccessClient.release(grant) } }
 }
 
 extension ExportCache {

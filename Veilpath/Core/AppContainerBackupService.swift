@@ -355,15 +355,15 @@ enum AppContainerBackupService {
         return path
     }
 
-    private static func acquireGrant(_ root: URL) throws -> BadQueryGrant? {
+    private static func acquireGrant(_ root: URL) throws -> SandboxAccessGrant? {
         #if targetEnvironment(simulator)
         nil
         #else
-        try BadQueryClient.acquire(.forPath(root.path))
+        try SandboxAccessClient.acquire(.forPath(root.path))
         #endif
     }
 
-    private static func release(_ grant: BadQueryGrant?) { if let grant { BadQueryClient.release(grant) } }
+    private static func release(_ grant: SandboxAccessGrant?) { if let grant { SandboxAccessClient.release(grant) } }
 
     private static func safeName(_ value: String) -> String {
         let invalid = CharacterSet(charactersIn: "/\\:\0").union(.controlCharacters)

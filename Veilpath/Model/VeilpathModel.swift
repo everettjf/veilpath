@@ -28,6 +28,14 @@ final class VeilpathModel {
     var lastError: String?
     var selfTestReport: SelfTestReport?
     var accessVerification: SelfTestReport.Check?
+    let accessBackendSelection = SandboxAccessClient.selection
+    var lastAccessBackend: SandboxBackend? { SandboxAccessClient.lastBackend }
+
+    var canRunDiagnostics: Bool {
+        !isWorking && !isRunningDiagnostics && !isVerifyingAccess && !isLoadingPreview
+            && !isSearching && !isPreparingShare && !isExportingDirectory
+            && !isReplacingFile && !isRunningFileOperation
+    }
 
     var isAccessVerificationPending: Bool {
         isVerifyingAccess || (accessVerification == nil && isRunningDiagnostics)
@@ -72,17 +80,21 @@ final class VeilpathModel {
     }
 
     init() {
+        do { try SandboxAccessClient.recoverWorkspace() }
+        catch { lastError = error.localizedDescription }
         for kind in ContainerKind.allCases {
             containerIndexes[kind] = ContainerDiscoveryService.loadCached(kind)
         }
         selfTestReport = SelfTestRunner.loadPersistedReport()
-        accessVerification = selfTestReport?.checks.first { $0.name == "Application container discovery" }
+        if selfTestReport?.accessBackendSelection == accessBackendSelection.rawValue {
+            accessVerification = selfTestReport?.checks.first { $0.name == "Application container discovery" }
+        }
         ExportCache.removeExpired()
         OperationSafetyStore.pruneAll()
         backupRecords = (try? FileBackupService.records()) ?? []
         log("Veilpath started on \(ProcessInfo.processInfo.operatingSystemVersionString)")
         #if targetEnvironment(simulator)
-        log("bad_query self-test skipped in Simulator")
+        log("Sandbox access checks skipped in Simulator")
         if ProcessInfo.processInfo.arguments.contains("--ui-testing") {
             seedUITestContainers()
         }
@@ -100,11 +112,11 @@ final class VeilpathModel {
         #else
         let currentVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
         if ProcessInfo.processInfo.arguments.contains("--ui-testing-self-test")
-            || selfTestReport?.schemaVersion != 21
+            || selfTestReport?.schemaVersion != SelfTestRunner.schemaVersion
+            || selfTestReport?.accessBackendSelection != accessBackendSelection.rawValue
             || selfTestReport?.passed != true
             || selfTestReport?.appVersion != currentVersion
-            || containers.isEmpty
-            || systemContainers.isEmpty {
+            || containers.isEmpty {
             Task {
                 await runSelfTest()
                 await verifyAccess()
@@ -172,7 +184,7 @@ final class VeilpathModel {
     func runSelfTest() async {
         guard !isRunningDiagnostics else { return }
         isRunningDiagnostics = true
-        log("Starting bad_query self-test")
+        log("Starting self-test with \(accessBackendSelection.rawValue) access")
         let report = await Task.detached(priority: .userInitiated) {
             await SelfTestRunner.run()
         }.value
@@ -243,8 +255,8 @@ final class VeilpathModel {
             let showHiddenFiles = showHiddenFiles
             let fileSortOrder = fileSortOrder
             let result = try await Task.detached(priority: .userInitiated) {
-                let grant = try BadQueryClient.acquire(.forPath(normalized))
-                defer { BadQueryClient.release(grant) }
+                let grant = try SandboxAccessClient.acquire(.forPath(normalized))
+                defer { SandboxAccessClient.release(grant) }
                 let items = try FileSystemReader.contents(
                     at: normalized,
                     showHidden: showHiddenFiles,
@@ -326,8 +338,8 @@ final class VeilpathModel {
         #if targetEnvironment(simulator)
         return try FileSystemReader.directContentsSummary(at: path, showHidden: showHidden)
         #else
-        let grant = try BadQueryClient.acquire(.forPath(path))
-        defer { BadQueryClient.release(grant) }
+        let grant = try SandboxAccessClient.acquire(.forPath(path))
+        defer { SandboxAccessClient.release(grant) }
         return try FileSystemReader.directContentsSummary(at: path, showHidden: showHidden)
         #endif
     }
@@ -446,8 +458,8 @@ final class VeilpathModel {
         let root = currentContainerRoot.isEmpty ? path : currentContainerRoot
         let includesHidden = showHiddenFiles
         do {
-            let grant = try BadQueryClient.acquire(.forPath(root))
-            defer { BadQueryClient.release(grant) }
+            let grant = try SandboxAccessClient.acquire(.forPath(root))
+            defer { SandboxAccessClient.release(grant) }
             searchResults = await Task.detached(priority: .userInitiated) {
                 FileSystemReader.search(at: root, query: query, showHidden: includesHidden)
             }.value

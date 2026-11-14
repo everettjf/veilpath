@@ -209,16 +209,16 @@ enum FileOperationService {
         return path
     }
 
-    private static func acquireGrant(_ url: URL) throws -> BadQueryGrant? {
+    private static func acquireGrant(_ url: URL) throws -> SandboxAccessGrant? {
         #if targetEnvironment(simulator)
         nil
         #else
-        try BadQueryClient.acquire(.forPath(url.path))
+        try SandboxAccessClient.acquire(.forPath(url.path))
         #endif
     }
 
-    private static func acquireGrants(_ urls: [URL]) throws -> [BadQueryGrant?] {
-        var grants: [BadQueryGrant?] = []
+    private static func acquireGrants(_ urls: [URL]) throws -> [SandboxAccessGrant?] {
+        var grants: [SandboxAccessGrant?] = []
         do {
             for url in Set(urls.map(\.standardizedFileURL)) { grants.append(try acquireGrant(url)) }
             return grants
@@ -228,5 +228,5 @@ enum FileOperationService {
         }
     }
 
-    private static func release(_ grant: BadQueryGrant?) { if let grant { BadQueryClient.release(grant) } }
+    private static func release(_ grant: SandboxAccessGrant?) { if let grant { SandboxAccessClient.release(grant) } }
 }

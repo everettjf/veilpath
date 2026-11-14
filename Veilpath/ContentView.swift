@@ -992,7 +992,7 @@ private struct SettingsView: View {
                     Button("Verify Access", systemImage: "checkmark.shield") {
                         Task { await model.verifyAccess() }
                     }
-                    .disabled(model.isAccessVerificationPending)
+                    .disabled(!model.canRunDiagnostics)
                     LabeledContent("Grant policy", value: "Per operation")
                     LabeledContent("Mode", value: "Read only by default")
                 }
@@ -2465,6 +2465,13 @@ private struct DiagnosticsView: View {
         List {
             Section("Runtime") {
                 LabeledContent("System", value: ProcessInfo.processInfo.operatingSystemVersionString)
+                LabeledContent("Last Granted Backend") {
+                    if let backend = model.lastAccessBackend {
+                        Text(verbatim: backend.rawValue)
+                    } else {
+                        Text("Not verified")
+                    }
+                }
                 LabeledContent("Grant policy", value: "Per operation")
                 if let report = model.selfTestReport {
                     LabeledContent("Self-test") {
@@ -2519,7 +2526,7 @@ private struct DiagnosticsView: View {
                 Button("Run Self-Test", systemImage: "checkmark.shield") {
                     Task { await model.runSelfTest() }
                 }
-                .disabled(model.isRunningDiagnostics)
+                .disabled(!model.canRunDiagnostics)
             }
 
         }
@@ -2559,6 +2566,7 @@ private struct AccessStateLabel: View {
 private extension SelfTestReport.Check {
     var localizedName: LocalizedStringResource {
         switch name {
+        case "Sandbox access backend": "Sandbox Access Backend"
         case "MobileGestalt file access": "MobileGestalt File Access"
         case "Preview and safe export": "Preview and Safe Export"
         case "Application container discovery": "Application Container Discovery"

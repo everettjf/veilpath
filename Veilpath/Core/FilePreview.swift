@@ -86,13 +86,13 @@ enum FilePreviewLoader {
         #if targetEnvironment(simulator)
         return try loadGranted(item)
         #else
-        let parentGrant = try BadQueryClient.acquire(.init(
+        let parentGrant = try SandboxAccessClient.acquire(.init(
             path: item.url.deletingLastPathComponent().path,
             createIfMissing: true
         ))
-        defer { BadQueryClient.release(parentGrant) }
-        let fileGrant = try BadQueryClient.acquire(.init(path: item.url.path, createIfMissing: true))
-        defer { BadQueryClient.release(fileGrant) }
+        defer { SandboxAccessClient.release(parentGrant) }
+        let fileGrant = try SandboxAccessClient.acquire(.init(path: item.url.path, createIfMissing: true))
+        defer { SandboxAccessClient.release(fileGrant) }
         ExportCache.removeExpired()
         return try loadGranted(item)
         #endif

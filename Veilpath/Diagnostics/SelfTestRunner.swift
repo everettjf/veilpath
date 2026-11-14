@@ -21,11 +21,15 @@ struct SelfTestReport: Codable, Sendable {
     let startedAt: Date
     let finishedAt: Date
     let checks: [Check]
+    // Optional for decoding reports produced before dual-backend support.
+    let accessBackendSelection: String?
+    let lastAccessBackend: String?
 
     var passed: Bool { checks.allSatisfy(\.passed) }
 }
 
 enum SelfTestRunner {
+    nonisolated static let schemaVersion = 22
     private static let logger = Logger(subsystem: "com.xnu.veilpath", category: "SelfTest")
 
     nonisolated static let reportURL: URL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
@@ -36,13 +40,22 @@ enum SelfTestRunner {
         var checks: [SelfTestReport.Check] = []
 
         #if !targetEnvironment(simulator)
-        checks.append(testFileAccess(
-            name: "MobileGestalt file access",
-            path: "/var/containers/Shared/SystemGroup/systemgroup.com.apple.mobilegestaltcache/Library/Caches/com.apple.MobileGestalt.plist"
-        ))
-        checks.append(testPreviewAndExport(
-            path: "/var/containers/Shared/SystemGroup/systemgroup.com.apple.mobilegestaltcache/Library/Caches/com.apple.MobileGestalt.plist"
-        ))
+        checks.append(timedCheck(name: "Sandbox access backend", path: SandboxAccessClient.appGroupIdentifier) {
+            try SandboxAccessClient.recoverWorkspace()
+            return "selection=\(SandboxAccessClient.selection.rawValue), grants=per-operation"
+        })
+        if ProcessInfo.processInfo.operatingSystemVersion.majorVersion >= 27 {
+            checks.append(testFileAccess(
+                name: "MobileGestalt file access",
+                path: "/var/containers/Shared/SystemGroup/systemgroup.com.apple.mobilegestaltcache/Library/Caches/com.apple.MobileGestalt.plist"
+            ))
+            checks.append(testPreviewAndExport(
+                path: "/var/containers/Shared/SystemGroup/systemgroup.com.apple.mobilegestaltcache/Library/Caches/com.apple.MobileGestalt.plist"
+            ))
+        } else {
+            checks.append(.init(name: "MobileGestalt file access", path: ContainerKind.systemGroup.rootPath,
+                                status: .unsupported, detail: "System Group access requires iOS 27", durationMilliseconds: 0))
+        }
         checks.append(testDiscoveredApplicationContainer(
             rootPath: "/var/mobile/Containers/Data/Application",
             maximumInode: 5_000_000
@@ -54,6 +67,21 @@ enum SelfTestRunner {
         checks.append(testDirectoryAccess(name: "Plugin containers", path: ContainerKind.plugin.rootPath))
         checks.append(testDirectoryAccess(name: "Internal daemon containers", path: ContainerKind.internalDaemon.rootPath))
         checks.append(testDirectoryAccess(name: "App Group containers", path: ContainerKind.appGroup.rootPath))
+        if ProcessInfo.processInfo.operatingSystemVersion.majorVersion == 26 {
+            // Exercise actual external preview/export on iOS 26, including the
+            // direct-request App Group path, using container metadata only.
+            let candidates = ContainerDiscoveryService.loadCached(.appGroup) + ContainerDiscoveryService.loadCached(.application)
+            if let sample = candidates.first(where: {
+                $0.identifier != nil && $0.identifier != SandboxAccessClient.appGroupIdentifier
+                    && $0.identifier != Bundle.main.bundleIdentifier
+            }) {
+                checks.append(testPreviewAndExport(path: URL(fileURLWithPath: sample.path)
+                    .appendingPathComponent(".com.apple.mobile_container_manager.metadata.plist").path))
+            } else {
+                checks.append(.init(name: "Preview and safe export", path: ContainerKind.application.rootPath,
+                                    status: .unsupported, detail: "No external container metadata was available", durationMilliseconds: 0))
+            }
+        }
         checks.append(testDirectoryAccess(name: "System Group containers", path: ContainerKind.systemGroup.rootPath))
         #endif
         checks.append(testStructuredFormats())
@@ -72,12 +100,14 @@ enum SelfTestRunner {
         checks.append(testDirectorySorting())
 
         let report = SelfTestReport(
-            schemaVersion: 21,
+            schemaVersion: schemaVersion,
             appVersion: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "unknown",
             systemVersion: ProcessInfo.processInfo.operatingSystemVersionString,
             startedAt: startedAt,
             finishedAt: Date(),
-            checks: checks
+            checks: checks,
+            accessBackendSelection: SandboxAccessClient.selection.rawValue,
+            lastAccessBackend: SandboxAccessClient.lastBackend?.rawValue
         )
         persist(report)
         logger.notice("Self-test finished: \(report.passed ? "PASS" : "FAIL", privacy: .public)")
@@ -101,8 +131,8 @@ enum SelfTestRunner {
     nonisolated private static func testFileAccess(name: String, path: String) -> SelfTestReport.Check {
         timedCheck(name: name, path: path) {
             let baselineReadable = FileManager.default.isReadableFile(atPath: path)
-            let grant = try BadQueryClient.acquire(.forPath(path))
-            defer { BadQueryClient.release(grant) }
+            let grant = try SandboxAccessClient.acquire(.forPath(path))
+            defer { SandboxAccessClient.release(grant) }
             let data = try Data(contentsOf: URL(fileURLWithPath: path), options: .mappedIfSafe)
             guard !data.isEmpty else { throw SelfTestFailure("File was readable but empty") }
             return "baselineReadable=\(baselineReadable), handle=\(grant.handle), bytes=\(data.count)"
@@ -112,9 +142,11 @@ enum SelfTestRunner {
     nonisolated private static func testPreviewAndExport(path: String) -> SelfTestReport.Check {
         timedCheck(name: "Preview and safe export", path: path) {
             let url = URL(fileURLWithPath: path)
-            let grant = try BadQueryClient.acquire(.init(path: path))
+            let parentGrant = try SandboxAccessClient.acquire(.forPath(url.deletingLastPathComponent().path))
+            defer { SandboxAccessClient.release(parentGrant) }
+            let grant = try SandboxAccessClient.acquire(.init(path: path))
+            defer { SandboxAccessClient.release(grant) }
             let attributes = try FileManager.default.attributesOfItem(atPath: path)
-            BadQueryClient.release(grant)
             let item = FileItem(
                 url: url,
                 isDirectory: false,
@@ -127,6 +159,7 @@ enum SelfTestRunner {
                   FileManager.default.fileExists(atPath: exportURL.path) else {
                 throw SelfTestFailure("Export cache file was not created")
             }
+            defer { try? FileManager.default.removeItem(at: exportURL) }
             guard case .structured(_, let text, _) = result.preview, text.contains("<plist") else {
                 throw SelfTestFailure("Property list preview was not converted to XML text")
             }
@@ -139,13 +172,22 @@ enum SelfTestRunner {
             let baseline = (try? FileManager.default.contentsOfDirectory(atPath: path).count)
             let kind = ContainerKind.allCases.first { $0.rootPath == path }
             let indexed = kind.map(ContainerDiscoveryService.discover).map(\.count) ?? 0
-            guard let grant = try? BadQueryClient.acquire(.forPath(path)) else {
+            guard let grant = try? SandboxAccessClient.acquire(.forPath(path)) else {
                 if indexed > 0 { return "rootGrant=unavailable, inodeIndexed=\(indexed)" }
                 throw UnsupportedCapability("Root grant and inode discovery unavailable on this OS build")
             }
-            defer { BadQueryClient.release(grant) }
-            let children = try FileManager.default.contentsOfDirectory(atPath: path)
-            return "baselineCount=\(baseline.map(String.init) ?? "denied"), handle=\(grant.handle), childCount=\(children.count), indexed=\(indexed)"
+            defer { SandboxAccessClient.release(grant) }
+            do {
+                let children = try FileManager.default.contentsOfDirectory(atPath: path)
+                return "backend=\(grant.backend.rawValue), baselineCount=\(baseline.map(String.init) ?? "denied"), handle=\(grant.handle), childCount=\(children.count), indexed=\(indexed)"
+            } catch {
+                if indexed > 0 { return "backend=\(grant.backend.rawValue), rootListing=unavailable, inodeIndexed=\(indexed)" }
+                let failure = error as NSError
+                if failure.domain == NSCocoaErrorDomain && failure.code == NSFileReadNoPermissionError {
+                    throw UnsupportedCapability("The root grant does not permit listing and no child containers were discovered")
+                }
+                throw error
+            }
         }
     }
 
@@ -711,11 +753,11 @@ enum SelfTestRunner {
             guard let sample = discovered.first else {
                 throw SelfTestFailure("No application container was found below inode \(maximumInode)")
             }
-            let grant = try BadQueryClient.acquire(.init(path: sample.path))
-            defer { BadQueryClient.release(grant) }
+            let grant = try SandboxAccessClient.acquire(.init(path: sample.path))
+            defer { SandboxAccessClient.release(grant) }
             let children = try FileManager.default.contentsOfDirectory(atPath: sample.path)
             let identified = discovered.lazy.filter { $0.identifier != nil }.count
-            return "scannedThrough=\(maximumInode), discovered=\(discovered.count), identified=\(identified), sample=\(sample.displayName), handle=\(grant.handle), children=\(children.sorted().joined(separator: ",")), metadata=\(sample.metadataDiagnostic ?? "none")"
+            return "backend=\(grant.backend.rawValue), scannedThrough=\(maximumInode), discovered=\(discovered.count), identified=\(identified), sample=\(sample.displayName), handle=\(grant.handle), children=\(children.sorted().joined(separator: ",")), metadata=\(sample.metadataDiagnostic ?? "none")"
         }
     }
 
