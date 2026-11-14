@@ -251,6 +251,77 @@ xcrun swiftc -D DEBUG Veilpath/Core/WorseQueryWorkspace.swift \
 /tmp/veilpath-access-tests
 ```
 
+## Packaging and installation channels
+
+Use `python3 scripts/package.py` on a Mac with Xcode to create a **Release,
+arm64, iPhoneOS** IPA. Outputs must be outside the repository. The script checks
+ZIP CRCs, the executable architecture, code-signature structure, and the App
+Group entitlement, then writes a JSON build record and SHA-256 checksum beside
+the IPA. It never uploads packages, credentials, or provisioning files.
+
+| Channel | Package | Status |
+| --- | --- | --- |
+| AltStore Classic / SideStore / Sideloadly | `resign.ipa` | Packaging supported; installation and access must be verified after each tool re-signs it |
+| Xcode / Device Hub / Apple Configurator | `development.ipa` | Requires a valid profile covering the target device and App Group |
+| Apple Ad Hoc testing | `ad-hoc.ipa` | Requires distribution signing assets and registered devices; not a universal install package |
+| TrollStore | None | Official supported OS versions do not overlap Veilpath's iOS 26 minimum |
+| AltStore PAL / TestFlight / App Store | Separate reviewed distribution | Not produced by this script; an ordinary IPA is not a notarized marketplace package |
+
+Create the package that a sideloading tool will re-sign with the user's account:
+
+```sh
+python3 scripts/package.py --mode sideload --output /tmp/veilpath-packages
+```
+
+The `Veilpath-<version>-<build>-resign.ipa` has an ad hoc code signature carrying
+the requested App Group entitlement, with no embedded developer profile. This
+is **not** Apple Ad Hoc distribution signing and cannot be installed directly
+on a stock device. All three sideloading tools can consume IPA files; their
+ability to provision the required App Group and execute both access backends
+in Veilpath still needs on-device channel testing.
+
+For local testing with the team's registered devices:
+
+```sh
+python3 scripts/package.py --mode development --output /tmp/veilpath-packages
+# With suitable Apple Distribution assets and registered test devices:
+python3 scripts/package.py --mode ad-hoc --output /tmp/veilpath-ad-hoc
+```
+
+Signed exports use the project's team by default; `--team-id` can override the
+team, which must own the configured bundle ID and App Group. Xcode may update
+provisioning assets during signed exports. These IPAs contain an embedded
+profile with signing and permitted-device information: keep local development
+packages private. Output names are never overwritten. There is no simulator IPA.
+
+The exported development IPA was unpacked and installed on the connected iPhone
+11, iOS 26.0.1 (`23A355`); its Release build passed 23 schema 23 checks with 3
+unsupported capabilities and no failures. This validates the development export,
+not an AltStore, SideStore, Sideloadly, or Apple Ad Hoc installation. App Group
+mapping acceptance/refusal also has standalone regression coverage.
+
+Keep `group.com.xnu.veilpath` in the requested entitlements. AltStore appends its
+team identifier and records groups in `ALTAppGroups`; Veilpath accepts one
+accessible mapping of its own group, while keeping the original group preferred
+when accessible. Unrelated, malformed, inaccessible, or ambiguous mappings are
+not used. Other signers must preserve the group or provide the same supported
+mapping. After installation, run Settings → Diagnostics: launching the app alone
+does not verify access, App Group staging, or recovery. Keep a stable account,
+bundle ID, and installation channel for upgrades; export retained backups before
+changing these identities or uninstalling.
+
+An AltStore Classic source can later point at a hosted re-signing IPA with its
+real version, build number, byte size, and App Group permission declaration.
+No source with a placeholder download link or automatic binary release is
+published here. Public redistribution remains subject to the unresolved
+licensing boundary in [LICENSING.md](LICENSING.md).
+
+References: [AltStore Classic versus PAL](https://faq.altstore.io/altstore-pal-v.-altstore-classic),
+[AltStore source format](https://faq.altstore.io/developers/make-a-source),
+[SideStore documentation](https://docs.sidestore.io/),
+[Sideloadly](https://sideloadly.io/), [TrollStore compatibility](https://github.com/opa334/TrollStore),
+and [Apple registered-device distribution](https://developer.apple.com/documentation/xcode/distributing-your-app-to-registered-devices).
+
 ## Project structure
 
 ```text
@@ -266,6 +337,7 @@ Veilpath/
   AppManagementView.swift   App Storage and Backup Center
 docs/                       GitHub Pages website
 tests/                      Standalone backend and workspace regression checks
+scripts/package.py          Local Release IPA packaging and validation
 ```
 
 Contributor instructions, validation commands, and access safeguards are in

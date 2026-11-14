@@ -30,6 +30,15 @@ func veilpath_worse_query(_ group: String, _ alternate: Bool) -> Int64 { fatalEr
     }
 
     static func main() throws {
+        let originalGroup = SandboxAccessClient.defaultAppGroupIdentifier
+        let remappedGroup = originalGroup + ".ABCDE12345"
+        let select = SandboxAccessClient.resolveAppGroupIdentifier
+        try require(select([remappedGroup], { _ in true }) == originalGroup, "An accessible original group must take priority")
+        try require(select([remappedGroup, remappedGroup], { $0 == remappedGroup }) == remappedGroup, "AltStore's mapped group was not selected")
+        try require(select(["group.com.rileytestut.AltStore.ABCDE12345"], { $0 != originalGroup }) == originalGroup, "An unrelated installer's group was selected")
+        try require(select([originalGroup + ".invalid", remappedGroup], { _ in false }) == originalGroup, "An inaccessible mapping was accepted")
+        try require(select([originalGroup + ".invalid"], { $0 != originalGroup }) == originalGroup, "A malformed team suffix was accepted")
+        try require(select([remappedGroup, originalGroup + ".12345ABCDE"], { $0 != originalGroup }) == originalGroup, "An ambiguous mapping was accepted")
         let files = FileManager.default
         let root = files.temporaryDirectory.appendingPathComponent("veilpath-access-tests-\(UUID().uuidString)")
         try files.createDirectory(at: root, withIntermediateDirectories: false)
@@ -120,7 +129,7 @@ func veilpath_worse_query(_ group: String, _ alternate: Bool) -> Int64 { fatalEr
         let manual = try SandboxAccessClient.acquire(.init(path: target.path))
         SandboxAccessClient.release(manual)
         try require(manual.backend == .badQuery && badCalls == 2, "Manual bad_query did not use its backend")
-        print("PASS: workspace preservation, failure recovery, crash recovery, unsafe-state refusal, concurrent staging, automatic fallback, strict manual selection, active-grant switch protection, and single release")
+        print("PASS: sideloaded App Group selection, workspace preservation, failure recovery, crash recovery, unsafe-state refusal, concurrent staging, automatic fallback, strict manual selection, active-grant switch protection, and single release")
     }
 
     final class FailureRecorder: @unchecked Sendable {

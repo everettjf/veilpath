@@ -206,6 +206,67 @@ xcrun swiftc -D DEBUG Veilpath/Core/WorseQueryWorkspace.swift \
 /tmp/veilpath-access-tests
 ```
 
+## 打包与安装渠道
+
+在安装 Xcode 的 Mac 上使用 `python3 scripts/package.py`，可生成 **Release、
+arm64、iPhoneOS** IPA。产物必须放在仓库外。脚本会校验 ZIP CRC、可执行文件架构、
+代码签名结构及 App Group 权限，并生成 JSON 构建记录和 SHA-256 校验文件。
+脚本不会上传安装包、凭据或描述文件。
+
+| 渠道 | 安装包 | 当前状态 |
+| --- | --- | --- |
+| AltStore Classic / SideStore / Sideloadly | `resign.ipa` | 支持打包；每个工具重签后的安装和访问能力需单独真机验证 |
+| Xcode / Device Hub / Apple Configurator | `development.ipa` | 需要覆盖目标设备及 App Group 的有效描述文件 |
+| Apple Ad Hoc 测试分发 | `ad-hoc.ipa` | 需要分发签名资产和已登记设备，不是通用免签包 |
+| 巨魔 TrollStore | 不提供 | 官方支持的系统版本与 Veilpath 最低 iOS 26 没有交集 |
+| AltStore PAL / TestFlight / App Store | 独立审核分发流程 | 本脚本不生成；普通 IPA 不是已公证的应用市场分发包 |
+
+生成由侧载工具使用用户账户重新签名的安装包：
+
+```sh
+python3 scripts/package.py --mode sideload --output /tmp/veilpath-packages
+```
+
+`Veilpath-<版本>-<构建号>-resign.ipa` 使用携带 App Group 权限声明的 ad hoc 代码签名，
+不嵌入开发者描述文件。这**不是** Apple Ad Hoc 测试分发签名，不能直接装到原生
+未修改系统。上述三个侧载工具均能接收 IPA，但它们是否能为 Veilpath 正确申请
+App Group、以及两个访问后端能否工作，仍需分别安装后真机验证。
+
+为团队已登记设备生成本地测试包：
+
+```sh
+python3 scripts/package.py --mode development --output /tmp/veilpath-packages
+# 已具备 Apple Distribution 签名资产和已登记测试设备时：
+python3 scripts/package.py --mode ad-hoc --output /tmp/veilpath-ad-hoc
+```
+
+签名导出默认使用项目团队，也可用 `--team-id` 指定；该团队必须拥有配置的 Bundle ID
+和 App Group。签名导出时 Xcode 可能更新签名资产。签名 IPA 中的描述文件包含签名及
+允许安装设备的信息，请将开发测试包保留在私有范围。脚本不会覆盖已有同名产物，
+也不会生成模拟器 IPA。
+
+导出的开发签名 IPA 已解包安装到连接的 iPhone 11、iOS 26.0.1（`23A355`），其
+Release 版本通过 Schema 23 自测：23 项通过、3 项能力不支持、0 失败。这验证了开发
+签名导出，不代表已验证 AltStore、SideStore、Sideloadly 或 Apple Ad Hoc 安装渠道。
+App Group 映射的接受与拒绝逻辑另有独立回归测试。
+
+权限声明保留 `group.com.xnu.veilpath`。AltStore 会添加团队标识后缀，并把组列表写入
+`ALTAppGroups`；Veilpath 在原始组可访问时优先使用原始组，否则仅接受自身组的一个
+可访问映射，不使用无关、格式错误、不可访问或有歧义的映射。其他签名工具需要保留
+原始组或提供同样受支持的映射。安装后请运行“设置 → 诊断”，仅能启动不能证明
+访问、App Group 暂存和恢复均已生效。升级时尽量保持账户、Bundle ID 和安装渠道
+不变；更换这些身份或卸载前先导出保留的备份。
+
+后续可为 AltStore Classic 建立订阅源，指向已托管的重签 IPA，填写真实版本、构建号、
+字节大小及 App Group 权限声明。目前不会发布带占位下载地址的订阅源，也不会自动
+发布二进制包。公开再分发仍须先解决 [LICENSING.md](LICENSING.md) 中记录的许可边界。
+
+参考：[AltStore Classic 与 PAL](https://faq.altstore.io/altstore-pal-v.-altstore-classic)、
+[AltStore 订阅源格式](https://faq.altstore.io/developers/make-a-source)、
+[SideStore 文档](https://docs.sidestore.io/)、[Sideloadly](https://sideloadly.io/)、
+[TrollStore 兼容范围](https://github.com/opa334/TrollStore)及
+[Apple 已登记设备分发](https://developer.apple.com/documentation/xcode/distributing-your-app-to-registered-devices)。
+
 ## 项目结构
 
 ```text
@@ -221,6 +282,7 @@ Veilpath/
   AppManagementView.swift   应用空间与备份中心
 docs/                       GitHub Pages 网站
 tests/                      独立后端与工作区回归测试
+scripts/package.py          本地 Release IPA 打包与校验
 ```
 
 贡献规范、验证命令和访问保护要求见 [`AGENTS.md`](AGENTS.md)。公开行为或兼容性

@@ -97,8 +97,26 @@ enum SandboxAccessError: LocalizedError {
 /// All callers keep operation-scoped grants. Fallback only acquires a grant;
 /// it never retries the caller's read, write, restore, or replacement operation.
 enum SandboxAccessClient {
-    static let appGroupIdentifier = "group.com.xnu.veilpath"
+    static let defaultAppGroupIdentifier = "group.com.xnu.veilpath"
+    static let appGroupIdentifier = resolveAppGroupIdentifier(
+        remappedGroups: Bundle.main.object(forInfoDictionaryKey: "ALTAppGroups") as? [String] ?? []
+    ) { FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: $0) != nil }
     private static let state = State()
+
+    /// AltStore records its team-suffixed groups in ALTAppGroups when re-signing.
+    /// Accept only our own group, and require an actual accessible container.
+    /// Never stage query work in an unrelated installer's shared group.
+    static func resolveAppGroupIdentifier(remappedGroups: [String], isAccessible: (String) -> Bool) -> String {
+        if isAccessible(defaultAppGroupIdentifier) { return defaultAppGroupIdentifier }
+        let prefix = defaultAppGroupIdentifier + "."
+        let candidates = Set(remappedGroups.filter { group in
+            guard group.hasPrefix(prefix) else { return false }
+            let team = group.dropFirst(prefix.count)
+            return team.utf8.count == 10 && team.utf8.allSatisfy { (48...57).contains($0) || (65...90).contains($0) }
+        }).filter(isAccessible)
+        // Missing or ambiguous mappings retain the existing fail-closed path.
+        return candidates.count == 1 ? candidates.first! : defaultAppGroupIdentifier
+    }
 
     private final class State: @unchecked Sendable {
         let lock = NSLock()

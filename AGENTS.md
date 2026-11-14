@@ -31,6 +31,7 @@ explicitly changes that policy.
 - `README.md`: canonical English documentation.
 - `README.zh-CN.md`: Simplified Chinese documentation.
 - `tests/SandboxAccessTests.swift`: standalone backend and workspace regression checks.
+- `scripts/package.py`: local Release IPA archive, signing, export, and validation.
 
 The Xcode project uses a file-system-synchronized source group. New files placed
 under `Veilpath/` are normally discovered automatically; do not add redundant
@@ -67,7 +68,8 @@ xcrun swiftc -D DEBUG Veilpath/Core/WorseQueryWorkspace.swift \
 /tmp/veilpath-access-tests
 ```
 
-These checks use test-only bridge stubs to validate automatic fallback, legacy
+These checks use test-only bridge stubs to validate safe sideloaded App Group
+mapping, automatic fallback, legacy
 preference handling, grant lifetime, concurrent staging, cache preservation,
 and interrupted-workspace recovery. They do not exercise either exploit.
 
@@ -89,6 +91,9 @@ unsupported capabilities and no failures. Simulator local-fixture checks passed
 scanning, verified backup import, cache cleanup/restore, corruption refusal, and
 interrupted recovery despite cancellation. All mutation tests use disposable
 fixtures in Veilpath's own temporary directory, never another app's live data.
+The Release development IPA exported by `scripts/package.py` was also unpacked,
+installed, and passed the same 23 supported checks on that device. Do not label
+that as proof of AltStore, SideStore, Sideloadly, or Apple Ad Hoc installation.
 
 ## Swift and SwiftUI conventions
 
@@ -159,6 +164,18 @@ English is the app's source and default language. Simplified Chinese
   inode discovery fallback when opening or listing a container root fails.
 - Preserve the iOS 26 App Group compatibility path and keep
   `group.com.xnu.veilpath` synchronized between entitlements and source code.
+- Keep the default App Group synchronized with entitlements. AltStore's
+  `ALTAppGroups` may select only one accessible mapping with our exact group
+  prefix and a valid 10-character team suffix. Prefer the accessible original
+  group; never stage operations in an unrelated installer's group or resolve
+  ambiguous mappings by guessing.
+- Package only device Release builds. Keep signing profiles out of re-signing
+  IPAs; preserve the requested App Group entitlement in their ad hoc signature.
+  Signed development/Ad Hoc exports must retain valid profiles and be scoped to
+  permitted devices. Never commit or automatically upload generated packages,
+  signing assets, build logs, or per-device profile data. Respect LICENSING.md
+  before public binary distribution. Do not advertise TrollStore compatibility
+  while its supported OS range does not overlap the deployment target.
 - Do not silently broaden supported OS claims. Update compatibility statements
   only from verified device results.
 - Preserve structured self-test output and schema compatibility. Increment the

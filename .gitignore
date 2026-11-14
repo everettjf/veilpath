@@ -24,6 +24,10 @@ Build/
 .swiftpm/configuration/
 .swiftpm/xcode/package.xcworkspace/xcuserdata/
 
+# Python packaging tool caches
+__pycache__/
+*.pyc
+
 # Playgrounds
 timeline.xctimeline
 playground.xcworkspace
