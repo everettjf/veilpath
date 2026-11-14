@@ -29,7 +29,7 @@ struct SelfTestReport: Codable, Sendable {
 }
 
 enum SelfTestRunner {
-    nonisolated static let schemaVersion = 22
+    nonisolated static let schemaVersion = 23
     private static let logger = Logger(subsystem: "com.xnu.veilpath", category: "SelfTest")
 
     nonisolated static let reportURL: URL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
@@ -60,6 +60,14 @@ enum SelfTestRunner {
             rootPath: "/var/mobile/Containers/Data/Application",
             maximumInode: 5_000_000
         ))
+        checks.append(timedCheck(name: "On-device app storage scan", path: ContainerKind.application.rootPath) {
+            guard let sample = ContainerDiscoveryService.loadCached(.application).first(where: { $0.identifier != Bundle.main.bundleIdentifier }) else {
+                throw SelfTestFailure("No external application container was available")
+            }
+            let scan = try AppStorageService.scan(sample)
+            guard scan.fileCount > 0 else { throw SelfTestFailure("No regular files could be measured") }
+            return "readOnly=true, fileCount=\(scan.fileCount), logicalBytes=\(scan.totalBytes), unreadable=\(scan.unreadableCount), skippedLinks=\(scan.skippedLinks)"
+        })
         checks.append(testDirectoryAccess(
             name: "System data containers",
             path: "/var/containers/Data/System"
@@ -98,6 +106,8 @@ enum SelfTestRunner {
         checks.append(await testGuardedFileOperations())
         checks.append(testLocalSearch())
         checks.append(testDirectorySorting())
+        checks.append(testApplicationNames())
+        checks.append(await testAppManagement())
 
         let report = SelfTestReport(
             schemaVersion: schemaVersion,
@@ -729,6 +739,159 @@ enum SelfTestRunner {
         }
     }
 
+    nonisolated private static func testApplicationNames() -> SelfTestReport.Check {
+        timedCheck(name: "Application name resolution", path: "CSStore fixture") {
+            var database = Data(repeating: 0, count: 8192)
+            database.replaceSubrange(0..<4, with: Data("bdsl".utf8))
+            func put(_ value: UInt32, at offset: Int) {
+                var value = value.littleEndian
+                withUnsafeBytes(of: &value) { database.replaceSubrange(offset..<(offset + 4), with: $0) }
+            }
+            let bundle = "com.example.NameFixture"
+            let path = "/var/mobile/Containers/Data/Application/10000000-0000-0000-0000-000000000001"
+            put(0x23c, at: 68)
+            for (offset, reference) in [(0x0c, 40), (0x64, 44), (0x68, 48), (0x70, 48)] { put(UInt32(reference), at: 72 + offset) }
+            database.replaceSubrange(1800..<1808, with: Data("<string>".utf8))
+            for (id, string, offset) in [(10, bundle, 2048), (11, path, 2304), (12, "Fixture Application", 2560)] {
+                let bytes = Data(string.utf8)
+                put(UInt32(id), at: offset); put(UInt32(bytes.count), at: offset + 4)
+                database.replaceSubrange((offset + 8)..<(offset + 8 + bytes.count), with: bytes)
+            }
+            let container = ContainerDescriptor(path: path, identifier: bundle, uuid: "fixture", kind: .application, metadataDiagnostic: nil)
+            guard AppNameResolver.parse(database, containers: [container])[bundle] == "Fixture Application",
+                  AppNameResolver.parse(Data(database.prefix(100)), containers: [container]).isEmpty else {
+                throw SelfTestFailure("Verified app-name mapping or malformed-store rejection failed")
+            }
+            let wrong = ContainerDescriptor(path: path, identifier: "com.example.Other", uuid: "fixture", kind: .application, metadataDiagnostic: nil)
+            guard AppNameResolver.parse(database, containers: [wrong]).isEmpty else { throw SelfTestFailure("Name was accepted without an identity match") }
+            // Unknown formats require independent name anchors before a field
+            // can be used for applications whose names the API does not expose.
+            database = Data(repeating: 0, count: 16384)
+            database.replaceSubrange(0..<4, with: Data("bdsl".utf8))
+            database.replaceSubrange(2200..<2208, with: Data("<string>".utf8))
+            var applications: [ContainerDescriptor] = []
+            var anchors: [String: String] = [:]
+            for index in 0..<3 {
+                let bundle = "com.example.NameFixture\(index)"
+                let path = "/var/mobile/Containers/Data/Application/" + UUID().uuidString
+                let name = "Verified Fixture \(index)"
+                let offset = 64 + index * 512
+                put(0x180, at: offset + 4)
+                for (field, id) in [(0, 10 + index * 3), (32, 11 + index * 3), (60, 12 + index * 3)] {
+                    put(UInt32(id << 2), at: offset + 8 + field)
+                }
+                for (stringIndex, string) in [bundle, path, name].enumerated() {
+                    let start = 4096 + index * 1024 + stringIndex * 256
+                    let bytes = Data(string.utf8)
+                    put(UInt32(10 + index * 3 + stringIndex), at: start)
+                    put(UInt32(bytes.count), at: start + 4)
+                    database.replaceSubrange((start + 8)..<(start + 8 + bytes.count), with: bytes)
+                }
+                applications.append(.init(path: path, identifier: bundle, uuid: "fixture", kind: .application, metadataDiagnostic: nil))
+                if index < 2 { anchors[bundle] = name }
+            }
+            guard AppNameResolver.parse(database, containers: applications, anchors: anchors)["com.example.NameFixture2"] == "Verified Fixture 2",
+                  AppNameResolver.parse(database, containers: applications, anchors: ["com.example.NameFixture0": "Verified Fixture 0"]).isEmpty else {
+                throw SelfTestFailure("Unknown name layout was not validated against independent anchors")
+            }
+            return "boundedStore=true, containerAndBundleMatch=true, malformedRejected=true, anchoredLayoutInference=true"
+        }
+    }
+
+    nonisolated private static func testAppManagement() async -> SelfTestReport.Check {
+        await timedAsyncCheck(name: "App storage and recoverable cache cleaning", path: "private temporary fixture") {
+            var stage = "setup"
+            do {
+            let files = FileManager.default
+            let root = files.temporaryDirectory.appendingPathComponent("veilpath-management-" + UUID().uuidString)
+            let identifier = "com.example.ManagementFixture." + UUID().uuidString
+            let container = ContainerDescriptor(path: root.path, identifier: identifier, uuid: UUID().uuidString, kind: .application, metadataDiagnostic: nil)
+            defer {
+                try? files.removeItem(at: root)
+                for record in (try? AppBackupLibrary.records()) ?? [] where record.container.identifier == identifier {
+                    try? files.removeItem(at: record.folder)
+                }
+            }
+            for folder in ["Documents", "Library/Caches", "Library/Preferences", "tmp"] {
+                try files.createDirectory(at: root.appendingPathComponent(folder), withIntermediateDirectories: true)
+            }
+            let cache = root.appendingPathComponent("Library/Caches")
+            let payload = Data(repeating: 65, count: 512 * 1024)
+            try payload.write(to: cache.appendingPathComponent("cache.data"))
+            try Data("document".utf8).write(to: root.appendingPathComponent("Documents/keep.txt"))
+            try Data("settings".utf8).write(to: root.appendingPathComponent("Library/Preferences/keep.plist"))
+            try Data("temporary".utf8).write(to: root.appendingPathComponent("tmp/keep.txt"))
+            stage = "storage-scan"
+            let scan = try AppStorageService.scan(container)
+            guard scan.isComplete, scan.cacheBytes == payload.count, scan.documentsBytes == 8,
+                  scan.libraryBytes == 8, scan.temporaryBytes == 9 else { throw SelfTestFailure("Storage category sizes were incorrect") }
+            // A link is never followed or silently removed by cleanup.
+            let link = cache.appendingPathComponent("link")
+            try files.createSymbolicLink(at: link, withDestinationURL: root.appendingPathComponent("Documents"))
+            do { _ = try await AppDataOperations.shared.clean(container, locations: [.caches]) { _, _, _, _ in }; throw SelfTestFailure("Symlink cleanup was accepted") }
+            catch AppManagementError.unsafeTree {}
+            try files.removeItem(at: link)
+            stage = "clean"
+            let result = try await AppDataOperations.shared.clean(container, locations: [.caches]) { _, _, _, _ in }
+            guard try files.contentsOfDirectory(atPath: cache.path).isEmpty,
+                  result.backup.archiveBytes < Int64(payload.count),
+                  try String(contentsOf: root.appendingPathComponent("Documents/keep.txt"), encoding: .utf8) == "document",
+                  try String(contentsOf: root.appendingPathComponent("tmp/keep.txt"), encoding: .utf8) == "temporary" else {
+                throw SelfTestFailure("Cache cleaning changed protected data or did not retain a compressed backup")
+            }
+            // Restoring must also work after an app removes the cache directory.
+            stage = "import-cache-backup"
+            let imported = try await AppDataOperations.shared.importBackup(result.backup.archive, applications: [container])
+            guard imported.kind == .cacheRecovery, imported.container.identifier == identifier else { throw SelfTestFailure("Cache backup import lost its identity") }
+            try files.removeItem(at: cache)
+            stage = "restore-missing-cache"
+            try await AppDataOperations.shared.restore(imported, to: container) { _, _, _, _ in }
+            guard try Data(contentsOf: cache.appendingPathComponent("cache.data")) == payload else { throw SelfTestFailure("Cache recovery did not restore the original contents") }
+            // Simulate death after staging the original and creating an empty replacement.
+            let original = try ManagedAppFiles.tree(cache, prefix: CacheLocation.caches.rawValue)
+            let operationID = UUID()
+            let staged = cache.deletingLastPathComponent().appendingPathComponent(".veilpath-cache-" + operationID.uuidString + "-Caches-old")
+            try files.moveItem(at: cache, to: staged)
+            try files.createDirectory(at: cache, withIntermediateDirectories: false)
+            let replacement = try ManagedAppFiles.tree(cache, prefix: CacheLocation.caches.rawValue)
+            let journal = CacheTransaction.Journal(id: operationID, container: container, locations: [.caches], original: original, replacement: replacement, committed: false)
+            try JSONEncoder().encode(journal).write(to: result.backup.folder.appendingPathComponent("transaction.json"), options: .atomic)
+            let concurrent = cache.appendingPathComponent("concurrent.txt")
+            try Data("new app data".utf8).write(to: concurrent)
+            do { try await AppDataOperations.shared.recoverInterruptedOperations(); throw SelfTestFailure("Concurrent replacement was overwritten during recovery") }
+            catch AppManagementError.recoveryRequired {}
+            guard files.fileExists(atPath: concurrent.path), files.fileExists(atPath: staged.appendingPathComponent("cache.data").path) else {
+                throw SelfTestFailure("Interrupted recovery lost original or concurrent data")
+            }
+            try files.removeItem(at: concurrent)
+            stage = "interrupted-recovery"
+            let recovery = Task {
+                withUnsafeCurrentTask { $0?.cancel() }
+                try await AppDataOperations.shared.recoverInterruptedOperations()
+            }
+            try await recovery.value
+            guard try Data(contentsOf: cache.appendingPathComponent("cache.data")) == payload else { throw SelfTestFailure("Interrupted cache transaction did not recover") }
+            stage = "app-backup-library"
+            let full = try await AppDataOperations.shared.createBackup(container) { _, _, _, _ in }
+            let importedFull = try await AppDataOperations.shared.importBackup(full.archive, applications: [container])
+            guard full.kind == .application, importedFull.kind == .application,
+                  try AppBackupLibrary.records().contains(where: { $0.id == importedFull.id }) else { throw SelfTestFailure("App backup was not published in Backup Center") }
+            try Data("changed document".utf8).write(to: root.appendingPathComponent("Documents/keep.txt"))
+            try await AppDataOperations.shared.restore(importedFull, to: container) { _, _, _, _ in }
+            guard try String(contentsOf: root.appendingPathComponent("Documents/keep.txt"), encoding: .utf8) == "document",
+                  try AppBackupLibrary.records().filter({ $0.container.identifier == identifier && $0.kind == .application }).count >= 3 else {
+                throw SelfTestFailure("App restore did not preserve a centrally managed safety backup")
+            }
+            let archive = try FileHandle(forWritingTo: result.backup.archive)
+            try archive.seekToEnd(); try archive.write(contentsOf: Data([1])); try archive.close()
+            do { try await AppDataOperations.shared.restore(result.backup, to: container) { _, _, _, _ in }; throw SelfTestFailure("Tampered backup was accepted") }
+            catch AppManagementError.invalidBackup {}
+            guard try Data(contentsOf: cache.appendingPathComponent("cache.data")) == payload else { throw SelfTestFailure("Rejected backup changed the target") }
+            return "sizes=true, compressedBackup=true, cleanAndRestore=true, documentsAndTmpPreserved=true, symlinksRejected=true, interruptedRecovery=true, cancellationSafeRecovery=true, concurrentDataPreserved=true, tamperRejected=true, cacheAndAppBackupImport=true, backupLibrary=true"
+            } catch { throw SelfTestFailure("stage=\(stage): \(error.localizedDescription)") }
+        }
+    }
+
     nonisolated private static func testDirectorySorting() -> SelfTestReport.Check {
         timedCheck(name: "Directory filtering and sorting", path: FileManager.default.temporaryDirectory.path) {
             let root = FileManager.default.temporaryDirectory.appending(path: "veilpath-sort-\(UUID().uuidString)", directoryHint: .isDirectory)
@@ -757,7 +920,8 @@ enum SelfTestRunner {
             defer { SandboxAccessClient.release(grant) }
             let children = try FileManager.default.contentsOfDirectory(atPath: sample.path)
             let identified = discovered.lazy.filter { $0.identifier != nil }.count
-            return "backend=\(grant.backend.rawValue), scannedThrough=\(maximumInode), discovered=\(discovered.count), identified=\(identified), sample=\(sample.displayName), handle=\(grant.handle), children=\(children.sorted().joined(separator: ",")), metadata=\(sample.metadataDiagnostic ?? "none")"
+            let named = discovered.lazy.filter { $0.applicationName != nil }.count
+            return "backend=\(grant.backend.rawValue), scannedThrough=\(maximumInode), discovered=\(discovered.count), identified=\(identified), named=\(named), names=\(AppNameResolver.lastDiagnostic), sample=\(sample.displayName), handle=\(grant.handle), children=\(children.sorted().joined(separator: ",")), metadata=\(sample.metadataDiagnostic ?? "none")"
         }
     }
 

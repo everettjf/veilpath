@@ -59,7 +59,10 @@ recoverable.
 - Indexes Application, App Group, PluginKit, Internal Daemon, System Data, and
   System Group containers.
 - Resolves container UUIDs to readable bundle identifiers using container
-  metadata.
+  metadata, and shows application names when a verified name is available.
+- Opens App Storage and Backup Center directly from the App library. Scan file
+  sizes, back up selected caches before cleaning, and keep full App and cache
+  recovery backups together for verified import, export, and restoration.
 - Falls back to `fsgetpath` inode discovery when a container root cannot be
   opened directly.
 - Acquires a sandbox extension for each operation and releases it immediately
@@ -101,6 +104,50 @@ recoverable.
   with a fresh safety backup.
 - Includes an on-device diagnostics suite with a structured JSON report.
 
+## App storage and backups
+
+Open **App Storage** from the App library to scan application containers, sorted
+by measured size. The breakdown separates Documents, Library data, Caches,
+temporary files, and other files. These are logical file sizes, not allocated
+disk usage. Scans are cancellable; unreadable or bounded scans are marked
+partial and cannot enable cleaning.
+
+Application names combine available system API results, localized names for
+common Apple apps, and bounded, read-only LaunchServices metadata matching.
+Database names must match both the independently discovered container path and
+bundle identifier. Parsing stays in memory; the raw database is neither saved
+nor exported. Unknown names retain their exact bundle identifier. Name coverage
+depends on the device and OS build.
+
+In an app's storage details, **Back Up and Clean Caches** selects only
+`Library/Caches`; `tmp` is opt-in. Close the target app first. Veilpath creates a
+compressed recovery archive, re-extracts it, verifies CRC-32 and SHA-256, and
+checks that the source has not changed before replacing the selected roots.
+Documents and app settings remain outside this operation. Links and unsupported
+files stop cleanup. The current recovery archive limit is 4 GB and 65,535 ZIP
+entries. Veilpath's own active data container is protected.
+
+Cleanup uses staged directory renames and a persisted journal. Interrupted
+transactions are recovered before further app data operations; unexpected
+concurrent data stops recovery and preserves the backup and staged files.
+Cancellation does not interrupt rollback. Results distinguish source bytes
+removed, recovery archive size, and the measured change in available space.
+Keeping a recovery copy consumes storage, so the removed byte count is not a
+promise of net free space.
+
+**Backup Center** keeps full App backups and cache recovery archives in
+Veilpath's own Documents directory without automatic expiry. It can create
+backups, import supported ZIP backups after complete validation, export an
+individual verified archive through Veilpath's share cache, and restore to a
+currently matching app container. Restore creates a fresh safety backup in the
+same center, labeled **Before Restore**. Full App backups contain Documents,
+Library, and tmp with a SHA-256 manifest; symbolic links are excluded and their
+count is shown when known. These are container file backups, not complete device
+or Keychain backups. Retained archives also need space on the device.
+
+Wallpapers and themes are reserved for a later phase. MobileGestalt modification
+tools are not part of this workflow and require separate model and OS validation.
+
 ## Compatibility
 
 Veilpath's stated support range is intentionally limited to versions covered by
@@ -113,7 +160,7 @@ builds.
 | --- | --- | --- |
 | iPadOS | 27 beta 3 (`24A5380l`) | Fully tested on physical iPad Air (`iPad15,3`) |
 | iOS / iPadOS | 26.x | Deployment target and App Group compatibility path |
-| iPhone 11 | 26.0.1 (`23A355`) | Schema 22: bad_query, worse_query, and Automatic each passed 20 checks; 3 unsupported, 0 failed |
+| iPhone 11 | 26.0.1 (`23A355`) | Schema 23 Automatic: 23 passed, 3 unsupported, 0 failed; earlier schema 22 verified both forced backends |
 | iPhone | 27 beta 3 (`24A5390f`) | Fully tested on physical iPhone 17 Pro (`iPhone18,1`) |
 | Simulator | 26–27 | UI and local fixtures only; both access backends require a physical device |
 
@@ -153,8 +200,15 @@ Veilpath includes an on-device regression suite that verifies sandbox access,
 container discovery, structured preview, file analysis, Mach-O parsing,
 streamed sharing, ZIP policy, stored and Deflate extraction, multi-item file
 operations, cancellation cleanup, Markdown export, guarded editing, complete
-App backup and rollback-safe restore, and local search. Schema 22 records the selected and last granted backends;
-older reports remain decodable. Results are written to
+App backup and rollback-safe restore, and local search. Schema 23 adds bounded
+application-name parsing, read-only on-device storage scanning, and recoverable
+cache cleanup with import, restore, interrupted recovery, and corruption tests.
+The final iPhone 11 automatic-mode run passed 23 checks, with 3 unsupported iOS 26
+capabilities and no failures. The simulator passed 16 local-fixture checks.
+Mutation tests use Veilpath's own disposable fixtures; other apps are only scanned
+read-only. The new app-management flows have physical-device validation on iOS
+26.0.1 only. Reports retain the selected and last granted backends, and older
+reports remain decodable. Results are written to
 `Documents/veilpath-self-test.json` inside Veilpath's own data container. Container
 counts are intentionally not presented as project-wide metrics because they
 depend entirely on the apps and system state of each device.
@@ -205,10 +259,11 @@ Veilpath/
   BadQuery/                 Legacy C sandbox-extension primitive
   WorseQuery/               App Group query bridge and upstream license
   Containers/               Container indexing and metadata resolution
-  Core/                     File access, preview, and export
+  Core/                     File access, preview, storage, guarded backup and recovery
   Diagnostics/              On-device regression suite
   Model/                    Observable application state
   ContentView.swift         Adaptive iPad/iPhone interface
+  AppManagementView.swift   App Storage and Backup Center
 docs/                       GitHub Pages website
 tests/                      Standalone backend and workspace regression checks
 ```
@@ -227,7 +282,8 @@ Browsing, previews, search, and export remain read-only. Write operations requir
 an explicit user action. Structured edits use a temporary draft, validation,
 Version Vault history, and SHA-256 verification. File deletion first creates a
 recoverable ZIP; operation safety archives are retained for up to 30 days with
-at most 10 archives in each category. Complete App restore validates the manifest and every payload
+at most 10 archives in each category. This expiry policy does not apply to
+Backup Center's retained App and cache recovery backups. Complete App restore validates the manifest and every payload
 hash, saves the current `Documents`, `Library`, and `tmp`, stages the replacement,
 then performs a rollback-capable directory swap. This is still sensitive research
 software; an in-app backup reduces risk but is not a substitute for a device

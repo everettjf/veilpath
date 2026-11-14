@@ -59,9 +59,10 @@ struct ContainerDescriptor: Identifiable, Codable, Hashable, Sendable {
     let uuid: String
     let kind: ContainerKind
     let metadataDiagnostic: String?
+    var applicationName: String? = nil
 
     var id: String { path }
-    var displayName: String { identifier ?? uuid }
+    var displayName: String { applicationName ?? identifier ?? uuid }
 }
 
 enum ContainerDiscoveryService {
@@ -73,7 +74,13 @@ enum ContainerDiscoveryService {
     nonisolated static func discoverApplications(maximumInode: Int64) -> [ContainerDescriptor] {
         let root = ContainerKind.application.rootPath
         let paths = SandboxAccessClient.inodeChildren(at: root, maximumInode: maximumInode)
-        let descriptors = paths.compactMap { descriptor(path: $0, kind: .application) }
+        let discovered = paths.compactMap { descriptor(path: $0, kind: .application) }
+        let names = AppNameResolver.names(for: discovered)
+        let descriptors = discovered.map { item in
+            var item = item
+            if let identifier = item.identifier { item.applicationName = names[identifier] }
+            return item
+        }
             .sorted { $0.displayName.localizedStandardCompare($1.displayName) == .orderedAscending }
         persist(descriptors, kind: .application)
         return descriptors

@@ -18,6 +18,10 @@ explicitly changes that policy.
 - `Veilpath/Core/SandboxAccessClient.swift`: automatic backend selection and operation-scoped grants.
 - `Veilpath/Core/WorseQueryWorkspace.swift`: App Group cache preservation, locking, and recovery.
 - `Veilpath/Containers/`: container discovery and metadata resolution.
+- `Veilpath/Containers/AppNameResolver.swift`: bounded in-memory application-name resolution.
+- `Veilpath/Core/AppStorageService.swift`: read-only size scanning and stable tree inventories.
+- `Veilpath/Core/AppBackupLibrary.swift`: retained backups, guarded cache transactions, and recovery.
+- `Veilpath/AppManagementView.swift`: App Storage and Backup Center flows.
 - `Veilpath/Core/`: sandbox access, file models, preview, and export.
 - `Veilpath/Diagnostics/`: physical-device self-test and persisted JSON report.
 - `Veilpath/Model/`: observable application state and orchestration.
@@ -79,6 +83,13 @@ and export. Backup/restore write tests use Veilpath's own temporary fixtures.
 Do not infer `worse_query` compatibility on iOS 27 from the older `bad_query`
 device results.
 
+The final schema 23 Automatic run on that iPhone passed 23 checks, with 3
+unsupported capabilities and no failures. Simulator local-fixture checks passed
+16 checks. New coverage includes name resolution, read-only external storage
+scanning, verified backup import, cache cleanup/restore, corruption refusal, and
+interrupted recovery despite cancellation. All mutation tests use disposable
+fixtures in Veilpath's own temporary directory, never another app's live data.
+
 ## Swift and SwiftUI conventions
 
 - Prefer native SwiftUI and current APIs supported by the deployment target.
@@ -114,6 +125,22 @@ English is the app's source and default language. Simplified Chinese
 - Browsing, preview, search, and export are intentionally read-only. Export must
   copy data into Veilpath's own cache before invoking the share sheet. Guarded
   edits, replacements, and restores must use the existing Version Vault path.
+- Application-name database reads must remain bounded, read-only, and in memory.
+  Never save or export the raw LaunchServices database. Match names against both
+  independently discovered container paths and bundle identifiers; retain the
+  exact identifier when a name cannot be established.
+- Storage scans report logical file bytes, partial results, and skipped links.
+  An incomplete scan must never enable cleaning. Cleanup may target only the
+  typed `Library/Caches` and opt-in `tmp` roots; protect the active Veilpath root.
+- Cache cleanup must create and re-extract a compressed, CRC/SHA-verified backup,
+  recheck source stability, and use the journaled directory transaction. Never
+  interrupt rollback on cancellation or overwrite unexpected concurrent data.
+  Preserve backups and staging when safe recovery cannot be established.
+- Keep Backup Center archives without automatic expiry. Import must validate
+  before publication; export must verify and copy through the private share
+  cache. Restores must verify the live target identity and archive, then create
+  a fresh retained safety backup. Keep file-removal size, archive size, and
+  measured available-space change distinct. Do not enable system file sharing.
 - Acquire sandbox extensions only for the operation that needs them and release
   each grant immediately afterward.
 - Keep production backend selection automatic. Prefer `worse_query`, remember
@@ -136,7 +163,7 @@ English is the app's source and default language. Simplified Chinese
   only from verified device results.
 - Preserve structured self-test output and schema compatibility. Increment the
   schema version only when the persisted report format or required checks change.
-  The current version is centralized in `SelfTestRunner.schemaVersion` (22).
+  The current version is centralized in `SelfTestRunner.schemaVersion` (23).
   Backend report fields are optional when decoding older reports; unsupported
   OS capabilities must remain distinct from failed checks.
 - The upstream `forcequitOS/bad_query` repository currently has no declared

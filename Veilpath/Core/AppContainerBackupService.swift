@@ -128,6 +128,7 @@ enum AppContainerBackupService {
     nonisolated static func restore(
         archive: URL,
         to container: ContainerDescriptor,
+        safetyBackupProvider: (@Sendable (ContainerDescriptor) async throws -> URL)? = nil,
         progress: Progress
     ) async throws -> AppContainerRestoreResult {
         guard container.kind == .application else { throw AppContainerBackupError.applicationContainerRequired }
@@ -148,8 +149,17 @@ enum AppContainerBackupService {
         let currentBytes = try dataRootSize(root)
         try requireStorage(for: restoreBytes + currentBytes + 128 * 1024 * 1024, near: root)
 
-        let safetyURL = try OperationSafetyStore.makeArchiveURL(category: .containerRestore, stem: safeName(identifier) + " before restore")
-        _ = try await create(container: container, destination: safetyURL) { _, _, _, _ in }
+        let safetyURL: URL
+        if let safetyBackupProvider {
+            safetyURL = try await safetyBackupProvider(container)
+            let (safetyManifest, safetyExtraction) = try await inspect(safetyURL)
+            defer { try? FileManager.default.removeItem(at: safetyExtraction) }
+            guard safetyManifest.bundleIdentifier == identifier,
+                  safetyManifest.sourceContainerUUID == container.uuid else { throw AppContainerBackupError.malformedManifest }
+        } else {
+            safetyURL = try OperationSafetyStore.makeArchiveURL(category: .containerRestore, stem: safeName(identifier) + " before restore")
+            _ = try await create(container: container, destination: safetyURL) { _, _, _, _ in }
+        }
 
         let operationID = UUID().uuidString
         let staged = root.appending(path: ".veilpath-restore-stage-\(operationID)", directoryHint: .isDirectory)

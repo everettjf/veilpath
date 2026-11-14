@@ -85,7 +85,7 @@ struct ContentView: View {
             }
             #endif
         }
-        .alert("Access Failed", isPresented: errorPresented) {
+        .alert("Operation Failed", isPresented: errorPresented) {
             Button("OK") { model.lastError = nil }
         } message: {
             Text(model.lastError ?? String(localized: "Unknown error"))
@@ -425,6 +425,7 @@ private struct ContainerHomeView: View {
         guard !searchText.isEmpty else { return containers }
         return containers.filter {
             $0.displayName.localizedCaseInsensitiveContains(searchText)
+                || ($0.identifier?.localizedCaseInsensitiveContains(searchText) ?? false)
                 || $0.uuid.localizedCaseInsensitiveContains(searchText)
         }
     }
@@ -462,6 +463,20 @@ private struct ContainerHomeView: View {
                 }
             }
             .navigationTitle("Veilpath")
+            .safeAreaInset(edge: .top, spacing: 0) {
+                HStack {
+                    NavigationLink { AppStorageView(model: model) } label: {
+                        Label("App Storage", systemImage: "chart.bar.xaxis")
+                    }
+                    NavigationLink { AppBackupsView(model: model) } label: {
+                        Label("Backup Center", systemImage: "externaldrive")
+                    }
+                }
+                .buttonStyle(.bordered)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal).padding(.vertical, 8)
+                .background(.bar)
+            }
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) { locationsMenu }
                 ToolbarItemGroup(placement: .topBarTrailing) {
@@ -709,6 +724,7 @@ private extension ContainerDescriptor {
     }
 
     var homeTitle: String {
+        if let applicationName { return applicationName }
         guard let identifier else { return uuid }
         let components = identifier.split(separator: ".").map(String.init)
         guard let last = components.last else { return identifier }
@@ -2567,6 +2583,9 @@ private extension SelfTestReport.Check {
     var localizedName: LocalizedStringResource {
         switch name {
         case "Sandbox access backend": "Sandbox Access Backend"
+        case "Application name resolution": "Application Name Resolution"
+        case "On-device app storage scan": "On-device App Storage Scan"
+        case "App storage and recoverable cache cleaning": "App Storage and Recoverable Cache Cleaning"
         case "MobileGestalt file access": "MobileGestalt File Access"
         case "Preview and safe export": "Preview and Safe Export"
         case "Application container discovery": "Application Container Discovery"

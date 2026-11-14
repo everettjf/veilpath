@@ -5,12 +5,14 @@ enum ShareExportRequest: Equatable, Sendable {
     case file(FileItem)
     case directory(url: URL, name: String, includeHidden: Bool)
     case appBackup(ContainerDescriptor)
+    case managedBackup(AppLibraryBackup)
 
     var title: String {
         switch self {
         case .file(let item): item.name
         case .directory(_, let name, _): name + ".zip"
         case .appBackup(let container): (container.identifier ?? container.uuid) + " Backup.zip"
+        case .managedBackup(let record): record.exportName
         }
     }
 }

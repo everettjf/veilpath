@@ -56,15 +56,19 @@ enum StoredZIPArchive {
     private static let storageReserve: Int64 = 64 * 1024 * 1024
     private static let maximumCompressionRatio: Int64 = 1_000
 
-    nonisolated static func write(entries: [StoredZIPEntry], to destination: URL, progress: Progress) async throws {
+    nonisolated static func write(entries: [StoredZIPEntry], to destination: URL, compressFiles: Bool = false, progress: Progress) async throws {
         guard entries.count <= Int(UInt16.max) else { throw StoredZIPError.archiveTooLarge }
         let totalBytes = try entries.reduce(Int64(0)) { partial, entry in
-            if let data = entry.data { return partial + Int64(data.count) }
-            if let source = entry.sourceURL {
+            let size: Int64
+            if let data = entry.data { size = Int64(data.count) }
+            else if let source = entry.sourceURL {
                 let values = try source.resourceValues(forKeys: [.fileSizeKey])
-                return partial + Int64(values.fileSize ?? 0)
+                size = Int64(values.fileSize ?? 0)
             }
-            return partial
+            else { size = 0 }
+            let (total, overflow) = partial.addingReportingOverflow(size)
+            guard size >= 0, !overflow, total <= Int64(UInt32.max) else { throw StoredZIPError.archiveTooLarge }
+            return total
         }
         guard totalBytes <= Int64(UInt32.max) else { throw StoredZIPError.archiveTooLarge }
         try FileManager.default.createDirectory(at: destination.deletingLastPathComponent(), withIntermediateDirectories: true)
@@ -90,11 +94,14 @@ enum StoredZIPArchive {
                     try output.write(contentsOf: localHeader(name: name, date: date, descriptor: false))
                     records.append(.init(name: name, crc: 0, size: 0, offset: UInt32(offset), date: date, isDirectory: true))
                 } else {
-                    try output.write(contentsOf: localHeader(name: name, date: date, descriptor: true))
+                    let method: UInt16 = compressFiles ? 8 : 0
+                    try output.write(contentsOf: localHeader(name: name, date: date, descriptor: true, method: method))
+                    let compressor = compressFiles ? try ZIPDeflater(output: output) : nil
                     var crc = crc32(0, nil, 0)
                     var size: UInt32 = 0
                     if let data = entry.data {
-                        try output.write(contentsOf: data)
+                        if let compressor { try compressor.append(data) }
+                        else { try output.write(contentsOf: data) }
                         crc = updateCRC(crc, data)
                         size = try checkedSize(data.count)
                         completedBytes += Int64(data.count)
@@ -103,7 +110,8 @@ enum StoredZIPArchive {
                         defer { try? input.close() }
                         while let data = try input.read(upToCount: chunkSize), !data.isEmpty {
                             try Task.checkCancellation()
-                            try output.write(contentsOf: data)
+                            if let compressor { try compressor.append(data) }
+                            else { try output.write(contentsOf: data) }
                             crc = updateCRC(crc, data)
                             let next = UInt64(size) + UInt64(data.count)
                             guard next <= UInt64(UInt32.max) else { throw StoredZIPError.archiveTooLarge }
@@ -112,8 +120,11 @@ enum StoredZIPArchive {
                             await progress(completedBytes, totalBytes, completedItems, entries.count)
                         }
                     } else { throw StoredZIPError.invalidArchive }
-                    try output.write(contentsOf: descriptor(crc: crc, size: size))
-                    records.append(.init(name: name, crc: crc, size: size, offset: UInt32(offset), date: date, isDirectory: false))
+                    try compressor?.finish()
+                    let compressedSize = compressor?.size ?? size
+                    try output.write(contentsOf: descriptor(crc: crc, size: size, compressedSize: compressedSize))
+                    records.append(.init(name: name, crc: crc, size: size, offset: UInt32(offset), date: date,
+                                         isDirectory: false, method: method, compressedSize: compressedSize))
                 }
                 completedItems += 1
                 await progress(completedBytes, totalBytes, completedItems, entries.count)
@@ -403,19 +414,19 @@ enum StoredZIPArchive {
         data.withUnsafeBytes { bytes in crc32(crc, bytes.bindMemory(to: Bytef.self).baseAddress, uInt(data.count)) }
     }
 
-    private static func localHeader(name: Data, date: (time: UInt16, date: UInt16), descriptor: Bool) -> Data {
+    private static func localHeader(name: Data, date: (time: UInt16, date: UInt16), descriptor: Bool, method: UInt16 = 0) -> Data {
         var data = Data(); data.appendLE(UInt32(0x04034b50)); data.appendLE(UInt16(20)); data.appendLE(UInt16(0x0800 | (descriptor ? 0x0008 : 0)))
-        data.appendLE(UInt16(0)); data.appendLE(date.time); data.appendLE(date.date); data.appendLE(UInt32(0)); data.appendLE(UInt32(0)); data.appendLE(UInt32(0))
+        data.appendLE(method); data.appendLE(date.time); data.appendLE(date.date); data.appendLE(UInt32(0)); data.appendLE(UInt32(0)); data.appendLE(UInt32(0))
         data.appendLE(UInt16(name.count)); data.appendLE(UInt16(0)); data.append(name); return data
     }
 
-    private static func descriptor(crc: uLong, size: UInt32) -> Data {
-        var data = Data(); data.appendLE(UInt32(0x08074b50)); data.appendLE(UInt32(crc)); data.appendLE(size); data.appendLE(size); return data
+    private static func descriptor(crc: uLong, size: UInt32, compressedSize: UInt32) -> Data {
+        var data = Data(); data.appendLE(UInt32(0x08074b50)); data.appendLE(UInt32(crc)); data.appendLE(compressedSize); data.appendLE(size); return data
     }
 
     private static func centralHeader(_ record: CentralRecord) -> Data {
         var data = Data(); data.appendLE(UInt32(0x02014b50)); data.appendLE(UInt16(20)); data.appendLE(UInt16(20)); data.appendLE(UInt16(0x0800 | (record.isDirectory ? 0 : 0x0008)))
-        data.appendLE(UInt16(0)); data.appendLE(record.date.time); data.appendLE(record.date.date); data.appendLE(UInt32(record.crc)); data.appendLE(record.size); data.appendLE(record.size)
+        data.appendLE(record.method); data.appendLE(record.date.time); data.appendLE(record.date.date); data.appendLE(UInt32(record.crc)); data.appendLE(record.compressedSize); data.appendLE(record.size)
         data.appendLE(UInt16(record.name.count)); data.appendLE(UInt16(0)); data.appendLE(UInt16(0)); data.appendLE(UInt16(0)); data.appendLE(UInt16(0)); data.appendLE(record.isDirectory ? UInt32(0x10) : UInt32(0)); data.appendLE(record.offset); data.append(record.name); return data
     }
 
@@ -429,6 +440,47 @@ enum StoredZIPArchive {
         let year = min(2107, max(1980, values.year ?? 1980))
         return (UInt16((values.hour ?? 0) << 11 | (values.minute ?? 0) << 5 | (values.second ?? 0) / 2),
                 UInt16((year - 1980) << 9 | (values.month ?? 1) << 5 | (values.day ?? 1)))
+    }
+}
+
+private final class ZIPDeflater {
+    private var stream = z_stream()
+    private let output: FileHandle
+    private(set) var size: UInt32 = 0
+
+    init(output: FileHandle) throws {
+        self.output = output
+        guard deflateInit2_(&stream, Z_BEST_SPEED, Z_DEFLATED, -MAX_WBITS, 8, Z_DEFAULT_STRATEGY,
+                            ZLIB_VERSION, Int32(MemoryLayout<z_stream>.size)) == Z_OK else {
+            throw StoredZIPError.invalidArchive
+        }
+    }
+
+    deinit { deflateEnd(&stream) }
+    func append(_ data: Data) throws { try encode(data, flush: Z_NO_FLUSH) }
+    func finish() throws { try encode(Data(), flush: Z_FINISH) }
+
+    private func encode(_ data: Data, flush: Int32) throws {
+        try data.withUnsafeBytes { bytes in
+            stream.next_in = UnsafeMutablePointer(mutating: bytes.bindMemory(to: Bytef.self).baseAddress)
+            stream.avail_in = uInt(data.count)
+            repeat {
+                try Task.checkCancellation()
+                var buffer = [UInt8](repeating: 0, count: 64 * 1024)
+                let status = buffer.withUnsafeMutableBytes { destination -> Int32 in
+                    stream.next_out = destination.bindMemory(to: Bytef.self).baseAddress
+                    stream.avail_out = uInt(destination.count)
+                    return deflate(&stream, flush)
+                }
+                guard status == Z_OK || status == Z_STREAM_END else { throw StoredZIPError.invalidArchive }
+                let count = buffer.count - Int(stream.avail_out)
+                let next = UInt64(size) + UInt64(count)
+                guard next <= UInt64(UInt32.max) else { throw StoredZIPError.archiveTooLarge }
+                try output.write(contentsOf: Data(buffer.prefix(count)))
+                size = UInt32(next)
+                if status == Z_STREAM_END { break }
+            } while stream.avail_in > 0 || stream.avail_out == 0 || flush == Z_FINISH
+        }
     }
 }
 

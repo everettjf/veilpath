@@ -1,6 +1,836 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Skipped Symbolic Links" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已跳过的符号链接"
+          }
+        }
+      }
+    },
+    "Symbolic links are not included in app backups." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "应用备份不包含符号链接。"
+          }
+        }
+      }
+    },
+    "%lld symbolic links skipped" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已跳过 %lld 个符号链接"
+          }
+        }
+      }
+    },
+    "The selected caches exceed the 4 GB recovery archive limit." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "所选缓存超过恢复归档的 4 GB 限制。"
+          }
+        }
+      }
+    },
+    "Photos" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "照片"
+          }
+        }
+      }
+    },
+    "Camera" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "相机"
+          }
+        }
+      }
+    },
+    "Notes" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "备忘录"
+          }
+        }
+      }
+    },
+    "Phone" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "电话"
+          }
+        }
+      }
+    },
+    "Maps" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "地图"
+          }
+        }
+      }
+    },
+    "Weather" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "天气"
+          }
+        }
+      }
+    },
+    "Music" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "音乐"
+          }
+        }
+      }
+    },
+    "Calendar" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "日历"
+          }
+        }
+      }
+    },
+    "Clock" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "时钟"
+          }
+        }
+      }
+    },
+    "Reminders" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "提醒事项"
+          }
+        }
+      }
+    },
+    "App Store" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "App Store"
+          }
+        }
+      }
+    },
+    "App Backup Created" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "应用备份已创建"
+          }
+        }
+      }
+    },
+    "Backup Restored" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "备份已恢复"
+          }
+        }
+      }
+    },
+    "The previous contents were saved in a safety backup before restoration." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "恢复前已将之前的内容保存为安全备份。"
+          }
+        }
+      }
+    },
+    "Before Restore" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "恢复前的安全备份"
+          }
+        }
+      }
+    },
+    "Preparing App Access…" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在准备应用访问…"
+          }
+        }
+      }
+    },
+    "On-device App Storage Scan" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "真机应用空间扫描"
+          }
+        }
+      }
+    },
+    "Import Backup" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "导入备份"
+          }
+        }
+      }
+    },
+    "Importing and Verifying Backup" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在导入并验证备份"
+          }
+        }
+      }
+    },
+    "Operation Failed" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "操作失败"
+          }
+        }
+      }
+    },
+    "App Storage" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "应用空间"
+          }
+        }
+      }
+    },
+    "Backup Center" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "备份中心"
+          }
+        }
+      }
+    },
+    "Scan App Storage" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "扫描应用空间"
+          }
+        }
+      }
+    },
+    "Scanning %@" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在扫描 %@"
+          }
+        }
+      }
+    },
+    "Stop Scan" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "停止扫描"
+          }
+        }
+      }
+    },
+    "Sizes are measured from readable app files. Partial scans are marked and cannot be used for cleaning." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "大小根据可读取的应用文件统计。未完成的扫描会明确标注，并禁止清理。"
+          }
+        }
+      }
+    },
+    "Partial Scan" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "扫描不完整"
+          }
+        }
+      }
+    },
+    "Not Scanned" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "尚未扫描"
+          }
+        }
+      }
+    },
+    "Unavailable" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "不可用"
+          }
+        }
+      }
+    },
+    "Storage Breakdown" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "空间分布"
+          }
+        }
+      }
+    },
+    "Library Data" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "应用资料"
+          }
+        }
+      }
+    },
+    "Caches" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "缓存"
+          }
+        }
+      }
+    },
+    "Temporary Files" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "临时文件"
+          }
+        }
+      }
+    },
+    "Other Files" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "其他文件"
+          }
+        }
+      }
+    },
+    "Total File Size" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "文件大小合计"
+          }
+        }
+      }
+    },
+    "This scan is incomplete. Cleaning is disabled." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "本次扫描不完整，已禁用清理。"
+          }
+        }
+      }
+    },
+    "Symbolic links were skipped. Selected cache folders are checked again before cleaning." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已跳过符号链接，清理前会再次检查所选缓存目录。"
+          }
+        }
+      }
+    },
+    "Recoverable Cache Cleaning" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "可恢复缓存清理"
+          }
+        }
+      }
+    },
+    "Caches are selected. Documents and app settings are kept." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "默认清理缓存，保留文档和应用设置。"
+          }
+        }
+      }
+    },
+    "Include Temporary Files" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "同时清理临时文件"
+          }
+        }
+      }
+    },
+    "Back Up and Clean Caches" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "备份并清理缓存"
+          }
+        }
+      }
+    },
+    "Close the target app first. Some cached downloads may need to be downloaded again. A verified recovery backup is kept in Backup Center." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "请先关闭目标应用。部分缓存下载内容可能需要重新下载。经过验证的恢复备份会保存在备份中心。"
+          }
+        }
+      }
+    },
+    "Last Cleanup" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "最近一次清理"
+          }
+        }
+      }
+    },
+    "Cache Data Removed" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已清理的缓存数据"
+          }
+        }
+      }
+    },
+    "Recovery Backup Size" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "恢复备份大小"
+          }
+        }
+      }
+    },
+    "Available Space Change" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "可用空间变化"
+          }
+        }
+      }
+    },
+    "Recovery backups remain on this device. Available space is measured before and after the operation and can also change with other activity." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "恢复备份保留在本机。可用空间按操作前后测量，其他活动也可能影响结果。"
+          }
+        }
+      }
+    },
+    "Open Backup Center" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "打开备份中心"
+          }
+        }
+      }
+    },
+    "Refresh Storage" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重新扫描空间"
+          }
+        }
+      }
+    },
+    "Create App Backup" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "创建应用备份"
+          }
+        }
+      }
+    },
+    "Clean Selected Cache Folders?" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "清理所选缓存目录？"
+          }
+        }
+      }
+    },
+    "Create Recovery Backup and Clean" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "创建恢复备份并清理"
+          }
+        }
+      }
+    },
+    "Close this app before continuing. Veilpath verifies a backup before changing the selected cache folders. You can restore that backup from Backup Center." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "请先关闭目标应用。Veilpath 会在修改所选缓存目录前验证备份，之后可从备份中心恢复。"
+          }
+        }
+      }
+    },
+    "App backups and cache recovery backups are kept here without automatic expiry. They are verified again before restoration and can be exported individually." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "应用备份和缓存恢复备份保存在此，不会自动过期。恢复前会再次验证，也可以单独导出。"
+          }
+        }
+      }
+    },
+    "No App Backups" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "暂无应用备份"
+          }
+        }
+      }
+    },
+    "Create an app backup or clean caches to keep a recovery copy here." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "创建应用备份或清理缓存后，恢复备份会显示在这里。"
+          }
+        }
+      }
+    },
+    "Backups" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "备份"
+          }
+        }
+      }
+    },
+    "App Backup" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "应用备份"
+          }
+        }
+      }
+    },
+    "Cache Recovery" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "缓存恢复"
+          }
+        }
+      }
+    },
+    "Choose an App" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "选择应用"
+          }
+        }
+      }
+    },
+    "Backup Details" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "备份详情"
+          }
+        }
+      }
+    },
+    "Archive Size" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "归档大小"
+          }
+        }
+      }
+    },
+    "Payload Size" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "原始数据大小"
+          }
+        }
+      }
+    },
+    "Export Backup" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "导出备份"
+          }
+        }
+      }
+    },
+    "Restore to Application" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "恢复到应用"
+          }
+        }
+      }
+    },
+    "No matching app container is available on this device." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "本机没有匹配的应用容器。"
+          }
+        }
+      }
+    },
+    "Close the target app first. Its current data receives a safety backup before restoration. App backups contain container files, not a complete device backup." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "请先关闭目标应用。恢复前会为当前数据创建安全备份。应用备份仅包含容器文件，并非完整设备备份。"
+          }
+        }
+      }
+    },
+    "Some files could not be read. Refresh the scan before cleaning." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "部分文件无法读取，请重新扫描后再清理。"
+          }
+        }
+      }
+    },
+    "This operation contains a symbolic link or unsupported file and was stopped." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "检测到符号链接或不支持的文件，操作已停止。"
+          }
+        }
+      }
+    },
+    "The app changed its files during this operation. Close it and try again." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "操作期间应用文件发生变化，请关闭目标应用后重试。"
+          }
+        }
+      }
+    },
+    "The backup is incomplete, damaged, or has been changed." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "备份不完整、已损坏或已被修改。"
+          }
+        }
+      }
+    },
+    "This backup does not belong to the selected application." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此备份不属于所选应用。"
+          }
+        }
+      }
+    },
+    "Wait for the current app data operation to finish." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "请等待当前应用数据操作完成。"
+          }
+        }
+      }
+    },
+    "An interrupted cache operation needs recovery. Its backup and staged files have been preserved." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "中断的缓存操作需要恢复，备份和暂存文件均已保留。"
+          }
+        }
+      }
+    },
+    "Veilpath cannot clean or back up its own active data container here." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法在此清理或备份 Veilpath 自身正在使用的数据容器。"
+          }
+        }
+      }
+    },
+    "Creating App Backup" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在创建应用备份"
+          }
+        }
+      }
+    },
+    "Backing Up and Cleaning Caches" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在备份并清理缓存"
+          }
+        }
+      }
+    },
+    "Application Name Resolution" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "应用名称识别"
+          }
+        }
+      }
+    },
+    "App Storage and Recoverable Cache Cleaning" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "应用空间与可恢复缓存清理"
+          }
+        }
+      }
+    },
     "worse_query cannot stage access inside its own App Group Library." : {
       "localizations" : {
         "zh-Hans" : {
@@ -2628,6 +3458,26 @@
     },
     "Zoom" : {
 
+    },
+    "Documents" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "文稿"
+          }
+        }
+      }
+    },
+    "Bundle Identifier" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bundle 标识符"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"
