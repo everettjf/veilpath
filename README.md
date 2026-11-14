@@ -15,6 +15,7 @@
 
 <p align="center">
   <a href="https://xnu.app/veilpath/">Website</a> ·
+  <a href="https://github.com/everettjf/veilpath/releases/tag/v1.1.0">Download preview</a> ·
   <a href="https://discord.gg/eGzEaP6TzR">Discord</a> ·
   <a href="#compatibility">Compatibility</a> ·
   <a href="#building">Build</a> ·
@@ -252,6 +253,13 @@ xcrun swiftc -D DEBUG Veilpath/Core/WorseQueryWorkspace.swift \
 ```
 
 ## Packaging and installation channels
+
+The [v1.1.0 preview release](https://github.com/everettjf/veilpath/releases/tag/v1.1.0)
+includes the re-signing IPA, matching source archive, build record, checksums, and
+licensing notices. Choose `Veilpath-1.1.0-2-resign.ipa` for sideloading. The
+device-restricted development IPA is kept private because its embedded profile
+contains registered-device identifiers. Installer-specific validation and the
+documented licensing boundary remain unresolved; this is an experimental preview.
 
 Use `python3 scripts/package.py` on a Mac with Xcode to create a **Release,
 arm64, iPhoneOS** IPA. Outputs must be outside the repository. The script checks

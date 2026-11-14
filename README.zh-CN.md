@@ -15,6 +15,7 @@
 
 <p align="center">
   <a href="https://xnu.app/veilpath/">网站</a> ·
+  <a href="https://github.com/everettjf/veilpath/releases/tag/v1.1.0">下载预览版</a> ·
   <a href="https://discord.gg/eGzEaP6TzR">Discord</a> ·
   <a href="#兼容性">兼容性</a> ·
   <a href="#构建">构建</a> ·
@@ -207,6 +208,12 @@ xcrun swiftc -D DEBUG Veilpath/Core/WorseQueryWorkspace.swift \
 ```
 
 ## 打包与安装渠道
+
+[v1.1.0 预发布](https://github.com/everettjf/veilpath/releases/tag/v1.1.0)提供重签 IPA、
+对应源码归档、构建记录、校验文件和许可说明。侧载请选择
+`Veilpath-1.1.0-2-resign.ipa`。开发签名 IPA 受设备范围限制，内嵌描述文件包含已登记
+设备标识，因此保留在私有范围。各安装工具的独立渠道验证和已记录的许可边界仍待
+解决，本次作为实验预览发布。
 
 在安装 Xcode 的 Mac 上使用 `python3 scripts/package.py`，可生成 **Release、
 arm64、iPhoneOS** IPA。产物必须放在仓库外。脚本会校验 ZIP CRC、可执行文件架构、
