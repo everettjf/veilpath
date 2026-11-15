@@ -15,7 +15,7 @@
 
 <p align="center">
   <a href="https://xnu.app/veilpath/">网站</a> ·
-  <a href="https://github.com/everettjf/veilpath/releases/tag/v1.1.0">下载预览版</a> ·
+  <a href="https://github.com/everettjf/veilpath/releases/tag/v1.2.0">下载预览版</a> ·
   <a href="https://discord.gg/eGzEaP6TzR">Discord</a> ·
   <a href="#兼容性">兼容性</a> ·
   <a href="#构建">构建</a> ·
@@ -37,7 +37,7 @@
   </tr>
 </table>
 
-截图使用当前 main 分支的可丢弃模拟器示例数据；已发布的 v1.1.0 预览版仍使用此前的导航。
+截图使用 v1.2.0 界面的可丢弃模拟器示例数据。
 
 ## Veilpath 是什么？
 
@@ -223,12 +223,17 @@ xcrun swiftc -D DEBUG Veilpath/Core/WorseQueryWorkspace.swift \
 
 ## 打包与安装渠道
 
-[v1.1.0 预发布](https://github.com/everettjf/veilpath/releases/tag/v1.1.0)提供重签 IPA、
+[v1.2.0 预发布](https://github.com/everettjf/veilpath/releases/tag/v1.2.0)提供重签 IPA、
 对应源码归档、构建记录、校验文件和许可说明。侧载请选择
-`Veilpath-1.1.0-2-resign.ipa`。开发签名 IPA 受设备范围限制，内嵌描述文件包含已登记
+`Veilpath-1.2.0-3-resign.ipa`。开发签名 IPA 受设备范围限制，内嵌描述文件包含已登记
 设备标识，因此保留在私有范围。各安装工具的独立渠道验证和已记录的许可边界仍待
 解决，本次作为实验预览发布。
-本文描述当前 main 分支；已发布的 v1.1.0 安装包尚未包含这次三入口导航改版。
+
+**公开 Release 只提供重签 IPA**，供 AltStore Classic、SideStore、Sideloadly 或其他
+兼容安装工具使用用户账户重新签名。开发签名及 Apple Ad Hoc 签名 IPA 仅用于本地
+测试，不作为公开附件；这些包绑定描述文件允许的设备，并可能包含已登记设备标识。
+公开 IPA 随附对应源码、不含敏感信息的构建记录、校验文件及许可说明，不上传签名
+凭据或构建日志。
 
 在安装 Xcode 的 Mac 上使用 `python3 scripts/package.py`，可生成 **Release、
 arm64、iPhoneOS** IPA。产物必须放在仓库外。脚本会校验 ZIP CRC、可执行文件架构、
@@ -238,8 +243,8 @@ arm64、iPhoneOS** IPA。产物必须放在仓库外。脚本会校验 ZIP CRC�
 | 渠道 | 安装包 | 当前状态 |
 | --- | --- | --- |
 | AltStore Classic / SideStore / Sideloadly | `resign.ipa` | 支持打包；每个工具重签后的安装和访问能力需单独真机验证 |
-| Xcode / Device Hub / Apple Configurator | `development.ipa` | 需要覆盖目标设备及 App Group 的有效描述文件 |
-| Apple Ad Hoc 测试分发 | `ad-hoc.ipa` | 需要分发签名资产和已登记设备，不是通用免签包 |
+| Xcode / Device Hub / Apple Configurator | `development.ipa`（私有） | 仅限本地测试，需要覆盖目标设备及 App Group 的有效描述文件 |
+| Apple Ad Hoc 测试分发 | `ad-hoc.ipa`（私有） | 仅限本地测试，需要分发签名资产和已登记设备 |
 | 巨魔 TrollStore | 不提供 | 官方支持的系统版本与 Veilpath 最低 iOS 26 没有交集 |
 | AltStore PAL / TestFlight / App Store | 独立审核分发流程 | 本脚本不生成；普通 IPA 不是已公证的应用市场分发包 |
 
@@ -275,7 +280,7 @@ App Group 映射的接受与拒绝逻辑另有独立回归测试。
 权限声明保留 `group.com.xnu.veilpath`。AltStore 会添加团队标识后缀，并把组列表写入
 `ALTAppGroups`；Veilpath 在原始组可访问时优先使用原始组，否则仅接受自身组的一个
 可访问映射，不使用无关、格式错误、不可访问或有歧义的映射。其他签名工具需要保留
-原始组或提供同样受支持的映射。安装后请运行“设置 → 诊断”，仅能启动不能证明
+原始组或提供同样受支持的映射。安装后请运行“设置 → 高级工具 → 诊断与日志”，仅能启动不能证明
 访问、App Group 暂存和恢复均已生效。升级时尽量保持账户、Bundle ID 和安装渠道
 不变；更换这些身份或卸载前先导出保留的备份。
 

@@ -195,6 +195,13 @@ English is the app's source and default language. Simplified Chinese
   signing assets, build logs, or per-device profile data. Respect LICENSING.md
   before public binary distribution. Do not advertise TrollStore compatibility
   while its supported OS range does not overlap the deployment target.
+- Public GitHub Releases distribute only the `*-resign.ipa` intended for
+  AltStore Classic, SideStore, Sideloadly, or another compatible re-signing tool,
+  plus matching source, build metadata, checksums, and licensing notices. Publish
+  only when explicitly requested by the owner. Keep development and Apple Ad Hoc
+  signed IPAs private; never attach their profiles, device identifiers, signing
+  credentials, or build logs. Preserve the App Group declaration and do not claim
+  installer-specific runtime validation merely because packaging succeeds.
 - Do not silently broaden supported OS claims. Update compatibility statements
   only from verified device results.
 - Preserve structured self-test output and schema compatibility. Increment the

@@ -15,7 +15,7 @@
 
 <p align="center">
   <a href="https://xnu.app/veilpath/">Website</a> ·
-  <a href="https://github.com/everettjf/veilpath/releases/tag/v1.1.0">Download preview</a> ·
+  <a href="https://github.com/everettjf/veilpath/releases/tag/v1.2.0">Download preview</a> ·
   <a href="https://discord.gg/eGzEaP6TzR">Discord</a> ·
   <a href="#compatibility">Compatibility</a> ·
   <a href="#building">Build</a> ·
@@ -39,8 +39,7 @@
   </tr>
 </table>
 
-Screenshots use disposable simulator examples from the current main branch.
-The published v1.1.0 preview uses the earlier navigation.
+Screenshots use disposable simulator examples of the v1.2.0 interface.
 
 ## What is Veilpath?
 
@@ -274,14 +273,20 @@ xcrun swiftc -D DEBUG Veilpath/Core/WorseQueryWorkspace.swift \
 
 ## Packaging and installation channels
 
-The [v1.1.0 preview release](https://github.com/everettjf/veilpath/releases/tag/v1.1.0)
+The [v1.2.0 preview release](https://github.com/everettjf/veilpath/releases/tag/v1.2.0)
 includes the re-signing IPA, matching source archive, build record, checksums, and
-licensing notices. Choose `Veilpath-1.1.0-2-resign.ipa` for sideloading. The
+licensing notices. Choose `Veilpath-1.2.0-3-resign.ipa` for sideloading. The
 device-restricted development IPA is kept private because its embedded profile
 contains registered-device identifiers. Installer-specific validation and the
 documented licensing boundary remain unresolved; this is an experimental preview.
-This README describes the current main branch; the published v1.1.0 package
-predates the three-section navigation redesign.
+
+**Public releases contain only the re-signing IPA**, intended for AltStore
+Classic, SideStore, Sideloadly, or another compatible installer that signs the
+app with the user's account. Development and Apple Ad Hoc signed IPAs are local
+testing artifacts and are never public Release attachments. They are tied to
+provisioned devices and can contain registered-device identifiers. Source,
+non-sensitive build metadata, checksums, and licensing notices accompany the
+public IPA; signing credentials and build logs do not.
 
 Use `python3 scripts/package.py` on a Mac with Xcode to create a **Release,
 arm64, iPhoneOS** IPA. Outputs must be outside the repository. The script checks
@@ -292,8 +297,8 @@ the IPA. It never uploads packages, credentials, or provisioning files.
 | Channel | Package | Status |
 | --- | --- | --- |
 | AltStore Classic / SideStore / Sideloadly | `resign.ipa` | Packaging supported; installation and access must be verified after each tool re-signs it |
-| Xcode / Device Hub / Apple Configurator | `development.ipa` | Requires a valid profile covering the target device and App Group |
-| Apple Ad Hoc testing | `ad-hoc.ipa` | Requires distribution signing assets and registered devices; not a universal install package |
+| Xcode / Device Hub / Apple Configurator | `development.ipa` (private) | Local testing only; requires a valid profile covering the target device and App Group |
+| Apple Ad Hoc testing | `ad-hoc.ipa` (private) | Local testing only; requires distribution signing assets and registered devices |
 | TrollStore | None | Official supported OS versions do not overlap Veilpath's iOS 26 minimum |
 | AltStore PAL / TestFlight / App Store | Separate reviewed distribution | Not produced by this script; an ordinary IPA is not a notarized marketplace package |
 
@@ -335,7 +340,7 @@ team identifier and records groups in `ALTAppGroups`; Veilpath accepts one
 accessible mapping of its own group, while keeping the original group preferred
 when accessible. Unrelated, malformed, inaccessible, or ambiguous mappings are
 not used. Other signers must preserve the group or provide the same supported
-mapping. After installation, run Settings → Diagnostics: launching the app alone
+mapping. After installation, run Settings → Advanced Tools → Diagnostics and Logs: launching the app alone
 does not verify access, App Group staging, or recovery. Keep a stable account,
 bundle ID, and installation channel for upgrades; export retained backups before
 changing these identities or uninstalling.
