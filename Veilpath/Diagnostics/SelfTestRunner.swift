@@ -29,7 +29,7 @@ struct SelfTestReport: Codable, Sendable {
 }
 
 enum SelfTestRunner {
-    nonisolated static let schemaVersion = 23
+    nonisolated static let schemaVersion = 24
     private static let logger = Logger(subsystem: "com.xnu.veilpath", category: "SelfTest")
 
     nonisolated static let reportURL: URL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
@@ -99,7 +99,6 @@ enum SelfTestRunner {
         checks.append(testMachOAnalysis())
         checks.append(testExportCache())
         checks.append(await testOnDemandShareExport())
-        checks.append(testDirectoryMarkdownExport())
         checks.append(testBackupReplaceAndRestore())
         checks.append(testSafeStructuredEditing())
         checks.append(await testCompleteAppBackupAndRestore())
@@ -108,6 +107,7 @@ enum SelfTestRunner {
         checks.append(testDirectorySorting())
         checks.append(testApplicationNames())
         checks.append(await testAppManagement())
+        checks.append(await testBackupDeletion())
 
         let report = SelfTestReport(
             schemaVersion: schemaVersion,
@@ -428,44 +428,6 @@ enum SelfTestRunner {
             ExportCache.removeExpired(olderThan: 60)
             guard !FileManager.default.fileExists(atPath: expired.path) else { throw SelfTestFailure("Expired share cache was not removed") }
             return "streamed=true, cancellationClean=true, zipEntries=\(summary.entries.count), hiddenExcluded=true, symlinkSkipped=true, expiration=true"
-        }
-    }
-
-    nonisolated private static func testDirectoryMarkdownExport() -> SelfTestReport.Check {
-        timedCheck(name: "Directory Markdown export", path: "temporary fixture") {
-            let root = FileManager.default.temporaryDirectory
-                .appending(path: "veilpath-markdown-\(UUID().uuidString)", directoryHint: .isDirectory)
-            defer { try? FileManager.default.removeItem(at: root) }
-            try FileManager.default.createDirectory(
-                at: root.appending(path: "Nested", directoryHint: .isDirectory),
-                withIntermediateDirectories: true
-            )
-            try Data("top".utf8).write(to: root.appending(path: "top.txt"))
-            try Data("nested".utf8).write(to: root.appending(path: "Nested/child.txt"))
-
-            let shallow = try DirectoryMarkdownExporter.export(
-                path: root.path,
-                options: .init(recursively: false, includeHidden: true)
-            )
-            let recursive = try DirectoryMarkdownExporter.export(
-                path: root.path,
-                options: .init(recursively: true, includeHidden: true)
-            )
-            defer {
-                try? FileManager.default.removeItem(at: shallow.url)
-                try? FileManager.default.removeItem(at: recursive.url)
-            }
-            let markdown = try String(contentsOf: recursive.url, encoding: .utf8)
-            let containsNestedFile = markdown.contains("Nested/child.txt")
-            guard shallow.itemCount == 2,
-                  recursive.itemCount == 3,
-                  containsNestedFile else {
-                throw SelfTestFailure(
-                    "Markdown scope or relative paths were incorrect " +
-                    "(shallow=\(shallow.itemCount), recursive=\(recursive.itemCount), nested=\(containsNestedFile))"
-                )
-            }
-            return "shallowItems=\(shallow.itemCount), recursiveItems=\(recursive.itemCount)"
         }
     }
 
@@ -889,6 +851,72 @@ enum SelfTestRunner {
             guard try Data(contentsOf: cache.appendingPathComponent("cache.data")) == payload else { throw SelfTestFailure("Rejected backup changed the target") }
             return "sizes=true, compressedBackup=true, cleanAndRestore=true, documentsAndTmpPreserved=true, symlinksRejected=true, interruptedRecovery=true, cancellationSafeRecovery=true, concurrentDataPreserved=true, tamperRejected=true, cacheAndAppBackupImport=true, backupLibrary=true"
             } catch { throw SelfTestFailure("stage=\(stage): \(error.localizedDescription)") }
+        }
+    }
+
+    nonisolated private static func testBackupDeletion() async -> SelfTestReport.Check {
+        await timedAsyncCheck(name: "Backup deletion and interrupted removal", path: "temporary fixture") {
+            let files = FileManager.default
+            let root = files.temporaryDirectory.appendingPathComponent("veilpath-management-" + UUID().uuidString)
+            var records: [AppLibraryBackup] = []
+            defer {
+                try? files.removeItem(at: root)
+                for record in records {
+                    try? files.removeItem(at: record.folder)
+                    try? files.removeItem(at: AppBackupLibrary.directory.appendingPathComponent(".deleting-" + record.id.uuidString))
+                }
+            }
+            for path in ["Documents", "Library", "tmp"] { try files.createDirectory(at: root.appendingPathComponent(path), withIntermediateDirectories: true) }
+            let document = root.appendingPathComponent("Documents/keep.txt")
+            try Data("live data".utf8).write(to: document)
+            let container = ContainerDescriptor(path: root.path, identifier: "com.example.DeleteFixture." + UUID().uuidString,
+                uuid: UUID().uuidString, kind: .application, metadataDiagnostic: nil)
+            for _ in 0..<2 { records.append(try await AppDataOperations.shared.createBackup(container) { _, _, _, _ in }) }
+            let selected = records[0], other = records[1]
+            let journal = selected.folder.appendingPathComponent("transaction.json")
+            try Data("pending recovery".utf8).write(to: journal)
+            do { try await AppDataOperations.shared.deleteBackup(selected); throw SelfTestFailure("Active recovery backup was deleted") }
+            catch AppManagementError.backupInUse {}
+            try files.removeItem(at: journal)
+            let preserved = selected.folder.appendingPathComponent("Interrupted Staging-fixture")
+            try files.createDirectory(at: preserved, withIntermediateDirectories: false)
+            do { try await AppDataOperations.shared.deleteBackup(selected); throw SelfTestFailure("Preserved staging was deleted") }
+            catch AppManagementError.backupInUse {}
+            try files.removeItem(at: preserved)
+            let held = root.appendingPathComponent("held-backup.zip")
+            try files.moveItem(at: selected.archive, to: held)
+            try files.createSymbolicLink(at: selected.archive, withDestinationURL: document)
+            do { try await AppDataOperations.shared.deleteBackup(selected); throw SelfTestFailure("Archive link was followed during deletion") }
+            catch AppManagementError.invalidBackup {}
+            try files.removeItem(at: selected.archive)
+            try files.moveItem(at: held, to: selected.archive)
+            let cancelled = Task {
+                withUnsafeCurrentTask { $0?.cancel() }
+                try await AppDataOperations.shared.deleteBackup(selected)
+            }
+            do { try await cancelled.value; throw SelfTestFailure("Cancelled deletion was applied") }
+            catch is CancellationError {}
+            let staging = AppBackupLibrary.directory.appendingPathComponent(".deleting-" + selected.id.uuidString)
+            try files.moveItem(at: selected.folder, to: staging)
+            try await AppDataOperations.shared.recoverInterruptedOperations()
+            try AppBackupLibrary.verifyArchive(selected)
+            try await AppDataOperations.shared.deleteBackup(selected)
+            let partial = AppBackupLibrary.directory.appendingPathComponent(".deleting-" + other.id.uuidString)
+            let heldMetadata = root.appendingPathComponent("held-record.json")
+            try files.moveItem(at: other.folder, to: partial)
+            try files.moveItem(at: partial.appendingPathComponent("record.json"), to: heldMetadata)
+            do { try AppBackupLibrary.recoverInterruptedDeletions(); throw SelfTestFailure("Partial removal was silently purged") }
+            catch AppManagementError.backupInUse {}
+            guard files.fileExists(atPath: partial.appendingPathComponent("backup.zip").path) else {
+                throw SelfTestFailure("Partial removal lost the remaining archive")
+            }
+            try files.moveItem(at: heldMetadata, to: partial.appendingPathComponent("record.json"))
+            try AppBackupLibrary.recoverInterruptedDeletions()
+            guard !files.fileExists(atPath: selected.folder.path), files.fileExists(atPath: other.archive.path),
+                  try String(contentsOf: document, encoding: .utf8) == "live data" else {
+                throw SelfTestFailure("Deletion changed another backup or the live application")
+            }
+            return "selectedOnly=true, liveDataPreserved=true, recoveryAndStagingBlocked=true, linksRejected=true, cancellationBeforeRemoval=true, interruptedDeletionRecovered=true, partialRemovalPreserved=true"
         }
     }
 

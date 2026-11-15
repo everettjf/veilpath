@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#050607">
   <meta name="color-scheme" content="dark">
   <title>Veilpath — Beyond the sandbox</title>
-  <meta name="description" content="A native container explorer and guarded file workspace for iPhone and iPad, with bad_query and worse_query access backends.">
+  <meta name="description" content="A native app data workspace for iPhone and iPad, with read-only file browsing, verified backups, and recoverable cache management.">
   <link rel="canonical" href="https://xnu.app/veilpath/">
   <meta property="og:title" content="Veilpath — Beyond the sandbox">
   <meta property="og:description" content="Browse read-only by default, inspect rich formats, stream exports, and make verified edits with permanent version history.">
@@ -23,7 +23,7 @@
   <meta name="twitter:image" content="https://xnu.app/veilpath/assets/og-star.jpg">
   <link rel="icon" href="assets/icon.png">
   <link rel="stylesheet" href="styles.css">
-  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Veilpath","applicationCategory":"DeveloperApplication","operatingSystem":"iOS 26–27 beta 3, iPadOS 26–27 beta 3","description":"A native container explorer and guarded file workspace for iPhone and iPad, with bad_query and worse_query access backends.","url":"https://xnu.app/veilpath/","codeRepository":"https://github.com/everettjf/veilpath"}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Veilpath","applicationCategory":"DeveloperApplication","operatingSystem":"iOS 26–27 beta 3, iPadOS 26–27 beta 3","description":"A native app data workspace for iPhone and iPad, with read-only file browsing, verified backups, and recoverable cache management.","url":"https://xnu.app/veilpath/","codeRepository":"https://github.com/everettjf/veilpath"}</script>
 </head>
 <body>
   <div class="sky" aria-hidden="true"><div class="stars stars-near"></div><div class="stars stars-far"></div><div class="starlight"></div></div>
@@ -36,7 +36,7 @@
       <div class="hero-copy">
         <p class="eyebrow"><span></span> Native on iPhone &amp; iPad</p>
         <h1>Look beyond<br><em>the sandbox.</em></h1>
-        <p class="lede">Veilpath turns <code>bad_query</code> and <code>worse_query</code> into a guarded app workspace. Find apps by name, scan their storage, back up caches before cleaning, and keep verified recovery copies in Backup Center.</p>
+        <p class="lede">Find an app, browse its files, understand its storage, and keep a recovery copy before making changes. Applications, Backups, and Settings give every task a clear place.</p>
         <a class="support-banner" href="#compatibility" aria-label="View operating system compatibility details">
           <span class="support-icon">✓</span>
           <span><small>Verified on physical devices</small><strong>iPhone + iPad · iOS 26–27 beta 3</strong></span>
@@ -47,32 +47,29 @@
       </div>
       <div class="device-stage" aria-label="Veilpath running on iPad and iPhone">
         <div class="orbit orbit-a"></div><div class="orbit orbit-b"></div>
-        <div class="device ipad-device"><div class="camera"></div><img src="assets/ipad-ui.webp" alt="Veilpath inspecting a SQLite database beside its file list on iPad" decoding="async" fetchpriority="high"></div>
-        <div class="device iphone-device"><div class="dynamic-island"></div><img src="assets/iphone-ui.webp" alt="Veilpath showing an App-first container library on iPhone" decoding="async" fetchpriority="high"></div>
+        <div class="device ipad-device"><div class="camera"></div><img src="assets/ipad-app-data.png" alt="Veilpath showing unified app details and the Applications, Backups, Settings sidebar on iPad" decoding="async" fetchpriority="high"></div>
+        <div class="device iphone-device"><div class="dynamic-island"></div><img src="assets/iphone-app-data.png" alt="Veilpath showing unified application data details on iPhone" decoding="async" fetchpriority="high"></div>
         <div class="status-card status-one"><i></i><span>Version vault</span><b>Original preserved</b></div><div class="status-card status-two"><i></i><span>Large exports</span><b>1 MiB streaming</b></div>
       </div>
     </section>
-    <section class="marquee" aria-label="Veilpath capabilities"><div><span>APP CONTAINERS</span><b>✦</b><span>SQLITE INSPECTION</span><b>✦</b><span>COMPLETE APP BACKUP</span><b>✦</b><span>MULTI-ITEM FILE OPS</span><b>✦</b><span>ROLLBACK-SAFE RESTORE</span><b>✦</b><span>APP CONTAINERS</span><b>✦</b><span>SQLITE INSPECTION</span><b>✦</b><span>COMPLETE APP BACKUP</span><b>✦</b><span>MULTI-ITEM FILE OPS</span><b>✦</b><span>ROLLBACK-SAFE RESTORE</span><b>✦</b></div></section>
+    <section class="marquee" aria-label="Veilpath capabilities"><div><span>APP CONTAINERS</span><b>✦</b><span>READ-ONLY FILES</span><b>✦</b><span>COMPLETE APP BACKUP</span><b>✦</b><span>RECOVERABLE CACHES</span><b>✦</b><span>ROLLBACK-SAFE RESTORE</span><b>✦</b><span>APP CONTAINERS</span><b>✦</b><span>READ-ONLY FILES</span><b>✦</b><span>COMPLETE APP BACKUP</span><b>✦</b><span>RECOVERABLE CACHES</span><b>✦</b><span>ROLLBACK-SAFE RESTORE</span><b>✦</b></div></section>
     <section id="capabilities" class="section shell">
-      <div class="section-heading"><p class="eyebrow"><span></span> Designed from the exploit outward</p><h2>From container discovery<br><em>to a guarded workspace.</em></h2><p>Every layer—from access grants and adaptive navigation to previews, sharing, and versioned replacement—is designed around operation-scoped access through <code>bad_query</code> and <code>worse_query</code>.</p></div>
+      <div class="section-heading"><p class="eyebrow"><span></span> Designed from the exploit outward</p><h2>From container discovery<br><em>to a guarded workspace.</em></h2><p>Everyday tasks stay with the selected app. Other containers, technical previews, guarded file writes, and on-demand diagnostics live in Advanced Tools. Both access backends keep short-lived, operation-scoped grants.</p></div>
       <div class="feature-grid">
-        <article class="feature featured"><div class="feature-number">01</div><div class="glyph layers"><i></i><i></i><i></i></div><h3>Container discovery</h3><p>Indexes Application, App Group, plugin, internal daemon, System Data, and System Group paths with direct access or <code>fsgetpath</code> fallback.</p><small>Short-lived grants · Capability-aware discovery</small></article>
-        <article class="feature"><div class="feature-number">02</div><div class="glyph eye">◉</div><h3>Apps by name and size</h3><p>Recognize app names when verified metadata is available. Open App Storage for a read-only size breakdown, sorted by measured file bytes. Partial scans are clearly marked.</p><small>Documents · Library · Caches · Temporary files</small></article>
-        <article class="feature"><div class="feature-number">03</div><div class="glyph inspect">⌘</div><h3>Rich inspection</h3><p>Explore plist and JSON trees, text, images, PDF, Hex, SQLite, ZIP, fonts, cookies, Mach-O metadata, signatures, and entitlements.</p><small>Structure · Source · Preview · Hex</small></article>
-        <article class="feature"><div class="feature-number">04</div><div class="glyph export">↗</div><h3>Real file operations</h3><p>Select multiple items to copy, cut, paste, duplicate, compress, extract ZIP/IPA, or delete after creating a recoverable safety archive.</p><small>Stored + Deflate · ZIP Slip defended</small></article>
-        <article class="feature"><div class="feature-number">05</div><div class="glyph vault">◇</div><h3>One backup center</h3><p>Keep full App backups and cache recovery archives together. Import and export verified ZIPs; restore only to matching apps, with a fresh safety backup saved first. Retained backups do not expire automatically.</p><small>SHA-256 manifests · Before-restore safety copies</small></article>
-        <article class="feature"><div class="feature-number">06</div><div class="glyph vault">↺</div><h3>Recoverable cache cleaning</h3><p>Close the target app, then back up and verify Caches before cleaning; temporary files are opt-in. Journaled recovery preserves interrupted work. Results show backup size and actual available-space change separately.</p><small>Documents and settings kept · 4 GB recovery archive limit</small></article>
+        <article class="feature"><div class="feature-number">01</div><div class="glyph eye">◉</div><h3>Start with the app</h3><p>One searchable list combines names, measured app data, and cache sizes. Open an app for read-only file browsing, export, backup, and storage details. Scan when needed.</p><small>Applications · One detail route · iPhone and iPad</small></article>
+        <article class="feature"><div class="feature-number">02</div><div class="glyph vault">◇</div><h3>Keep recovery within reach</h3><p>Backups are grouped by app with archive storage totals. Import, export, or restore a verified recovery point. Delete old backups with confirmation; recovery work stays protected.</p><small>Retained copies · Fresh safety backup before restore</small></article>
+        <article class="feature"><div class="feature-number">03</div><div class="glyph export">↺</div><h3>Clean with a way back</h3><p>Close the app, back up and verify Caches, then clean. Temporary files are opt-in. Undo the cleanup from app details. Results distinguish removed bytes, backup size, and measured free-space change.</p><small>Journaled recovery · Documents and settings preserved</small></article>
       </div>
     </section>
     <section class="proof-strip shell" aria-label="Verification summary">
-      <article><strong>23 passed</strong><span>iPhone 11 · schema 23 · 3 unsupported</span></article>
+      <article><strong>23 passed</strong><span>iPhone 11 · schema 24 · 3 unsupported</span></article>
       <article><strong>3</strong><span>Physical devices verified</span></article>
       <article><strong>1 MiB</strong><span>Streaming export chunks</span></article>
       <article><strong>24 h</strong><span>Automatic share-cache expiry</span></article>
     </section>
     <section id="compatibility" class="section compatibility shell">
       <div class="compat-copy"><p class="eyebrow"><span></span> Compatibility</p><h2>Built for the<br><em>narrow window.</em></h2><p><strong>Veilpath supports iOS and iPadOS 26 through 27 beta 3.</strong> This is a deliberately conservative range based on the versions implemented and tested in Veilpath—not merely the broader range reported by the upstream proof of concept.</p><p>Veilpath automatically chooses between worse_query and bad_query, with fallback when access cannot be granted. Both backends retain per-operation grants and guarded backup and restore. The new backend does not extend the verified version range without device testing.</p><div class="device-required"><b>Physical device required</b><span>Simulator builds validate the interface only. They cannot verify either sandbox access backend.</span></div></div>
-      <div class="matrix"><div class="matrix-head"><span>Platform</span><span>Verified build</span><span>Status</span></div><div><strong>iPad Air</strong><span>iPadOS 27 beta 3 <small>24A5380l</small></span><mark>20 / 20</mark></div><div><strong>iPhone 17 Pro</strong><span>iOS 27 beta 3 <small>24A5390f</small></span><mark>20 / 20</mark></div><div><strong>iPhone 11</strong><span>iOS 26.0.1 <small>23A355 · schema 23 Automatic</small></span><mark>23 passed</mark></div><div><strong>iOS / iPadOS</strong><span>26.x</span><mark class="pending">Supported</mark></div><div><strong>Simulator</strong><span>26–27</span><mark class="neutral">UI only</mark></div><p>Earlier iPhone and iPad runs verified schema 19. On iPhone 11, schema 23 Automatic passed 23 checks, with 3 unsupported iOS 26 capabilities and no failures. New checks cover name parsing, read-only external storage scanning, and recoverable cleanup/import/restore using only disposable fixtures for writes. The simulator passed 16 local-fixture checks. Earlier schema 22 runs verified both forced backends. worse_query and the new app-management flows on iOS 27 remain unverified on physical devices.</p></div>
+      <div class="matrix"><div class="matrix-head"><span>Platform</span><span>Verified build</span><span>Status</span></div><div><strong>iPad Air</strong><span>iPadOS 27 beta 3 <small>24A5380l</small></span><mark>20 / 20</mark></div><div><strong>iPhone 17 Pro</strong><span>iOS 27 beta 3 <small>24A5390f</small></span><mark>20 / 20</mark></div><div><strong>iPhone 11</strong><span>iOS 26.0.1 <small>23A355 · schema 24 Automatic</small></span><mark>23 passed</mark></div><div><strong>iOS / iPadOS</strong><span>26.x</span><mark class="pending">Supported</mark></div><div><strong>Simulator</strong><span>26–27</span><mark class="neutral">UI only</mark></div><p>Earlier iPhone and iPad runs verified schema 19. On iPhone 11, schema 24 Automatic passed 23 checks, with 3 unsupported iOS 26 capabilities and no failures. New checks cover name parsing, read-only external storage scanning, and recoverable cleanup/import/restore plus protected backup deletion using only disposable fixtures for writes. The simulator passed 16 local-fixture checks. Earlier schema 22 runs verified both forced backends. worse_query and the new app-management flows on iOS 27 remain unverified on physical devices.</p></div>
     </section>
     <section class="section evidence shell">
       <div class="terminal"><div class="terminal-bar"><span></span><span></span><span></span><b>veilpath-self-test.json</b></div><pre><code><i>PASS</i> MobileGestalt file access
@@ -81,19 +78,19 @@
 <i>PASS</i> On-demand file and folder sharing
      streamed · cancelled cleanly · ZIP verified
 
-<i>PASS</i> Directory Markdown export
-     current folder · recursive traversal
+<i>PASS</i> Backup deletion and interrupted removal
+     selected copy only · live data preserved
 
 <i>PASS</i> Complete App backup and rollback-safe restore
      current data saved · payload hashes verified
 
 <i>PASS</i> Recoverable cache cleaning
      backup verified · interrupted recovery</code></pre></div>
-      <div class="evidence-copy"><p class="eyebrow"><span></span> Evidence, not assumptions</p><h2>Tested where it<br><em>actually runs.</em></h2><p>Veilpath carries a schema-versioned on-device regression suite. The checks verify access, discovery, previews, streamed export, ZIP safety, complete backup and restore, app-name parsing, read-only storage scanning, and journaled cache recovery. Cleanup tests verify cancellation-safe recovery, concurrent-data preservation, archive import, and corruption refusal.</p><ul><li>Structured JSON reports</li><li>iPhone and iPad coverage</li><li>External ZIP CRC validation</li><li>Explicit failure diagnostics</li></ul></div>
+      <div class="evidence-copy"><p class="eyebrow"><span></span> Evidence, not assumptions</p><h2>Tested where it<br><em>actually runs.</em></h2><p>Veilpath carries a schema-versioned on-device regression suite. The checks verify access, discovery, previews, streamed export, ZIP safety, complete backup and restore, app-name parsing, read-only storage scanning, and journaled cache recovery. Recovery tests verify cancellation-safe recovery, concurrent-data preservation, archive import, and corruption refusal. Schema 24 also verifies protected backup deletion; diagnostics run on demand.</p><ul><li>Structured JSON reports</li><li>iPhone and iPad coverage</li><li>External ZIP CRC validation</li><li>Explicit failure diagnostics</li></ul></div>
     </section>
     <section id="build" class="section build shell">
       <div><p class="eyebrow"><span></span> Build it yourself</p><h2>Open the project.<br><em>Know what runs.</em></h2></div>
-      <div class="steps"><article><b>1</b><div><h3>Clone</h3><code>git clone https://github.com/everettjf/veilpath</code></div></article><article><b>2</b><div><h3>Open</h3><p>Open <code>Veilpath.xcodeproj</code> in Xcode 27 beta.</p></div></article><article><b>3</b><div><h3>Run</h3><p>Select a physical iPhone or iPad, configure signing, then launch.</p></div></article><article><b>4</b><div><h3>Package locally</h3><p><code>scripts/package.py</code> creates Release IPAs for re-signing or registered-device testing. App Group provisioning is required; sideloading channels need separate device validation. TrollStore's supported OS range does not overlap iOS 26. See the <a href="https://github.com/everettjf/veilpath#packaging-and-installation-channels">packaging guide and redistribution status</a>.</p></div></article></div>
+      <div class="steps"><article><b>1</b><div><h3>Clone</h3><code>git clone https://github.com/everettjf/veilpath</code></div></article><article><b>2</b><div><h3>Open</h3><p>Open <code>Veilpath.xcodeproj</code> in Xcode 27 beta.</p></div></article><article><b>3</b><div><h3>Run</h3><p>Select a physical iPhone or iPad, configure signing, then launch.</p></div></article><article><b>4</b><div><h3>Package locally</h3><p><code>scripts/package.py</code> creates Release IPAs for re-signing or registered-device testing. App Group provisioning is required; sideloading channels need separate device validation. TrollStore's supported OS range does not overlap iOS 26. The published v1.1.0 preview predates the current navigation redesign. See the <a href="https://github.com/everettjf/veilpath#packaging-and-installation-channels">packaging guide and redistribution status</a>.</p></div></article></div>
     </section>
     <section class="cta shell"><img src="assets/icon.png" alt="" width="100" height="100"><p class="eyebrow">Veilpath 1.1</p><h2>There is more beneath<br><em>the surface.</em></h2><a class="primary" href="https://github.com/everettjf/veilpath">Explore on GitHub <span>↗</span></a></section>
   </main>

@@ -62,6 +62,65 @@ enum AppBackupLibrary {
     static func verifyArchive(_ record: AppLibraryBackup, checkCancellation: Bool = true) throws {
         guard try ManagedAppFiles.hash(record.archive, checkCancellation: checkCancellation) == record.archiveSHA256 else { throw AppManagementError.invalidBackup }
     }
+
+    static func canDelete(_ record: AppLibraryBackup) -> Bool {
+        (try? validateDeletion(record, folder: record.folder)) != nil
+    }
+
+    private static func validateDeletion(_ record: AppLibraryBackup, folder: URL) throws {
+        guard ManagedAppFiles.canonical(directory.resolvingSymlinksInPath()) == ManagedAppFiles.canonical(directory),
+              ManagedAppFiles.canonical(folder.deletingLastPathComponent()) == ManagedAppFiles.canonical(directory),
+              ManagedAppFiles.canonical(folder.resolvingSymlinksInPath()) == ManagedAppFiles.canonical(folder),
+              try ManagedAppFiles.kind(folder) == S_IFDIR else { throw AppManagementError.invalidBackup }
+        let children = try FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil)
+        guard Set(children.map(\.lastPathComponent)) == ["record.json", "backup.zip"] else { throw AppManagementError.backupInUse }
+        for file in children where try ManagedAppFiles.kind(file) != S_IFREG { throw AppManagementError.invalidBackup }
+        let metadata = folder.appendingPathComponent("record.json")
+        guard let size = try metadata.resourceValues(forKeys: [.fileSizeKey]).fileSize, size <= 1024 * 1024,
+              try JSONDecoder().decode(AppLibraryBackup.self, from: Data(contentsOf: metadata)) == record else {
+            throw AppManagementError.invalidBackup
+        }
+    }
+
+    /// A user-confirmed purge of one retained backup, never the live app data.
+    /// No backup-of-a-backup is made; active journals and preserved staging block it.
+    static func delete(_ record: AppLibraryBackup) throws {
+        try Task.checkCancellation()
+        try validateDeletion(record, folder: record.folder)
+        let staging = directory.appendingPathComponent(".deleting-" + record.id.uuidString)
+        guard try ManagedAppFiles.kind(staging) == nil else { throw AppManagementError.backupInUse }
+        try FileManager.default.moveItem(at: record.folder, to: staging)
+        // Once removal starts, cancellation must not strand an intentionally
+        // deleted record. If removal fails, return the remaining files to view.
+        do { try FileManager.default.removeItem(at: staging) }
+        catch {
+            if (try? ManagedAppFiles.kind(record.folder)) == nil { try? FileManager.default.moveItem(at: staging, to: record.folder) }
+            throw error
+        }
+        guard try ManagedAppFiles.kind(staging) == nil, try ManagedAppFiles.kind(record.folder) == nil else {
+            throw AppManagementError.invalidBackup
+        }
+    }
+
+    static func recoverInterruptedDeletions() throws {
+        guard FileManager.default.fileExists(atPath: directory.path) else { return }
+        for folder in try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)
+            where folder.lastPathComponent.hasPrefix(".deleting-") {
+            let suffix = String(folder.lastPathComponent.dropFirst(".deleting-".count))
+            guard let id = UUID(uuidString: suffix), try ManagedAppFiles.kind(folder) == S_IFDIR else { throw AppManagementError.backupInUse }
+            let metadata = folder.appendingPathComponent("record.json")
+            guard try ManagedAppFiles.kind(metadata) == S_IFREG,
+                  let size = try metadata.resourceValues(forKeys: [.fileSizeKey]).fileSize, size <= 1024 * 1024,
+                  let record = try? JSONDecoder().decode(AppLibraryBackup.self, from: Data(contentsOf: metadata)), record.id == id else {
+                throw AppManagementError.backupInUse
+            }
+            // A complete interrupted deletion can be offered for confirmation
+            // again. Partial or unexpected contents are retained, never purged.
+            try validateDeletion(record, folder: folder)
+            guard try ManagedAppFiles.kind(record.folder) == nil else { throw AppManagementError.backupInUse }
+            try FileManager.default.moveItem(at: folder, to: record.folder)
+        }
+    }
 }
 
 struct CacheBackupManifest: Codable, Sendable {
@@ -83,6 +142,7 @@ actor AppDataOperations {
 
     func recoverInterruptedOperations() throws {
         guard !busy else { throw AppManagementError.busy }; busy = true; defer { busy = false }
+        try AppBackupLibrary.recoverInterruptedDeletions()
         for record in try AppBackupLibrary.records() where FileManager.default.fileExists(atPath: record.folder.appendingPathComponent("transaction.json").path) {
             try ManagedAppFiles.validate(record.container)
             let grant = try ManagedAppFiles.acquire(URL(fileURLWithPath: record.container.path))
@@ -94,6 +154,11 @@ actor AppDataOperations {
     func createBackup(_ container: ContainerDescriptor, progress: StoredZIPArchive.Progress) async throws -> AppLibraryBackup {
         guard !busy else { throw AppManagementError.busy }; busy = true; defer { busy = false }
         return try await createAppSnapshot(container, progress: progress)
+    }
+
+    func deleteBackup(_ record: AppLibraryBackup) throws {
+        guard !busy else { throw AppManagementError.busy }; busy = true; defer { busy = false }
+        try AppBackupLibrary.delete(record)
     }
 
     private func createAppSnapshot(_ container: ContainerDescriptor, reason: AppLibraryBackup.Reason = .manual,

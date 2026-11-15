@@ -3478,6 +3478,326 @@
           }
         }
       }
+    },
+    "App access needs attention." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "应用访问需要处理。"
+          }
+        }
+      }
+    },
+    "Cache: %@" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "缓存：%@"
+          }
+        }
+      }
+    },
+    "Measured app data excludes the installed app itself. Scan storage to sort by file size; partial scans cannot enable cleaning." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "测得的应用数据不包含 App 安装包。扫描后按文件大小排序；部分扫描结果不能用于清理。"
+          }
+        }
+      }
+    },
+    "Measured App Data" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "测得的应用数据"
+          }
+        }
+      }
+    },
+    "Scanning App Data…" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在扫描应用数据…"
+          }
+        }
+      }
+    },
+    "Browse and Export Files" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "浏览与导出文件"
+          }
+        }
+      }
+    },
+    "Manage Caches" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "管理缓存"
+          }
+        }
+      }
+    },
+    "App Data Details" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "应用数据详情"
+          }
+        }
+      }
+    },
+    "App Backups" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "应用备份"
+          }
+        }
+      }
+    },
+    "Undo This Cleanup" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "撤销本次清理"
+          }
+        }
+      }
+    },
+    "Undo This Cleanup?" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "撤销本次清理？"
+          }
+        }
+      }
+    },
+    "Close the target app first. Its current caches receive a new safety backup before the previous caches are restored." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "请先关闭目标应用。恢复之前的缓存前，会先为当前缓存创建新的安全备份。"
+          }
+        }
+      }
+    },
+    "Last Scanned" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "上次扫描"
+          }
+        }
+      }
+    },
+    "Return to the app to undo this cleanup." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "返回应用详情可撤销本次清理。"
+          }
+        }
+      }
+    },
+    "Backup Archive Storage" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "备份归档占用"
+          }
+        }
+      }
+    },
+    "Backups stay on this device without automatic expiry. Export or delete old backups when you no longer need them." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "备份保存在本设备，不自动过期。不再需要的旧备份可手动导出或删除。"
+          }
+        }
+      }
+    },
+    "%lld backups" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld 份备份"
+          }
+        }
+      }
+    },
+    "Technical Details" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "技术详情"
+          }
+        }
+      }
+    },
+    "Delete Backup" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "删除备份"
+          }
+        }
+      }
+    },
+    "Delete This Backup?" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "删除这份备份？"
+          }
+        }
+      }
+    },
+    "This permanently removes this recovery copy from Veilpath. Export it first if you want to keep it." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "这将永久移除 Veilpath 中的这份恢复副本。如需保留，请先导出。"
+          }
+        }
+      }
+    },
+    "Deleting Backup" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在删除备份"
+          }
+        }
+      }
+    },
+    "This backup contains recovery work and cannot be deleted." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "这份备份包含恢复所需的数据，无法删除。"
+          }
+        }
+      }
+    },
+    "Advanced Tools" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "高级工具"
+          }
+        }
+      }
+    },
+    "Diagnostics and Logs" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "诊断与日志"
+          }
+        }
+      }
+    },
+    "Advanced workspaces include technical previews and guarded file operations." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "高级工作区提供专业格式预览和受保护的文件操作。"
+          }
+        }
+      }
+    },
+    "Containers" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "容器"
+          }
+        }
+      }
+    },
+    "Export this file to open it in another app." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "导出此文件后，可在其他应用中打开。"
+          }
+        }
+      }
+    },
+    "Not Run" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "尚未运行"
+          }
+        }
+      }
+    },
+    "Report Schema" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "报告格式版本"
+          }
+        }
+      }
+    },
+    "Run diagnostics to update this report." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "运行诊断以更新这份报告。"
+          }
+        }
+      }
+    },
+    "Backup Deletion and Interrupted Removal" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "备份删除与中断恢复"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

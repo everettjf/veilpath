@@ -7,6 +7,7 @@ final class VeilpathModel {
     var path = ""
     var currentContainerRoot = ""
     var selectedContainer: ContainerDescriptor?
+    var isAdvancedWorkspace = false
     private(set) var backHistory: [String] = []
     private(set) var forwardHistory: [String] = []
     private var loadedPath = ""
@@ -33,8 +34,8 @@ final class VeilpathModel {
 
     var canRunDiagnostics: Bool {
         !isWorking && !isRunningDiagnostics && !isVerifyingAccess && !isLoadingPreview
-            && !isSearching && !isPreparingShare && !isExportingDirectory
-            && !isReplacingFile && !isRunningFileOperation && !isScanningStorage
+            && !isSearching && !isPreparingShare
+            && !isReplacingFile && !isRunningFileOperation && !isScanningStorage && scanningStoragePaths.isEmpty
     }
 
     var isAccessVerificationPending: Bool {
@@ -43,9 +44,6 @@ final class VeilpathModel {
     var containerIndexes: [ContainerKind: [ContainerDescriptor]] = [:]
     var searchResults: [FileItem] = []
     var isSearching = false
-    var directoryExportRecursive = false
-    var directoryExportURL: URL?
-    var isExportingDirectory = false
     var backupRecords: [FileBackupRecord] = []
     var isReplacingFile = false
     var sharePreparation: SharePreparation?
@@ -61,6 +59,7 @@ final class VeilpathModel {
     var storageScanCompleted = 0
     var storageScanTotal = 0
     var storageScanAppName = ""
+    private(set) var scanningStoragePaths: Set<String> = []
     var managedBackups: [AppLibraryBackup] = []
     var lastCreatedAppBackup: AppLibraryBackup?
     var lastRestoredAppBackupID: UUID?
@@ -129,20 +128,11 @@ final class VeilpathModel {
             Task { await runSelfTest() }
         }
         #else
-        let currentVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
-        if ProcessInfo.processInfo.arguments.contains("--ui-testing-self-test")
-            || selfTestReport?.schemaVersion != SelfTestRunner.schemaVersion
-            || selfTestReport?.accessBackendSelection != accessBackendSelection.rawValue
-            || selfTestReport?.passed != true
-            || selfTestReport?.appVersion != currentVersion
-            || containers.isEmpty {
-            Task {
-                await runSelfTest()
-                await verifyAccess()
-            }
+        if ProcessInfo.processInfo.arguments.contains("--ui-testing-self-test") {
+            Task { await runSelfTest() }
         } else {
             Task { await verifyAccess() }
-            log("Loaded cached self-test and container indexes")
+            log("Loaded cached application index")
         }
         #endif
     }
@@ -243,7 +233,9 @@ final class VeilpathModel {
         isRunningDiagnostics = false
     }
 
-    func open(_ container: ContainerDescriptor) async {
+    func open(_ container: ContainerDescriptor, advanced: Bool = false) async {
+        isAdvancedWorkspace = advanced
+        showHiddenFiles = advanced
         selectedContainer = container
         currentContainerRoot = container.path
         backHistory = []
@@ -254,6 +246,7 @@ final class VeilpathModel {
     }
 
     func closeCurrentContainer() {
+        isAdvancedWorkspace = false
         selectedContainer = nil
         currentContainerRoot = ""
         path = ""
@@ -272,7 +265,6 @@ final class VeilpathModel {
         selectedHexDump = ""
         previewError = nil
         selectedExportURL = nil
-        directoryExportURL = nil
         searchResults = []
         sharePreparation = nil
         selectedFilePaths = []
@@ -295,16 +287,22 @@ final class VeilpathModel {
             let showHiddenFiles = showHiddenFiles
             let fileSortOrder = fileSortOrder
             let result = try await Task.detached(priority: .userInitiated) {
-                let grant = try SandboxAccessClient.acquire(.forPath(normalized))
-                defer { SandboxAccessClient.release(grant) }
+                #if targetEnvironment(simulator)
+                let ownRoot = ManagedAppFiles.canonical(URL(fileURLWithPath: NSHomeDirectory()))
+                let actual = ManagedAppFiles.canonical(URL(fileURLWithPath: normalized).resolvingSymlinksInPath())
+                guard actual == ownRoot || actual.hasPrefix(ownRoot + "/") else { throw AppManagementError.unsafeTree }
+                #endif
+                let grant = try ManagedAppFiles.acquire(URL(fileURLWithPath: normalized))
+                defer { ManagedAppFiles.release(grant) }
                 let items = try FileSystemReader.contents(
                     at: normalized,
                     showHidden: showHiddenFiles,
                     sortOrder: fileSortOrder
                 )
-                return (grant.handle, items)
+                return (grant?.handle, items)
             }.value
-            log("Access granted with handle \(result.0)")
+            if let handle = result.0 { log("Access granted with handle \(handle)") }
+            else { log("Reading simulator-owned fixture") }
             applyLoadedItems(result.1)
             loadedPath = normalized
         } catch {
@@ -445,6 +443,7 @@ final class VeilpathModel {
     }
 
     func goUp() async {
+        guard isAdvancedWorkspace || path != currentContainerRoot else { return }
         let parent = URL(fileURLWithPath: path).deletingLastPathComponent().path
         guard parent != path else { return }
         await navigate(to: parent)
@@ -476,6 +475,14 @@ final class VeilpathModel {
 
     private func navigate(to destination: String) async {
         let normalized = URL(fileURLWithPath: destination).standardizedFileURL.path
+        if !isAdvancedWorkspace {
+            let root = ManagedAppFiles.canonical(URL(fileURLWithPath: currentContainerRoot))
+            let resolved = ManagedAppFiles.canonical(URL(fileURLWithPath: normalized).resolvingSymlinksInPath())
+            guard !currentContainerRoot.isEmpty, resolved == root || resolved.hasPrefix(root + "/") else {
+                report(AppManagementError.unsafeTree)
+                return
+            }
+        }
         guard normalized != loadedPath else {
             path = normalized
             return
@@ -498,29 +505,11 @@ final class VeilpathModel {
         let root = currentContainerRoot.isEmpty ? path : currentContainerRoot
         let includesHidden = showHiddenFiles
         do {
-            let grant = try SandboxAccessClient.acquire(.forPath(root))
-            defer { SandboxAccessClient.release(grant) }
+            let grant = try ManagedAppFiles.acquire(URL(fileURLWithPath: root))
+            defer { ManagedAppFiles.release(grant) }
             searchResults = await Task.detached(priority: .userInitiated) {
                 FileSystemReader.search(at: root, query: query, showHidden: includesHidden)
             }.value
-        } catch { report(error) }
-    }
-
-    func prepareDirectoryMarkdownExport() async {
-        guard !path.isEmpty, !isExportingDirectory else { return }
-        isExportingDirectory = true
-        defer { isExportingDirectory = false }
-        do {
-            let requestedPath = path
-            let options = DirectoryMarkdownExportOptions(
-                recursively: directoryExportRecursive,
-                includeHidden: showHiddenFiles
-            )
-            let result = try await Task.detached(priority: .userInitiated) {
-                try DirectoryMarkdownExporter.export(path: requestedPath, options: options)
-            }.value
-            directoryExportURL = result.url
-            log("Prepared Markdown listing with \(result.itemCount) items")
         } catch { report(error) }
     }
 
@@ -549,11 +538,6 @@ final class VeilpathModel {
         let url = URL(fileURLWithPath: path, isDirectory: true)
         startSharePreparation(.directory(url: url, name: url.lastPathComponent.isEmpty ? "Directory" : url.lastPathComponent,
                                          includeHidden: showHiddenFiles))
-    }
-
-    func prepareCompleteAppBackup() {
-        guard let selectedContainer, selectedContainer.kind == .application else { return }
-        startSharePreparation(.appBackup(selectedContainer))
     }
 
     func retrySharePreparation() {
@@ -596,19 +580,6 @@ final class VeilpathModel {
                     var detail = "\(result.itemCount) items · \(ByteCountFormatter.string(fromByteCount: result.totalBytes, countStyle: .file))"
                     if result.skippedSymbolicLinks > 0 { detail += " · \(result.skippedSymbolicLinks) links skipped" }
                     ready = (result.url, detail)
-                case .appBackup(let container):
-                    let name = ExportCache.safeName(container.identifier ?? container.uuid) + " Backup.zip"
-                    let result = try await AppDataOperations.shared.createBackup(container,
-                        progress: { completedBytes, totalBytes, completedItems, totalItems in
-                            await progress(.init(phase: .archiving, completedBytes: completedBytes, totalBytes: totalBytes,
-                                                 completedItems: completedItems, totalItems: totalItems))
-                        }
-                    )
-                    self?.reloadManagedBackups()
-                    let url = try await ShareExportService.prepareFile(at: result.archive, named: name, progress: progress)
-                    var detail = "SHA-256 manifest"
-                    if let count = result.skippedSymbolicLinks, count > 0 { detail += " · " + String(localized: "\(count) symbolic links skipped") }
-                    ready = (url, detail)
                 case .managedBackup(let record):
                     try await Task.detached(priority: .userInitiated) { try AppBackupLibrary.verifyArchive(record) }.value
                     let url = try await ShareExportService.prepareFile(at: record.archive, named: record.exportName, progress: progress)
@@ -759,16 +730,6 @@ final class VeilpathModel {
         }
     }
 
-    func restoreCompleteAppBackup(from source: URL) async {
-        guard let selectedContainer else { return }
-        let accessed = source.startAccessingSecurityScopedResource()
-        defer { if accessed { source.stopAccessingSecurityScopedResource() } }
-        await performFileOperation(title: "Verifying and Restoring App Backup") { progress in
-            let result = try await AppContainerBackupService.restore(archive: source, to: selectedContainer, progress: progress)
-            await MainActor.run { self.log("Restored \(result.restoredFileCount) files; safety backup: \(result.safetyBackupURL.lastPathComponent)") }
-        }
-    }
-
     func cancelFileOperation() {
         fileOperationCancellation?()
     }
@@ -779,7 +740,7 @@ final class VeilpathModel {
     }
 
     func scanAppStorage() async {
-        guard !isScanningStorage, !isRunningFileOperation, !isRunningDiagnostics else { return }
+        guard canRunDiagnostics else { return }
         isScanningStorage = true
         storageScanCompleted = 0; storageScanTotal = containers.count
         let applications = containers
@@ -799,6 +760,9 @@ final class VeilpathModel {
     func cancelStorageScan() { storageScanTask?.cancel() }
 
     func scanStorage(for container: ContainerDescriptor) async {
+        guard !scanningStoragePaths.contains(container.path) else { return }
+        scanningStoragePaths.insert(container.path)
+        defer { scanningStoragePaths.remove(container.path) }
         let worker = Task.detached(priority: .utility) { try AppStorageService.scan(container) }
         do {
             let snapshot = try await withTaskCancellationHandler { try await worker.value } onCancel: { worker.cancel() }
@@ -840,13 +804,28 @@ final class VeilpathModel {
         let completed: Void? = await performFileOperation(title: "Verifying and Restoring App Backup") { progress in
             try await AppDataOperations.shared.restore(record, to: container, progress: progress)
         }
-        if case .some = completed { lastRestoredAppBackupID = record.id }
+        if case .some = completed {
+            lastRestoredAppBackupID = record.id
+            cacheCleaningResults[container.path] = nil
+        }
         reloadManagedBackups()
         await scanStorage(for: container)
     }
 
     func exportManagedBackup(_ record: AppLibraryBackup) {
         startSharePreparation(.managedBackup(record))
+    }
+
+    func deleteManagedBackup(_ record: AppLibraryBackup) async -> Bool {
+        guard !isScanningStorage else { return false }
+        let completed: Void? = await performFileOperation(title: "Deleting Backup") {
+            try await AppDataOperations.shared.deleteBackup(record)
+        }
+        reloadManagedBackups()
+        guard case .some = completed else { return false }
+        if lastCreatedAppBackup?.id == record.id { lastCreatedAppBackup = nil }
+        if lastRestoredAppBackupID == record.id { lastRestoredAppBackupID = nil }
+        return true
     }
 
     func importManagedBackup(from source: URL) async {

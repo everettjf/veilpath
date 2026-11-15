@@ -4,6 +4,8 @@ import UniformTypeIdentifiers
 import PDFKit
 import QuickLook
 
+private enum AppSection: Hashable { case applications, backups, settings }
+
 struct ContentView: View {
     @Bindable var model: VeilpathModel
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
@@ -18,57 +20,77 @@ struct ContentView: View {
     @State private var pendingRestore: FileBackupRecord?
     @State private var showingRestoreConfirmation = false
     @State private var editingItem: FileItem?
-    @State private var screenshotFeedback: ScreenshotFeedbackContext?
-    @AppStorage("feedback.screenshotPromptEnabled") private var screenshotPromptEnabled = true
+    @State private var section = AppSection.applications
 
     var body: some View {
         GeometryReader { geometry in
-            ZStack(alignment: .trailing) {
-                if model.currentContainerRoot.isEmpty {
-                    ContainerHomeView(model: model)
-                        .transition(homeTransition)
-                        .zIndex(0)
-                } else {
-                    workspace
-                        .transition(workspaceTransition)
-                        .zIndex(1)
-                }
+            TabView(selection: $section) {
+                Tab("Applications", systemImage: "square.stack", value: .applications) {
+                    ZStack(alignment: .trailing) {
+                        NavigationStack { AppStorageView(model: model) }
+                            .opacity(model.currentContainerRoot.isEmpty ? 1 : 0)
+                            .allowsHitTesting(model.currentContainerRoot.isEmpty)
+                            .accessibilityHidden(!model.currentContainerRoot.isEmpty)
+                            .zIndex(0)
+                        if !model.currentContainerRoot.isEmpty {
+                            workspace
+                                .transition(workspaceTransition)
+                                .zIndex(1)
+                        }
 
-                if let presentedPreview {
-                    FilePreviewOverlay(
-                        item: presentedPreview,
-                        preview: model.selectedPreview,
-                        previewError: model.previewError,
-                        exportURL: model.selectedExportURL,
-                        hexDump: model.selectedHexDump,
-                        isLoading: model.isLoadingPreview,
-                        availableWidth: geometry.size.width,
-                        allowsResizing: horizontalSizeClass != .compact,
-                        widthFraction: $previewWidthFraction,
-                        isFullScreen: $previewIsFullScreen,
-                        dragStartFraction: $previewDragStartFraction,
-                        requestShare: { model.prepareShare(for: presentedPreview) },
-                        showInfo: { showInspector = true },
-                        close: closePreview
-                    )
-                    .transition(.move(edge: .trailing).combined(with: .opacity))
-                    .zIndex(10)
+                        if let presentedPreview {
+                            FilePreviewOverlay(
+                                item: presentedPreview,
+                                preview: model.selectedPreview,
+                                previewError: model.previewError,
+                                exportURL: model.selectedExportURL,
+                                hexDump: model.selectedHexDump,
+                                isLoading: model.isLoadingPreview,
+                                allowsAdvancedTools: model.isAdvancedWorkspace,
+                                availableWidth: geometry.size.width,
+                                allowsResizing: horizontalSizeClass != .compact,
+                                widthFraction: $previewWidthFraction,
+                                isFullScreen: $previewIsFullScreen,
+                                dragStartFraction: $previewDragStartFraction,
+                                requestShare: { model.prepareShare(for: presentedPreview) },
+                                showInfo: { showInspector = true },
+                                close: closePreview
+                            )
+                            .transition(.move(edge: .trailing).combined(with: .opacity))
+                            .zIndex(10)
 
-                    if horizontalSizeClass != .compact, !previewIsFullScreen {
-                        PreviewFileList(
-                            model: model,
-                            presentedPreview: $presentedPreview
-                        )
-                        .frame(width: geometry.size.width * (1 - previewWidthFraction))
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .transition(.opacity)
-                        .zIndex(11)
+                            if horizontalSizeClass != .compact, !previewIsFullScreen {
+                                PreviewFileList(
+                                    model: model,
+                                    presentedPreview: $presentedPreview
+                                )
+                                .frame(width: geometry.size.width * (1 - previewWidthFraction))
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .transition(.opacity)
+                                .zIndex(11)
+                            }
+                        }
                     }
+                    .animation(.snappy, value: model.currentContainerRoot.isEmpty)
+                    .animation(.snappy, value: presentedPreview?.id)
+                    .animation(.snappy, value: previewIsFullScreen)
+                    .toolbar(model.currentContainerRoot.isEmpty ? .visible : .hidden, for: .tabBar)
+                }
+                Tab("Backups", systemImage: "externaldrive", value: .backups) {
+                    NavigationStack { AppBackupsView(model: model) }
+                }
+                Tab("Settings", systemImage: "gearshape", value: .settings) {
+                    NavigationStack { SettingsView(model: model) }
                 }
             }
-            .animation(.snappy, value: model.currentContainerRoot.isEmpty)
-            .animation(.snappy, value: presentedPreview?.id)
-            .animation(.snappy, value: previewIsFullScreen)
+            .tabViewStyle(.sidebarAdaptable)
+        }
+        .onChange(of: model.currentContainerRoot) { _, root in
+            if !root.isEmpty {
+                closePreview()
+                showInspector = false
+                section = .applications
+            }
         }
         .onChange(of: presentedPreview) { _, item in
             if item != nil, horizontalSizeClass == .compact {
@@ -145,36 +167,13 @@ struct ContentView: View {
                     .padding(.horizontal, 16)
                     .padding(.bottom, 12)
                     .zIndex(101)
-            } else if let screenshotFeedback {
-                ScreenshotFeedbackPrompt(
-                    context: screenshotFeedback,
-                    dismiss: { self.screenshotFeedback = nil }
-                )
-                .padding(.horizontal, 16)
-                .padding(.bottom, 12)
-                .transition(.move(edge: .bottom).combined(with: .opacity))
-                .zIndex(100)
             }
-        }
-        .animation(.snappy, value: screenshotFeedback?.id)
-        .onReceive(NotificationCenter.default.publisher(for: UIApplication.userDidTakeScreenshotNotification)) { _ in
-            presentScreenshotFeedbackIfEnabled()
         }
         .onAppear {
             #if targetEnvironment(simulator)
-            if ProcessInfo.processInfo.arguments.contains("--ui-testing-screenshot-feedback") {
-                Task { @MainActor in
-                    try? await Task.sleep(for: .milliseconds(750))
-                    presentScreenshotFeedbackIfEnabled()
-                }
-            }
+            if ProcessInfo.processInfo.arguments.contains("--ui-testing-settings") { section = .settings }
             #endif
         }
-    }
-
-    private var homeTransition: AnyTransition {
-        guard horizontalSizeClass == .compact else { return .opacity }
-        return .move(edge: .leading).combined(with: .opacity)
     }
 
     private var workspaceTransition: AnyTransition {
@@ -223,6 +222,7 @@ struct ContentView: View {
             exportURL: model.selectedExportURL,
             properties: model.selectedProperties,
             isLoading: model.isLoadingPreview,
+            allowsAdvancedTools: model.isAdvancedWorkspace,
             openPreview: {
                 showInspector = false
                 openSelectedPreview()
@@ -256,9 +256,11 @@ struct ContentView: View {
     }
 
     private func closeWorkspace() {
+        let wasAdvanced = model.isAdvancedWorkspace
         closePreview()
         showInspector = false
         model.closeCurrentContainer()
+        if wasAdvanced { section = .settings }
     }
 
     private func requestReplacement() {
@@ -310,456 +312,6 @@ struct ContentView: View {
         return false
     }
 
-    private var currentScreenDescription: String {
-        if let presentedPreview {
-            return "File preview: \(presentedPreview.name)"
-        }
-        if model.currentContainerRoot.isEmpty {
-            return "Container home"
-        }
-        if let identifier = model.selectedContainer?.identifier {
-            return "File browser: \(identifier)"
-        }
-        return "File browser"
-    }
-
-    private func presentScreenshotFeedbackIfEnabled() {
-        guard screenshotPromptEnabled else { return }
-        do {
-            let screenshot = try FeedbackSupport.captureCurrentWindow()
-            screenshotFeedback = .init(
-                screenshotURL: screenshot.url,
-                previewImage: screenshot.image,
-                screenDescription: currentScreenDescription
-            )
-        } catch {
-            model.log("Screenshot sharing preparation failed: \(error.localizedDescription)", isError: true)
-        }
-    }
-}
-
-private struct ScreenshotFeedbackPrompt: View {
-    let context: ScreenshotFeedbackContext
-    let dismiss: () -> Void
-    @Environment(\.openURL) private var openURL
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 10) {
-                Label("Screenshot captured", systemImage: "checkmark.circle.fill")
-                    .font(.headline)
-                Spacer()
-                Button("Dismiss", systemImage: "xmark", action: dismiss)
-                    .labelStyle(.iconOnly)
-                    .buttonStyle(.plain)
-                    .accessibilityHint("Closes the screenshot actions.")
-            }
-
-            Text("Share it or report an issue while the context is fresh.")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-
-            HStack(spacing: 10) {
-                ShareLink(
-                    item: context.screenshotURL,
-                    preview: SharePreview("Veilpath Screenshot", image: Image(uiImage: context.previewImage))
-                ) {
-                    Label("Share", systemImage: "square.and.arrow.up")
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.bordered)
-
-                Button {
-                    openURL(FeedbackSupport.issueURL(screenDescription: context.screenDescription))
-                    dismiss()
-                } label: {
-                    Label("Report Issue", systemImage: "exclamationmark.bubble")
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.borderedProminent)
-            }
-        }
-        .padding(16)
-        .background(.regularMaterial, in: .rect(cornerRadius: 20, style: .continuous))
-        .shadow(color: .black.opacity(0.16), radius: 16, y: 6)
-        .accessibilityElement(children: .contain)
-    }
-
-}
-
-private enum ContainerHomeLayout: String, CaseIterable, Identifiable {
-    case grid
-    case list
-
-    var id: Self { self }
-    var title: LocalizedStringResource {
-        switch self {
-        case .grid: "Grid"
-        case .list: "List"
-        }
-    }
-    var systemImage: String {
-        switch self {
-        case .grid: "square.grid.2x2"
-        case .list: "list.bullet"
-        }
-    }
-}
-
-private struct ContainerHomeView: View {
-    @Bindable var model: VeilpathModel
-    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    @AppStorage("home.containerLayout") private var layoutRawValue = ContainerHomeLayout.grid.rawValue
-    @AppStorage("home.pinnedContainers") private var pinnedContainerIDsRawValue = ""
-    @State private var searchText = ""
-    @State private var selectedKind: ContainerKind = .application
-    @State private var showSettings = false
-
-    private var layout: ContainerHomeLayout {
-        get { ContainerHomeLayout(rawValue: layoutRawValue) ?? .grid }
-        nonmutating set { layoutRawValue = newValue.rawValue }
-    }
-
-    private var filteredContainers: [ContainerDescriptor] {
-        let containers = model.containerIndexes[selectedKind, default: []]
-        guard !searchText.isEmpty else { return containers }
-        return containers.filter {
-            $0.displayName.localizedCaseInsensitiveContains(searchText)
-                || ($0.identifier?.localizedCaseInsensitiveContains(searchText) ?? false)
-                || $0.uuid.localizedCaseInsensitiveContains(searchText)
-        }
-    }
-
-    private var sections: [ContainerHomeSection] {
-        let pinned = filteredContainers.filter(isPinned)
-        let remaining = filteredContainers.filter { !isPinned($0) }
-        guard selectedKind == .application else {
-            return [
-                .init(id: "pinned", title: "Pinned", containers: pinned),
-                .init(id: selectedKind.rawValue, title: selectedKind.localizedContainerTitle, containers: remaining)
-            ].filter { !$0.containers.isEmpty }
-        }
-        let applications = remaining.filter { $0.identifier?.hasPrefix("com.apple.") != true }
-        let appleApplications = remaining.filter { $0.identifier?.hasPrefix("com.apple.") == true }
-        return [
-            .init(id: "pinned", title: "Pinned", containers: pinned),
-            .init(id: "applications", title: "Applications", containers: applications),
-            .init(id: "apple-applications", title: "Apple Applications", containers: appleApplications)
-        ].filter { !$0.containers.isEmpty }
-    }
-
-    var body: some View {
-        NavigationStack {
-            Group {
-                if model.isWorking && filteredContainers.isEmpty {
-                    ProgressView("Loading containers…")
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if filteredContainers.isEmpty {
-                    ContentUnavailableView.search(text: searchText)
-                } else if layout == .grid {
-                    gridContent
-                } else {
-                    listContent
-                }
-            }
-            .navigationTitle("Veilpath")
-            .safeAreaInset(edge: .top, spacing: 0) {
-                HStack {
-                    NavigationLink { AppStorageView(model: model) } label: {
-                        Label("App Storage", systemImage: "chart.bar.xaxis")
-                    }
-                    NavigationLink { AppBackupsView(model: model) } label: {
-                        Label("Backup Center", systemImage: "externaldrive")
-                    }
-                }
-                .buttonStyle(.bordered)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal).padding(.vertical, 8)
-                .background(.bar)
-            }
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) { locationsMenu }
-                ToolbarItemGroup(placement: .topBarTrailing) {
-                    layoutPicker
-                    Button("Settings", systemImage: "gearshape") { showSettings = true }
-                        .labelStyle(.iconOnly)
-                }
-            }
-            .searchable(text: $searchText, placement: .toolbar, prompt: "App name or Bundle ID")
-            .searchToolbarBehavior(.minimize)
-        }
-        .fullScreenCover(isPresented: $showSettings) { SettingsView(model: model) }
-        .onAppear {
-            #if targetEnvironment(simulator)
-            if ProcessInfo.processInfo.arguments.contains("--ui-testing-list-home") {
-                layoutRawValue = ContainerHomeLayout.list.rawValue
-            }
-            if ProcessInfo.processInfo.arguments.contains("--ui-testing-settings") {
-                showSettings = true
-            }
-            #endif
-        }
-    }
-
-    private var gridContent: some View {
-        ScrollView {
-            LazyVStack(alignment: .leading, spacing: 10) {
-                if model.accessVerification?.status != .passed {
-                    AccessStatusView(model: model)
-                        .padding(.horizontal)
-                }
-                ForEach(sections, id: \.id) { section in
-                    VStack(alignment: .leading, spacing: 6) {
-                        sectionHeader(section)
-                        LazyVGrid(
-                            columns: homeGridColumns,
-                            alignment: .leading,
-                            spacing: 6
-                        ) {
-                            ForEach(section.containers) { container in
-                                ContainerTile(
-                                    container: container,
-                                    isPinned: isPinned(container),
-                                    action: { open(container) },
-                                    pinAction: { togglePinned(container) }
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-            .padding(.horizontal)
-            .padding(.vertical, 6)
-        }
-        .scrollEdgeEffectStyle(.soft, for: .top)
-        .refreshable { await model.refreshContainers(for: selectedKind) }
-    }
-
-    private var listContent: some View {
-        List {
-            if model.accessVerification?.status != .passed {
-                Section { AccessStatusView(model: model) }
-            }
-            ForEach(sections, id: \.id) { section in
-                Section {
-                    ForEach(section.containers) { container in
-                        Button { open(container) } label: { ContainerRow(container: container) }
-                            .buttonStyle(.plain)
-                            .accessibilityHint("Opens this app container")
-                            .swipeActions(edge: .trailing) {
-                                Button {
-                                    togglePinned(container)
-                                } label: {
-                                    Label(pinTitle(for: container), systemImage: isPinned(container) ? "pin.slash" : "pin")
-                                }
-                                .tint(isPinned(container) ? .secondary : .orange)
-                            }
-                    }
-                } header: {
-                    sectionHeader(section)
-                }
-            }
-        }
-        .listStyle(.insetGrouped)
-        .refreshable { await model.refreshContainers(for: selectedKind) }
-    }
-
-    private var homeGridColumns: [GridItem] {
-        if horizontalSizeClass == .compact {
-            return [GridItem(.flexible())]
-        }
-        return [GridItem(.adaptive(minimum: 290, maximum: 420), spacing: 14)]
-    }
-
-    private func sectionHeader(_ section: ContainerHomeSection) -> some View {
-        HStack {
-            Text(section.title)
-                .font(.headline)
-            Spacer()
-            Text(section.containers.count, format: .number)
-                .font(.caption.monospacedDigit())
-                .foregroundStyle(.secondary)
-        }
-    }
-
-    private var locationsMenu: some View {
-        Menu("Locations", systemImage: selectedKind.systemImage) {
-            ForEach(ContainerKind.allCases, id: \.self) { kind in
-                Button {
-                    selectedKind = kind
-                    searchText = ""
-                } label: {
-                    Label {
-                        HStack {
-                            Text(kind.localizedName)
-                            Text(model.containerIndexes[kind, default: []].count, format: .number)
-                        }
-                    } icon: {
-                        Image(systemName: selectedKind == kind ? "checkmark" : kind.systemImage)
-                    }
-                }
-            }
-        }
-        .accessibilityValue(selectedKind.localizedName)
-    }
-
-    private var layoutPicker: some View {
-        Menu("Layout", systemImage: layout.systemImage) {
-            Picker("Layout", selection: Binding(get: { layout }, set: { layout = $0 })) {
-                ForEach(ContainerHomeLayout.allCases) { option in
-                    Label(option.title, systemImage: option.systemImage).tag(option)
-                }
-            }
-        }
-        .labelStyle(.iconOnly)
-        .accessibilityValue(layout.title)
-    }
-
-    private func open(_ container: ContainerDescriptor) {
-        Task { await model.open(container) }
-    }
-
-    private var pinnedContainerIDs: Set<String> {
-        Set(pinnedContainerIDsRawValue.split(separator: "\n").map(String.init))
-    }
-
-    private func isPinned(_ container: ContainerDescriptor) -> Bool {
-        pinnedContainerIDs.contains(container.pinIdentifier)
-    }
-
-    private func togglePinned(_ container: ContainerDescriptor) {
-        var identifiers = pinnedContainerIDs
-        if !identifiers.insert(container.pinIdentifier).inserted {
-            identifiers.remove(container.pinIdentifier)
-        }
-        pinnedContainerIDsRawValue = identifiers.sorted().joined(separator: "\n")
-    }
-
-    private func pinTitle(for container: ContainerDescriptor) -> LocalizedStringResource {
-        isPinned(container) ? "Unpin" : "Pin"
-    }
-}
-
-private struct ContainerHomeSection: Identifiable {
-    let id: String
-    let title: LocalizedStringResource
-    let containers: [ContainerDescriptor]
-}
-
-private struct ContainerTile: View {
-    let container: ContainerDescriptor
-    let isPinned: Bool
-    let action: () -> Void
-    let pinAction: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(alignment: .firstTextBaseline, spacing: 10) {
-                    Text(container.homeTitle)
-                        .font(.headline)
-                        .foregroundStyle(.primary)
-                        .lineLimit(2)
-                        .multilineTextAlignment(.leading)
-                    Spacer(minLength: 8)
-                    if isPinned {
-                        Image(systemName: "pin.fill")
-                            .foregroundStyle(container.homeAccent)
-                            .accessibilityLabel("Pinned")
-                    }
-                    if container.kind != .application {
-                        ContainerKindBadge(container: container)
-                    }
-                }
-                Text(container.identifier ?? container.uuid)
-                    .font(.caption.monospaced())
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-            }
-            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-            .padding(.vertical, 8)
-            .padding(.horizontal, 14)
-            .background(container.homeAccent.opacity(0.11), in: .rect(cornerRadius: 14))
-            .overlay(alignment: .leading) {
-                UnevenRoundedRectangle(
-                    topLeadingRadius: 14,
-                    bottomLeadingRadius: 14,
-                    bottomTrailingRadius: 2,
-                    topTrailingRadius: 2
-                )
-                .fill(container.homeAccent)
-                .frame(width: 5)
-            }
-            .contentShape(.rect(cornerRadius: 14))
-        }
-        .buttonStyle(.plain)
-        .accessibilityElement(children: .combine)
-        .accessibilityHint("Opens this app container")
-        .contextMenu {
-            Button(isPinned ? LocalizedStringResource("Unpin") : LocalizedStringResource("Pin"),
-                   systemImage: isPinned ? "pin.slash" : "pin",
-                   action: pinAction)
-        }
-    }
-
-}
-
-private struct ContainerKindBadge: View {
-    let container: ContainerDescriptor
-
-    var body: some View {
-        Text(container.homeKindLabel)
-            .font(.caption2.weight(.semibold))
-            .foregroundStyle(container.homeAccent)
-            .padding(.horizontal, 6)
-            .padding(.vertical, 2)
-            .background(container.homeAccent.opacity(0.12), in: .capsule)
-    }
-}
-
-private extension ContainerDescriptor {
-    var pinIdentifier: String {
-        "\(kind.rawValue)|\(identifier ?? uuid)"
-    }
-
-    var homeTitle: String {
-        if let applicationName { return applicationName }
-        guard let identifier else { return uuid }
-        let components = identifier.split(separator: ".").map(String.init)
-        guard let last = components.last else { return identifier }
-
-        let genericSuffixes: Set<String> = [
-            "app", "application", "ios", "mobile", "client", "prod", "release"
-        ]
-        if genericSuffixes.contains(last.lowercased()), components.count >= 2 {
-            return components[components.count - 2]
-        }
-        if last.count < 4, components.count >= 2 {
-            return components.suffix(2).joined(separator: ".")
-        }
-        return last
-    }
-
-    var homeKindLabel: String {
-        switch kind {
-        case .application: "APP"
-        case .appGroup: "GROUP"
-        case .plugin: "PLUGIN"
-        case .internalDaemon: "DAEMON"
-        case .systemData: "SYSTEM"
-        case .systemGroup: "GROUP"
-        }
-    }
-
-    var homeAccent: Color {
-        let palette: [Color] = [.blue, .indigo, .purple, .pink, .orange, .green, .teal, .cyan]
-        let key = identifier ?? uuid
-        let hash = key.unicodeScalars.reduce(UInt64(14_695_981_039_346_656_037)) {
-            ($0 ^ UInt64($1.value)) &* 1_099_511_628_211
-        }
-        return palette[Int(hash % UInt64(palette.count))]
-    }
 }
 
 private struct PreviewFileList: View {
@@ -800,274 +352,92 @@ private struct PreviewFileList: View {
     }
 }
 
-private struct SidebarView: View {
+private struct SettingsView: View {
     @Bindable var model: VeilpathModel
-    @Binding var columnVisibility: NavigationSplitViewVisibility
-    @Binding var preferredCompactColumn: NavigationSplitViewColumn
-    let usesCompactNavigation: Bool
-    @State private var searchText = ""
-    @State private var selectedKind: ContainerKind = .application
-    @State private var showSettings = false
-    @AppStorage("sidebar.applicationsExpanded") private var applicationsExpanded = true
-    @AppStorage("sidebar.appleApplicationsExpanded") private var appleApplicationsExpanded = false
+    @State private var cacheMessage: String?
 
     var body: some View {
         List {
-            if model.accessVerification?.status != .passed {
-                Section {
-                    AccessStatusView(model: model)
-                }
-            }
-
             Section {
-                let containers = filteredContainers(for: selectedKind)
-                if containers.isEmpty {
-                    if searchText.isEmpty {
-                        Text("No containers indexed")
-                            .font(.callout)
-                            .foregroundStyle(.secondary)
-                    } else {
-                        Text("No matches")
-                            .font(.callout)
-                            .foregroundStyle(.secondary)
-                    }
-                } else {
-                    if selectedKind == .application {
-                        groupedApplicationRows(containers)
-                    } else {
-                        containerRows(containers)
-                    }
+                HStack { Text("Access"); Spacer(); AccessStateLabel(model: model) }
+                NavigationLink {
+                    AdvancedToolsView(model: model)
+                } label: { Label("Advanced Tools", systemImage: "wrench.and.screwdriver") }
+            }
+            Section("Storage") {
+                Button("Clear Export Cache", systemImage: "trash", role: .destructive) {
+                    do { try ExportCache.removeAll(); cacheMessage = String(localized: "Export cache cleared") }
+                    catch { model.lastError = error.localizedDescription }
                 }
-            } header: {
-                HStack {
-                    Label(selectedKind.localizedContainerTitle, systemImage: selectedKind.systemImage)
-                    Spacer()
-                    Text(filteredContainers(for: selectedKind).count, format: .number)
-                        .monospacedDigit()
-                }
+                .disabled(!model.canRunDiagnostics)
+                if let cacheMessage { Text(cacheMessage).foregroundStyle(.secondary) }
+                Text("Shared files are copied to a private cache and automatically removed after 24 hours.")
+                    .font(.caption).foregroundStyle(.secondary)
             }
-
-        }
-        .listStyle(.sidebar)
-        .searchable(text: $searchText, placement: .sidebar, prompt: "Container name or UUID")
-        .navigationTitle("Veilpath")
-        .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
-                locationsMenu
-                    .labelStyle(.iconOnly)
-            }
-            ToolbarItem(placement: .topBarTrailing) {
-                settingsButton
+            Section("About") {
+                LabeledContent("Version", value: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "Unknown")
+                Link("Report an Issue", destination: FeedbackSupport.issueURL())
+                Link("Veilpath Website", destination: URL(string: "https://xnu.app/veilpath/")!)
+                Link("Source Code", destination: URL(string: "https://github.com/everettjf/veilpath")!)
+                Link("Discord", destination: URL(string: "https://discord.gg/eGzEaP6TzR")!)
             }
         }
-        .fullScreenCover(isPresented: $showSettings) {
-            SettingsView(model: model)
-        }
-        .onAppear {
-            #if targetEnvironment(simulator)
-            if ProcessInfo.processInfo.arguments.contains("--ui-testing-apple-search") {
-                searchText = "com.apple"
-            }
-            #endif
-        }
+        .navigationTitle("Settings")
     }
-
-    private var locationsMenu: some View {
-        Menu("Locations", systemImage: "square.grid.2x2") {
-            ForEach(ContainerKind.allCases, id: \.self) { kind in
-                Button {
-                    selectedKind = kind
-                    searchText = ""
-                } label: {
-                    Label {
-                        HStack {
-                            Text(kind.localizedName)
-                            Text(model.containerIndexes[kind, default: []].count, format: .number)
-                        }
-                    } icon: {
-                        Image(systemName: selectedKind == kind ? "checkmark" : kind.systemImage)
-                    }
-                }
-            }
-        }
-        .accessibilityValue(selectedKind.localizedName)
-    }
-
-    private var settingsButton: some View {
-        Button("Settings", systemImage: "gearshape") {
-            showSettings = true
-        }
-        .labelStyle(.iconOnly)
-    }
-
-    private func filteredContainers(for kind: ContainerKind) -> [ContainerDescriptor] {
-        let containers = model.containerIndexes[kind, default: []]
-        guard !searchText.isEmpty else { return containers }
-        return containers.filter {
-            $0.displayName.localizedCaseInsensitiveContains(searchText)
-                || $0.uuid.localizedCaseInsensitiveContains(searchText)
-        }
-    }
-
-    @ViewBuilder
-    private func groupedApplicationRows(_ containers: [ContainerDescriptor]) -> some View {
-        let applications = containers.filter { !isAppleApplication($0) }
-        let appleApplications = containers.filter(isAppleApplication)
-
-        if !applications.isEmpty {
-            DisclosureGroup(isExpanded: applicationsExpansion) {
-                containerRows(applications)
-            } label: {
-                containerGroupLabel("Applications", count: applications.count)
-            }
-        }
-
-        if !appleApplications.isEmpty {
-            DisclosureGroup(isExpanded: appleApplicationsExpansion) {
-                containerRows(appleApplications)
-            } label: {
-                containerGroupLabel("Apple Applications", count: appleApplications.count)
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func containerRows(_ containers: [ContainerDescriptor]) -> some View {
-        ForEach(containers) { container in
-            Button {
-                preferredCompactColumn = .detail
-                columnVisibility = .detailOnly
-                Task {
-                    await model.open(container)
-                }
-            } label: {
-                ContainerRow(container: container)
-            }
-            .buttonStyle(.plain)
-            .accessibilityHint("Opens the container at \(container.path)")
-        }
-    }
-
-    private func containerGroupLabel(
-        _ title: LocalizedStringResource,
-        count: Int
-    ) -> some View {
-        HStack {
-            Text(title)
-                .font(.callout.weight(.semibold))
-            Spacer()
-            Text(count, format: .number)
-                .font(.caption.monospacedDigit())
-                .foregroundStyle(.secondary)
-        }
-    }
-
-    private var applicationsExpansion: Binding<Bool> {
-        Binding(
-            get: { !searchText.isEmpty || applicationsExpanded },
-            set: { if searchText.isEmpty { applicationsExpanded = $0 } }
-        )
-    }
-
-    private var appleApplicationsExpansion: Binding<Bool> {
-        Binding(
-            get: { !searchText.isEmpty || appleApplicationsExpanded },
-            set: { if searchText.isEmpty { appleApplicationsExpanded = $0 } }
-        )
-    }
-
-    private func isAppleApplication(_ container: ContainerDescriptor) -> Bool {
-        container.identifier?.hasPrefix("com.apple.") == true
-    }
-
 }
 
-private struct SettingsView: View {
+private struct AdvancedToolsView: View {
     @Bindable var model: VeilpathModel
-    @Environment(\.dismiss) private var dismiss
-    @State private var cacheMessage: String?
-    @AppStorage("feedback.screenshotPromptEnabled") private var screenshotPromptEnabled = true
-
     var body: some View {
-        NavigationStack {
-            List {
-                Section("Diagnostics") {
-                    NavigationLink {
-                        DiagnosticsView(model: model, showsDismissButton: false)
-                    } label: {
-                        Label("Activity Log", systemImage: "waveform.path.ecg")
-                    }
-                }
-
-                Section("Access") {
-                    HStack {
-                        Text("Status")
-                        Spacer()
-                        AccessStateLabel(model: model)
-                    }
-                    Button("Verify Access", systemImage: "checkmark.shield") {
-                        Task { await model.verifyAccess() }
-                    }
+        List {
+            Section {
+                NavigationLink {
+                    DiagnosticsView(model: model, showsDismissButton: false)
+                } label: { Label("Diagnostics and Logs", systemImage: "waveform.path.ecg") }
+                Button("Verify Access", systemImage: "checkmark.shield") { Task { await model.verifyAccess() } }
                     .disabled(!model.canRunDiagnostics)
-                    LabeledContent("Grant policy", value: "Per operation")
-                    LabeledContent("Mode", value: "Read only by default")
-                }
-
-                Section("Storage") {
-                    Button("Clear Export Cache", systemImage: "trash", role: .destructive) {
-                        do {
-                            try ExportCache.removeAll()
-                            cacheMessage = String(localized: "Export cache cleared")
-                        } catch {
-                            cacheMessage = error.localizedDescription
-                        }
-                    }
-                    if let cacheMessage {
-                        Text(cacheMessage)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    Text("Shared files are copied to a private cache and automatically removed after 24 hours.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-
-                Section("About") {
-                    Link("Discord", destination: URL(string: "https://discord.gg/eGzEaP6TzR")!)
-                    LabeledContent("Version", value: Bundle.main.object(
-                        forInfoDictionaryKey: "CFBundleShortVersionString"
-                    ) as? String ?? "Unknown")
-                    LabeledContent("System", value: ProcessInfo.processInfo.operatingSystemVersionString)
-                    Link(destination: URL(string: "https://xnu.app/veilpath/")!) {
-                        Label("Veilpath Website", systemImage: "safari")
-                    }
-                    Link(destination: URL(string: "https://github.com/everettjf/veilpath")!) {
-                        Label("Source Code", systemImage: "chevron.left.forwardslash.chevron.right")
-                    }
-                }
-
-                Section("Feedback") {
-                    Toggle("Screenshot feedback prompt", isOn: $screenshotPromptEnabled)
-                    Link(destination: FeedbackSupport.issueURL()) {
-                        Label("Report an Issue", systemImage: "exclamationmark.bubble")
-                    }
-                    Text("After you take a screenshot in Veilpath, show quick actions to share it or report an issue.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Text("GitHub reports include app and system versions. Review screenshots for sensitive information before attaching them.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
+                Text("Advanced workspaces include technical previews and guarded file operations.")
+                    .font(.caption).foregroundStyle(.secondary)
             }
-            .navigationTitle("Settings")
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
+            Section("Containers") {
+                ForEach(ContainerKind.allCases, id: \.self) { kind in
+                    NavigationLink {
+                        AdvancedContainerList(model: model, kind: kind)
+                    } label: { Label(kind.localizedName, systemImage: kind.systemImage) }
                 }
             }
         }
+        .navigationTitle("Advanced Tools")
     }
+}
 
+private struct AdvancedContainerList: View {
+    @Bindable var model: VeilpathModel
+    let kind: ContainerKind
+    @State private var search = ""
+    private var containers: [ContainerDescriptor] {
+        model.containerIndexes[kind, default: []].filter {
+            search.isEmpty || $0.displayName.localizedCaseInsensitiveContains(search)
+                || ($0.identifier?.localizedCaseInsensitiveContains(search) ?? false)
+                || $0.uuid.localizedCaseInsensitiveContains(search)
+        }
+    }
+    var body: some View {
+        List(containers) { container in
+            Button { Task { await model.open(container, advanced: true) } } label: {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(container.displayName)
+                    Text(container.uuid).font(.caption.monospaced()).foregroundStyle(.secondary)
+                }
+            }
+            .disabled(!model.canRunDiagnostics)
+        }
+        .navigationTitle(Text(kind.localizedName))
+        .searchable(text: $search, prompt: "Container name or UUID")
+        .overlay { if containers.isEmpty { ContentUnavailableView("No containers indexed", systemImage: "folder") } }
+        .refreshable { await model.refreshContainers(for: kind) }
+        .task { if model.containerIndexes[kind, default: []].isEmpty && model.canRunDiagnostics { await model.refreshContainers(for: kind) } }
+    }
 }
 
 private struct AccessStatusView: View {
@@ -1114,33 +484,6 @@ private struct AccessStatusView: View {
     }
 }
 
-private struct ContainerRow: View {
-    let container: ContainerDescriptor
-
-    var body: some View {
-        HStack(alignment: .top, spacing: 10) {
-            VStack(alignment: .leading, spacing: 3) {
-                Text(container.homeTitle)
-                    .font(.callout)
-                    .lineLimit(2)
-                    .multilineTextAlignment(.leading)
-                Text(container.uuid)
-                    .font(.caption2.monospaced())
-                    .foregroundStyle(.tertiary)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-            }
-            Spacer(minLength: 4)
-            if container.kind != .application {
-                ContainerKindBadge(container: container)
-            }
-        }
-        .padding(.vertical, 3)
-        .contentShape(.rect)
-        .accessibilityElement(children: .combine)
-    }
-}
-
 private struct BrowserView: View {
     @Bindable var model: VeilpathModel
     @Binding var presentedPreview: FileItem?
@@ -1152,9 +495,6 @@ private struct BrowserView: View {
     @State private var fileFilter = ""
     @State private var pathInput = ""
     @State private var isEditingPath = false
-    @State private var showingBackupImporter = false
-    @State private var pendingBackupURL: URL?
-    @State private var showingRestoreBackupConfirmation = false
     @State private var showingDeleteConfirmation = false
 
     private var visibleItems: [FileItem] {
@@ -1223,15 +563,17 @@ private struct BrowserView: View {
                     .listRowBackground((model.selectedItem == item || model.selectedFilePaths.contains(item.url.path)) ? Color.accentColor.opacity(0.12) : Color.clear)
                     .accessibilityAddTraits((model.selectedItem == item || model.selectedFilePaths.contains(item.url.path)) ? .isSelected : [])
                     .contextMenu {
-                        Button("Select", systemImage: "checkmark.circle") { model.beginFileSelection(with: item) }
+                        if model.isAdvancedWorkspace {
+                            Button("Select", systemImage: "checkmark.circle") { model.beginFileSelection(with: item) }
+                        }
                         Button(item.isDirectory ? "Share Folder as ZIP" : "Share File",
                                systemImage: item.isDirectory ? "archivebox" : "square.and.arrow.up") {
                             model.prepareShare(for: item)
                         }
-                        if !item.isSymbolicLink {
+                        if model.isAdvancedWorkspace && !item.isSymbolicLink {
                             Button("Duplicate", systemImage: "plus.square.on.square") { Task { await model.duplicate(item) } }
                         }
-                        if !item.isDirectory, ["zip", "ipa"].contains(item.url.pathExtension.lowercased()) {
+                        if model.isAdvancedWorkspace, !item.isDirectory, ["zip", "ipa"].contains(item.url.pathExtension.lowercased()) {
                             Button("Extract Here", systemImage: "archivebox.badge.plus") { Task { await model.extract(item) } }
                         }
                     }
@@ -1264,7 +606,7 @@ private struct BrowserView: View {
                     toolbarNavigationButton("Forward", systemImage: "chevron.forward", disabled: !model.canGoForward) {
                         await model.goForward()
                     }
-                    toolbarNavigationButton("Up", systemImage: "arrow.up", disabled: model.isWorking || model.path == "/") {
+                    toolbarNavigationButton("Up", systemImage: "arrow.up", disabled: model.isWorking || model.path == "/" || (!model.isAdvancedWorkspace && model.path == model.currentContainerRoot)) {
                         await model.goUp()
                     }
                 }
@@ -1286,40 +628,17 @@ private struct BrowserView: View {
                                 }
                             }
                         }
-                        Toggle("Show Hidden Files", isOn: $model.showHiddenFiles)
+                        if model.isAdvancedWorkspace { Toggle("Show Hidden Files", isOn: $model.showHiddenFiles) }
                         Divider()
-                        Toggle("Recursive Markdown Export", isOn: $model.directoryExportRecursive)
-                        Button("Prepare Markdown Listing", systemImage: "doc.badge.arrow.up") {
-                            Task { await model.prepareDirectoryMarkdownExport() }
-                        }
-                        .disabled(model.isExportingDirectory)
-                        if let directoryExportURL = model.directoryExportURL {
-                            ShareLink(
-                                item: ExportedFile(url: directoryExportURL),
-                                preview: SharePreview(directoryExportURL.lastPathComponent)
-                            ) {
-                                Label("Share Markdown Listing", systemImage: "square.and.arrow.up")
-                            }
-                        }
                         Button("Share Folder as ZIP", systemImage: "archivebox") {
                             model.prepareCurrentDirectoryZIP()
                         }
                         .disabled(model.isPreparingShare)
                         Divider()
-                        Button("Select Items", systemImage: "checkmark.circle") { model.beginFileSelection() }
-                        if model.fileClipboard != nil {
+                        if model.isAdvancedWorkspace { Button("Select Items", systemImage: "checkmark.circle") { model.beginFileSelection() } }
+                        if model.isAdvancedWorkspace && model.fileClipboard != nil {
                             Button("Paste", systemImage: "doc.on.clipboard") { Task { await model.pasteFiles() } }
                                 .disabled(model.isRunningFileOperation)
-                        }
-                        if model.selectedContainer?.kind == .application {
-                            Divider()
-                            Button("Back Up Complete App Data", systemImage: "externaldrive.badge.plus") {
-                                model.prepareCompleteAppBackup()
-                            }
-                            .disabled(model.isPreparingShare)
-                            Button("Restore Complete App Backup", systemImage: "arrow.counterclockwise.circle") {
-                                showingBackupImporter = true
-                            }
                         }
                     }
                     .onChange(of: model.showHiddenFiles) {
@@ -1334,24 +653,6 @@ private struct BrowserView: View {
         .searchable(text: $fileFilter, placement: .toolbar, prompt: "Filter Current Directory")
         .searchToolbarBehavior(.minimize)
         .sheet(isPresented: $showFileSearch) { ContainerSearchView(model: model) }
-        .fileImporter(isPresented: $showingBackupImporter, allowedContentTypes: [.zip]) { result in
-            switch result {
-            case .success(let url):
-                pendingBackupURL = url
-                showingRestoreBackupConfirmation = true
-            case .failure(let error): model.lastError = error.localizedDescription
-            }
-        }
-        .confirmationDialog("Restore Complete App Data?", isPresented: $showingRestoreBackupConfirmation, titleVisibility: .visible) {
-            Button("Create Safety Backup and Restore", role: .destructive) {
-                guard let pendingBackupURL else { return }
-                Task { await model.restoreCompleteAppBackup(from: pendingBackupURL) }
-                self.pendingBackupURL = nil
-            }
-            Button("Cancel", role: .cancel) { pendingBackupURL = nil }
-        } message: {
-            Text("Veilpath will verify the manifest and every SHA-256, create a complete safety backup of the current app data, then replace Documents, Library, and tmp.")
-        }
         .confirmationDialog("Delete Selected Items?", isPresented: $showingDeleteConfirmation, titleVisibility: .visible) {
             Button("Back Up and Delete", role: .destructive) { Task { await model.deleteSelectedFiles() } }
             Button("Cancel", role: .cancel) {}
@@ -1380,7 +681,10 @@ private struct BrowserView: View {
 
     private var regularPathHeader: some View {
         Group {
-            if isEditingPath {
+            if !model.isAdvancedWorkspace {
+                Text(relativePath).font(.subheadline).foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            } else if isEditingPath {
                 HStack(spacing: 10) {
                     pathEntry
                 }
@@ -1399,7 +703,7 @@ private struct BrowserView: View {
                 compactNavigationButton("Forward", systemImage: "chevron.forward", disabled: !model.canGoForward) {
                     await model.goForward()
                 }
-                compactNavigationButton("Up", systemImage: "arrow.up", disabled: model.isWorking || model.path == "/") {
+                compactNavigationButton("Up", systemImage: "arrow.up", disabled: model.isWorking || model.path == "/" || (!model.isAdvancedWorkspace && model.path == model.currentContainerRoot)) {
                     await model.goUp()
                 }
                 Spacer()
@@ -1408,7 +712,10 @@ private struct BrowserView: View {
                     .foregroundStyle(.secondary)
             }
 
-            if isEditingPath {
+            if !model.isAdvancedWorkspace {
+                Text(relativePath).font(.caption).foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            } else if isEditingPath {
                 HStack(spacing: 10) {
                     pathEntry
                 }
@@ -1442,6 +749,12 @@ private struct BrowserView: View {
         }
         .buttonStyle(.plain)
         .accessibilityHint("Edit the absolute path")
+    }
+
+    private var relativePath: String {
+        if model.path == model.currentContainerRoot { return model.selectedContainer?.displayName ?? String(localized: "Files") }
+        let prefix = model.currentContainerRoot + "/"
+        return model.path.hasPrefix(prefix) ? String(model.path.dropFirst(prefix.count)) : URL(fileURLWithPath: model.path).lastPathComponent
     }
 
     private func compactNavigationButton(
@@ -1772,6 +1085,7 @@ private struct InspectorView: View {
     let exportURL: URL?
     let properties: FileProperties?
     let isLoading: Bool
+    let allowsAdvancedTools: Bool
     let openPreview: () -> Void
     let requestReplacement: () -> Void
     let requestShare: () -> Void
@@ -1779,17 +1093,16 @@ private struct InspectorView: View {
     let requestEdit: () -> Void
     let backups: [FileBackupRecord]
     let requestRestore: (FileBackupRecord) -> Void
-    @State private var confirmWebSearch = false
     @State private var showVersionHistory = false
-    @Environment(\.openURL) private var openURL
 
     var body: some View {
         if let item {
             VStack(spacing: 0) {
-                FilePropertiesView(item: item, properties: properties)
+                FilePropertiesView(item: item, properties: properties, allowsAdvancedTools: allowsAdvancedTools)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                Divider()
-                HStack {
+                if allowsAdvancedTools {
+                  Divider()
+                  HStack {
                     if canEdit {
                         Button("Edit Safely", systemImage: "pencil.and.outline", action: requestEdit)
                             .disabled(isLoading)
@@ -1802,6 +1115,7 @@ private struct InspectorView: View {
                     }
                 }
                 .padding()
+                }
             }
             .navigationTitle("Info")
             .navigationBarTitleDisplayMode(.inline)
@@ -1809,20 +1123,13 @@ private struct InspectorView: View {
                 Button("Open Preview", systemImage: "doc.text.magnifyingglass", action: openPreview)
                 Button("Share", systemImage: "square.and.arrow.up", action: requestShare)
                     .disabled(isLoading)
-                Menu("File Actions", systemImage: "doc.badge.gearshape") {
-                    Button("Search Filename on Web", systemImage: "safari") { confirmWebSearch = true }
+                if allowsAdvancedTools {
+                  Menu("File Actions", systemImage: "doc.badge.gearshape") {
                     if let hash = properties?.sha256 { Button("Copy SHA-256", systemImage: "number") { UIPasteboard.general.string = hash } }
                     Button("Copy Path", systemImage: "doc.on.doc") { UIPasteboard.general.string = item.url.path }
                 }
-            }
-            .confirmationDialog("Search the Web?", isPresented: $confirmWebSearch, titleVisibility: .visible) {
-                Button("Search for “\(item.name)”") {
-                    var components = URLComponents(string: "https://www.google.com/search")!
-                    components.queryItems = [.init(name: "q", value: item.name)]
-                    if let url = components.url { openURL(url) }
                 }
-                Button("Cancel", role: .cancel) {}
-            } message: { Text("Only the filename will be sent to your web browser. The full path is never included.") }
+            }
             .sheet(isPresented: $showVersionHistory) {
                 NavigationStack {
                     VersionHistoryView(records: backups) { record in
@@ -2028,6 +1335,7 @@ private struct FilePreviewOverlay: View {
     let exportURL: URL?
     let hexDump: String
     let isLoading: Bool
+    let allowsAdvancedTools: Bool
     let availableWidth: CGFloat
     let allowsResizing: Bool
     @Binding var widthFraction: CGFloat
@@ -2056,12 +1364,13 @@ private struct FilePreviewOverlay: View {
                                 .keyboardShortcut(.cancelAction)
                         }
                         ToolbarItemGroup(placement: .topBarTrailing) {
-                            Menu("View As", systemImage: "eye") {
+                            if allowsAdvancedTools { Menu("View As", systemImage: "eye") {
                                 Picker("View As", selection: $displayMode) {
                                     ForEach(PreviewDisplayMode.allCases) { mode in
                                         Label(mode.title, systemImage: mode.systemImage).tag(mode)
                                     }
                                 }
+                            }
                             }
                             Button("File Info", systemImage: "info.circle", action: showInfo)
                             if allowsResizing {
@@ -2111,13 +1420,13 @@ private struct FilePreviewOverlay: View {
         if showsHex {
             TextViewer(text: hexDump, format: "Hex")
         } else {
-            PreviewContent(preview: preview, error: previewError, isLoading: isLoading)
+            PreviewContent(preview: preview, error: previewError, isLoading: isLoading, allowsAdvancedTools: allowsAdvancedTools)
         }
     }
 
     private var showsHex: Bool {
-        if displayMode == .hex { return true }
-        if case .binary? = preview { return true }
+        if allowsAdvancedTools && displayMode == .hex { return true }
+        if allowsAdvancedTools, case .binary? = preview { return true }
         return false
     }
 }
@@ -2126,6 +1435,7 @@ private struct PreviewContent: View {
     let preview: FilePreview?
     let error: String?
     let isLoading: Bool
+    var allowsAdvancedTools = false
 
     var body: some View {
         Group {
@@ -2140,12 +1450,15 @@ private struct PreviewContent: View {
                 case .structured(let root, let source, let format): StructuredViewer(root: root, source: source, format: format)
                 case .text(let text, let format): TextViewer(text: text, format: format)
                 case .image(let data, let details): ImageViewer(data: data, details: details)
-                case .machO(let info): MachOViewer(info: info)
+                case .machO(let info):
+                    if allowsAdvancedTools { MachOViewer(info: info) }
+                    else { ContentUnavailableView("Preview Unavailable", systemImage: "doc", description: Text("Export this file to open it in another app.")) }
                 case .pdf(let data): PDFDocumentViewer(data: data)
-                case .sqlite(let summary): SQLiteViewer(summary: summary)
+                case .sqlite(let summary):
+                    if allowsAdvancedTools { SQLiteViewer(summary: summary) }
+                    else { ContentUnavailableView("Preview Unavailable", systemImage: "doc", description: Text("Export this file to open it in another app.")) }
                 case .archive(let summary): ArchiveViewer(summary: summary)
-                case .font(let summary): FontViewer(summary: summary)
-                case .binaryCookies(let summary): BinaryCookiesViewer(summary: summary)
+                case .font, .binaryCookies: ContentUnavailableView("Preview Unavailable", systemImage: "doc", description: Text("Export this file to open it in another app."))
                 case .quickLook(let url, _): QuickLookViewer(url: url)
                 case .binary: ContentUnavailableView("Binary File", systemImage: "doc.badge.gearshape")
                 case .tooLarge(let size):
@@ -2274,52 +1587,6 @@ private struct ArchiveViewer: View {
     }
 }
 
-private struct FontViewer: View {
-    let summary: FontSummary
-    var body: some View {
-        List {
-            Section("Font") {
-                LabeledContent("PostScript Name", value: summary.postScriptName)
-                if let name = summary.fullName { LabeledContent("Full Name", value: name) }
-                LabeledContent("Glyphs", value: summary.glyphCount.formatted())
-            }
-            Section("Sample") {
-                Text("Aa Bb Cc 123 中文")
-                    .font(.system(size: 32))
-            }
-        }
-    }
-}
-
-private struct BinaryCookiesViewer: View {
-    let summary: BinaryCookiesSummary
-    var body: some View {
-        List {
-            Section("Binary Cookies") {
-                LabeledContent("Pages", value: summary.pageCount.formatted())
-                LabeledContent("Size", value: ByteCountFormatter.string(fromByteCount: Int64(summary.totalBytes), countStyle: .file))
-            }
-            Section("Page Sizes") {
-                ForEach(Array(summary.pageSizes.enumerated()), id: \.offset) { index, size in
-                    LabeledContent("Page \(index + 1)", value: ByteCountFormatter.string(fromByteCount: Int64(size), countStyle: .file))
-                }
-            }
-            if !summary.cookies.isEmpty {
-                Section("Cookies") {
-                    ForEach(summary.cookies) { cookie in
-                        DisclosureGroup(cookie.name.isEmpty ? "Unnamed Cookie" : cookie.name) {
-                            LabeledContent("Domain", value: cookie.domain)
-                            LabeledContent("Path", value: cookie.path)
-                            LabeledContent("Value", value: cookie.value)
-                            if let date = cookie.expiresAt { LabeledContent("Expires", value: date.formatted()) }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
 private enum PreviewDisplayMode: String, CaseIterable, Identifiable {
     case bestMatch, hex
     var id: Self { self }
@@ -2434,22 +1701,30 @@ private struct MachOViewer: View {
 private struct FilePropertiesView: View {
     let item: FileItem
     let properties: FileProperties?
+    let allowsAdvancedTools: Bool
     var body: some View {
         List {
-            Section("File") { LabeledContent("Name", value: item.name); LabeledContent("Path", value: item.url.path); LabeledContent("Kind", value: item.isDirectory ? "Directory" : "File") }
+            Section("File") {
+                LabeledContent("Name", value: item.name)
+                if allowsAdvancedTools { LabeledContent("Path", value: item.url.path) }
+                LabeledContent("Kind", value: item.isDirectory ? "Directory" : "File")
+            }
             if let properties {
                 Section("Properties") {
                     LabeledContent("Size", value: ByteCountFormatter.string(fromByteCount: properties.size, countStyle: .file))
                     LabeledContent("Type", value: properties.typeIdentifier ?? "Unknown")
+                    if allowsAdvancedTools {
                     LabeledContent("Permissions", value: String(format: "%04o", properties.posixPermissions))
                     if let owner = properties.owner { LabeledContent("Owner", value: owner) }; if let group = properties.group { LabeledContent("Group", value: group) }; if let inode = properties.inode { LabeledContent("Inode", value: String(inode)) }
+                    }
                     if let createdAt = properties.createdAt { LabeledContent("Created", value: createdAt.formatted(date: .abbreviated, time: .standard)) }
                     if let modifiedAt = properties.modifiedAt { LabeledContent("Modified", value: modifiedAt.formatted(date: .abbreviated, time: .standard)) }
                 }
-                if let hash = properties.sha256 {
+                if allowsAdvancedTools { if let hash = properties.sha256 {
                     Section("SHA-256") { Text(hash).font(.caption.monospaced()).textSelection(.enabled) }
                 } else {
                     Section("SHA-256") { Text("Calculated on demand for large files").foregroundStyle(.secondary) }
+                }
                 }
             }
         }
@@ -2493,8 +1768,10 @@ private struct DiagnosticsView: View {
                     LabeledContent("Self-test") {
                         TestResultText(passed: report.passed)
                     }
+                    LabeledContent("Report Schema") { Text(report.schemaVersion, format: .number) }
+                    if report.schemaVersion != SelfTestRunner.schemaVersion { Text("Run diagnostics to update this report.").foregroundStyle(.secondary) }
                 } else {
-                    LabeledContent("Self-test", value: "Running")
+                    LabeledContent("Self-test") { Text(model.isRunningDiagnostics ? LocalizedStringResource("Running") : LocalizedStringResource("Not Run")) }
                 }
             }
 
@@ -2586,6 +1863,7 @@ private extension SelfTestReport.Check {
         case "Application name resolution": "Application Name Resolution"
         case "On-device app storage scan": "On-device App Storage Scan"
         case "App storage and recoverable cache cleaning": "App Storage and Recoverable Cache Cleaning"
+        case "Backup deletion and interrupted removal": "Backup Deletion and Interrupted Removal"
         case "MobileGestalt file access": "MobileGestalt File Access"
         case "Preview and safe export": "Preview and Safe Export"
         case "Application container discovery": "Application Container Discovery"

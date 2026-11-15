@@ -28,7 +28,7 @@ struct AppStorageSnapshot: Identifiable, Sendable {
 }
 
 enum AppManagementError: LocalizedError {
-    case incompleteScan, unsafeTree, sourceChanged, invalidBackup, wrongApplication, busy, recoveryRequired, selfOperation
+    case incompleteScan, unsafeTree, sourceChanged, invalidBackup, wrongApplication, busy, recoveryRequired, selfOperation, backupInUse
     var errorDescription: String? {
         switch self {
         case .incompleteScan: String(localized: "Some files could not be read. Refresh the scan before cleaning.")
@@ -39,6 +39,7 @@ enum AppManagementError: LocalizedError {
         case .busy: String(localized: "Wait for the current app data operation to finish.")
         case .recoveryRequired: String(localized: "An interrupted cache operation needs recovery. Its backup and staged files have been preserved.")
         case .selfOperation: String(localized: "Veilpath cannot clean or back up its own active data container here.")
+        case .backupInUse: String(localized: "This backup contains recovery work and cannot be deleted.")
         }
     }
 }

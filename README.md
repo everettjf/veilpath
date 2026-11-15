@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  A native container explorer and guarded file workspace for iPhone and iPad,<br>
+  A native app data workspace for iPhone and iPad,<br>
   with <a href="https://github.com/forcequitOS/bad_query"><code>bad_query</code></a> and <a href="https://github.com/forcequitOS/worse_query"><code>worse_query</code></a> access backends.
 </p>
 
@@ -34,18 +34,21 @@
 
 <table>
   <tr>
-    <td width="68%"><img src="docs/assets/ipad-ui.webp" alt="Veilpath showing grouped application containers and a file list on iPad"></td>
-    <td width="32%"><img src="docs/assets/iphone-ui.webp" alt="Veilpath showing the compact file browser on iPhone"></td>
+    <td width="68%"><img src="docs/assets/ipad-app-data.png" alt="Veilpath showing application details and the three-section sidebar on iPad"></td>
+    <td width="32%"><img src="docs/assets/iphone-app-data.png" alt="Veilpath showing unified app details and the three-section navigation on iPhone"></td>
   </tr>
 </table>
 
+Screenshots use disposable simulator examples from the current main branch.
+The published v1.1.0 preview uses the earlier navigation.
+
 ## What is Veilpath?
 
-Veilpath turns the `bad_query` and `worse_query` proofs of concept into a focused file-exploration
-interface for the iOS and iPadOS versions where the technique applies. It
-discovers otherwise inaccessible containers, resolves their identifiers, and
-lets you inspect, export, and deliberately replace individual files with a
-verified backup and restore path.
+Veilpath organizes app data around three sections: Applications, Backups, and
+Settings. Find an app, browse or export its files, inspect its storage, and save
+or restore a backup. Cache cleaning always preserves a verified recovery copy.
+Private-container exploration and guarded file writes live in Advanced Tools.
+The access techniques apply only to the documented compatible OS versions.
 
 The name **Veilpath** combines **veil** and **path**: a route into data that is
 normally hidden behind an app's sandbox boundary. It reflects the project's
@@ -55,15 +58,16 @@ recoverable.
 ## Highlights
 
 - Native SwiftUI interface that adapts to iPad and iPhone.
-- Opens on an App library that can switch between a visual grid and a compact
-  list, with the selected layout remembered across launches.
+- Opens on one searchable application list with measured data and cache sizes.
+  App details lead to files, backups, cache management, and optional technical details.
 - Indexes Application, App Group, PluginKit, Internal Daemon, System Data, and
   System Group containers.
 - Resolves container UUIDs to readable bundle identifiers using container
   metadata, and shows application names when a verified name is available.
-- Opens App Storage and Backup Center directly from the App library. Scan file
-  sizes, back up selected caches before cleaning, and keep full App and cache
-  recovery backups together for verified import, export, and restoration.
+- Keeps App and cache recovery backups together, grouped by app, with archive
+  storage totals, verified import/export and restore, and confirmed manual deletion.
+- Loads applications after an access check. Whole-library storage scanning and
+  the full diagnostic suite run on demand; opening an app scans only that app.
 - Falls back to `fsgetpath` inode discovery when a container root cannot be
   opened directly.
 - Acquires a sandbox extension for each operation and releases it immediately
@@ -72,18 +76,19 @@ recoverable.
   fallback and no manual backend selector.
 - Browses with directory history, back/forward/up navigation, local filtering,
   recursive container search, and name/date/size sorting.
-- Previews searchable plist and JSON trees, XML, text, images, hexadecimal data,
-  and Mach-O architecture, dependency, signature, and entitlement details.
+- Previews searchable plist and JSON trees, XML, text, images, PDF, and archives.
+  Hex, SQLite, Mach-O, absolute paths, and guarded write tools are in advanced workspaces.
 - Opens an app-specific iPad workspace with the current file list beside file
   properties, then a resizable 60–90% preview that can expand full screen.
-- Uses a focused push flow on iPhone: App library, file list, then full-screen
+- Uses a focused flow on iPhone: App details, file list, then full-screen
   preview, with file information presented separately.
-- Shows file metadata and SHA-256 hashes before export.
+- Shows ordinary file metadata; advanced workspaces expose technical properties
+  and SHA-256 values. Verification remains enabled in both workflows.
 - Prepares files on demand for sharing, streaming large copies in 1 MiB chunks
   with progress, cancellation, verification, and automatic cache expiry.
 - Archives the current folder or a selected folder as ZIP while preserving empty
   directories, honoring the hidden-file setting, and skipping symbolic links.
-- Provides familiar multi-select file operations: copy, cut, paste, duplicate,
+- Provides advanced multi-select file operations: copy, cut, paste, duplicate,
   batch ZIP compression, ZIP/IPA extraction, and guarded deletion. Deletes first
   create a uniquely named recoverable safety archive. Batch operations report
   per-item failures and preserve failed selections or cut sources for retry.
@@ -99,16 +104,16 @@ recoverable.
   blocks Veilpath's own live container, checks staging space, and first preserves the
   current container as a safety backup, stages the replacement, and rolls back
   if the directory swap fails.
-- Exports the current directory as Markdown, with optional recursive traversal.
-- Keeps browsing read-only by default while allowing guarded JSON and plist
+- Keeps ordinary browsing read-only; advanced workspaces allow guarded JSON and plist
   edits, versioned backup and replacement, SHA-256 verification, and restore
   with a fresh safety backup.
-- Includes an on-device diagnostics suite with a structured JSON report.
+- Includes an on-demand on-device diagnostics suite with a structured JSON report.
 
 ## App storage and backups
 
-Open **App Storage** from the App library to scan application containers, sorted
-by measured size. The breakdown separates Documents, Library data, Caches,
+The **Applications** list combines app names and storage results. Start a scan
+when needed to sort by measured size, or open an app to scan only its data.
+**App Data Details** separates Documents, Library data, Caches,
 temporary files, and other files. These are logical file sizes, not allocated
 disk usage. Scans are cancellable; unreadable or bounded scans are marked
 partial and cannot enable cleaning.
@@ -120,7 +125,7 @@ bundle identifier. Parsing stays in memory; the raw database is neither saved
 nor exported. Unknown names retain their exact bundle identifier. Name coverage
 depends on the device and OS build.
 
-In an app's storage details, **Back Up and Clean Caches** selects only
+In an app's **Manage Caches** screen, **Back Up and Clean Caches** selects only
 `Library/Caches`; `tmp` is opt-in. Close the target app first. Veilpath creates a
 compressed recovery archive, re-extracts it, verifies CRC-32 and SHA-256, and
 checks that the source has not changed before replacing the selected roots.
@@ -134,9 +139,10 @@ concurrent data stops recovery and preserves the backup and staged files.
 Cancellation does not interrupt rollback. Results distinguish source bytes
 removed, recovery archive size, and the measured change in available space.
 Keeping a recovery copy consumes storage, so the removed byte count is not a
-promise of net free space.
+promise of net free space. Return to the app details to **Undo This Cleanup**;
+restoring first saves the current cache state as another safety copy.
 
-**Backup Center** keeps full App backups and cache recovery archives in
+**Backups** keeps full App backups and cache recovery archives in
 Veilpath's own Documents directory without automatic expiry. It can create
 backups, import supported ZIP backups after complete validation, export an
 individual verified archive through Veilpath's share cache, and restore to a
@@ -144,7 +150,18 @@ currently matching app container. Restore creates a fresh safety backup in the
 same center, labeled **Before Restore**. Full App backups contain Documents,
 Library, and tmp with a SHA-256 manifest; symbolic links are excluded and their
 count is shown when known. These are container file backups, not complete device
-or Keychain backups. Retained archives also need space on the device.
+or Keychain backups. Retained archives also need space on the device. The list
+shows total archive bytes and groups recovery points by app. Delete an individual
+backup only after a separate confirmation; active recovery journals, preserved
+staging, links, and unexpected contents block deletion. Deletion removes that
+selected recovery copy permanently and does not create another backup of it.
+Complete interrupted removals are returned to the library for confirmation;
+partial or unexpected remnants are preserved for attention.
+
+Settings → **Advanced Tools** holds other container categories, diagnostics,
+technical previews, and guarded file operations. Grid/list customization,
+directory Markdown export, filename web search, automatic screenshot feedback,
+and dedicated font/cookie preview screens have been removed.
 
 Wallpapers and themes are reserved for a later phase. MobileGestalt modification
 tools are not part of this workflow and require separate model and OS validation.
@@ -161,7 +178,7 @@ builds.
 | --- | --- | --- |
 | iPadOS | 27 beta 3 (`24A5380l`) | Fully tested on physical iPad Air (`iPad15,3`) |
 | iOS / iPadOS | 26.x | Deployment target and App Group compatibility path |
-| iPhone 11 | 26.0.1 (`23A355`) | Schema 23 Automatic: 23 passed, 3 unsupported, 0 failed; earlier schema 22 verified both forced backends |
+| iPhone 11 | 26.0.1 (`23A355`) | Schema 24 Automatic: 23 passed, 3 unsupported, 0 failed; earlier schema 22 verified both forced backends |
 | iPhone | 27 beta 3 (`24A5390f`) | Fully tested on physical iPhone 17 Pro (`iPhone18,1`) |
 | Simulator | 26–27 | UI and local fixtures only; both access backends require a physical device |
 
@@ -200,11 +217,14 @@ backend has not yet been verified in Veilpath on iOS 27 devices.
 Veilpath includes an on-device regression suite that verifies sandbox access,
 container discovery, structured preview, file analysis, Mach-O parsing,
 streamed sharing, ZIP policy, stored and Deflate extraction, multi-item file
-operations, cancellation cleanup, Markdown export, guarded editing, complete
-App backup and rollback-safe restore, and local search. Schema 23 adds bounded
+operations, cancellation cleanup, guarded editing, complete
+App backup and rollback-safe restore, and local search. Schema 23 added bounded
 application-name parsing, read-only on-device storage scanning, and recoverable
 cache cleanup with import, restore, interrupted recovery, and corruption tests.
-The final iPhone 11 automatic-mode run passed 23 checks, with 3 unsupported iOS 26
+Schema 24 replaces directory Markdown coverage with guarded backup deletion,
+including interrupted removal, cancellation, link refusal, and preservation of
+live data and other backups. Full diagnostics are available on demand from
+Settings → Advanced Tools. The iPhone 11 automatic-mode run passed 23 checks, with 3 unsupported iOS 26
 capabilities and no failures. The simulator passed 16 local-fixture checks.
 Mutation tests use Veilpath's own disposable fixtures; other apps are only scanned
 read-only. The new app-management flows have physical-device validation on iOS
@@ -260,6 +280,8 @@ licensing notices. Choose `Veilpath-1.1.0-2-resign.ipa` for sideloading. The
 device-restricted development IPA is kept private because its embedded profile
 contains registered-device identifiers. Installer-specific validation and the
 documented licensing boundary remain unresolved; this is an experimental preview.
+This README describes the current main branch; the published v1.1.0 package
+predates the three-section navigation redesign.
 
 Use `python3 scripts/package.py` on a Mac with Xcode to create a **Release,
 arm64, iPhoneOS** IPA. Outputs must be outside the repository. The script checks

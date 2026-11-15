@@ -85,12 +85,16 @@ and export. Backup/restore write tests use Veilpath's own temporary fixtures.
 Do not infer `worse_query` compatibility on iOS 27 from the older `bad_query`
 device results.
 
-The final schema 23 Automatic run on that iPhone passed 23 checks, with 3
+The schema 23 Automatic run on that iPhone passed 23 checks, with 3
 unsupported capabilities and no failures. Simulator local-fixture checks passed
 16 checks. New coverage includes name resolution, read-only external storage
 scanning, verified backup import, cache cleanup/restore, corruption refusal, and
 interrupted recovery despite cancellation. All mutation tests use disposable
 fixtures in Veilpath's own temporary directory, never another app's live data.
+Schema 24 removes directory Markdown coverage and adds guarded backup deletion,
+including interrupted removal, cancellation, journal/staging protection, and link
+refusal. It passed the same 16 simulator and 23 supported device checks, with 3
+unsupported iOS 26 capabilities and no failures.
 The Release development IPA exported by `scripts/package.py` was also unpacked,
 installed, and passed the same 23 supported checks on that device. Do not label
 that as proof of AltStore, SideStore, Sideloadly, or Apple Ad Hoc installation.
@@ -109,6 +113,14 @@ that as proof of AltStore, SideStore, Sideloadly, or Apple Ad Hoc installation.
   only while verification is running or when attention is required; the full
   steady-state status belongs in Settings.
 - Avoid decorative controls or icons with unclear actions.
+- Keep the three primary sections Applications, Backups, and Settings. Use one
+  application list and one app detail route; avoid duplicate full-app backup or
+  restore entry points in file menus. Keep technical previews and file writes in
+  Advanced Tools. Ordinary file browsing remains read-only.
+- First launch performs access verification, not a full self-test. Storage scans
+  are user initiated or limited to the opened app. Keep full diagnostics on demand.
+- Do not reintroduce grid/list customization, screenshot-triggered prompts,
+  filename web search, directory Markdown export, or font/cookie-specific viewers.
 
 ## Localization
 
@@ -146,6 +158,13 @@ English is the app's source and default language. Simplified Chinese
   cache. Restores must verify the live target identity and archive, then create
   a fresh retained safety backup. Keep file-removal size, archive size, and
   measured available-space change distinct. Do not enable system file sharing.
+- Owner-approved manual backup deletion is a separate permanent purge of one
+  selected retained record in Veilpath's own library, after explicit UI confirmation.
+  It must validate identity, location, and exact expected file types/contents,
+  serialize with other app data operations, and reject active recovery journals,
+  preserved staging, links, or unexpected files. Do not create a backup of a
+  deleted backup. Restore complete interrupted deletions for confirmation; retain
+  partial/unsafe remnants. Never use this exception for live app files.
 - Acquire sandbox extensions only for the operation that needs them and release
   each grant immediately afterward.
 - Keep production backend selection automatic. Prefer `worse_query`, remember
@@ -180,7 +199,7 @@ English is the app's source and default language. Simplified Chinese
   only from verified device results.
 - Preserve structured self-test output and schema compatibility. Increment the
   schema version only when the persisted report format or required checks change.
-  The current version is centralized in `SelfTestRunner.schemaVersion` (23).
+  The current version is centralized in `SelfTestRunner.schemaVersion` (24).
   Backend report fields are optional when decoding older reports; unsupported
   OS capabilities must remain distinct from failed checks.
 - The upstream `forcequitOS/bad_query` repository currently has no declared
