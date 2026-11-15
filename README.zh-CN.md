@@ -284,9 +284,53 @@ App Group 映射的接受与拒绝逻辑另有独立回归测试。
 访问、App Group 暂存和恢复均已生效。升级时尽量保持账户、Bundle ID 和安装渠道
 不变；更换这些身份或卸载前先导出保留的备份。
 
-后续可为 AltStore Classic 建立订阅源，指向已托管的重签 IPA，填写真实版本、构建号、
-字节大小及 App Group 权限声明。目前不会发布带占位下载地址的订阅源，也不会自动
-发布二进制包。公开再分发仍须先解决 [LICENSING.md](LICENSING.md) 中记录的许可边界。
+### 通过订阅源安装和更新
+
+AltStore **Classic** 和 SideStore 共用以下官方预览源：
+
+```text
+https://xnu.app/veilpath/source.json
+```
+
+1. 先安装并配置好 AltStore Classic 或 SideStore。本源供重签安装器使用，不适用于
+   AltStore PAL。
+2. 进入安装器的 **Sources（源）** 页面；部分版本入口为 **Browse → Sources**。
+   点击 **+ / Add Source（添加源）**，粘贴上述地址，确认添加 **Veilpath Preview**。
+3. 在源中打开 Veilpath，点击 **Install / Free（安装 / 免费）**，确认 App Group
+   权限，由安装器使用你的账户重新签名并安装。
+4. 源加入新版本后，刷新源，在安装器的 **My Apps / Updates（我的应用 / 更新）**
+   中更新 Veilpath。给旧版本续签与安装新版本是两件事。
+
+两个安装器填写同一个地址，无需 GitHub 登录，也不使用本项目的开发者描述文件。
+仍需满足安装器自身的账户、签名、设备及 App Group 要求。目前源提供 **1.2.0（3）**，
+记录安装包实际版本、构建号、最低系统、字节大小和权限。
+`minOSVersion: 26.0` 仅代表安装下限，不表示所有后续系统都兼容；兼容范围以
+[兼容性](#兼容性)说明为准。源和下载校验通过不等于已完成各安装器的真机渠道验证。
+
+官网也提供源入口。如果看不到更新，先刷新 Sources，再检查源内显示的版本。
+升级尽量保持原签名账户、Bundle ID 和安装器不变；重装或更换这些身份前先导出备份。
+安装后运行真机诊断。
+
+### 维护订阅源
+
+[`docs/source.json`](docs/source.json) 随现有 GitHub Pages 工作流部署。
+每次经项目所有者授权公开发布后：
+
+1. GitHub Release 只上传重签 IPA 及对应源码、构建记录、校验文件和许可说明。
+2. 在 `apps[0].versions` 开头增加新版本，保留历史记录。从公开的 `*-resign.json`
+   复制 `version`、`buildVersion`、`minOSVersion` 和 `size`，`date` 填真实的
+   ISO 8601 发布时间，`downloadURL` 指向带版本号的公开 `*-resign.ipa`。
+   权限变化时核对实际安装包。源标识、订阅地址和 Bundle ID 保持稳定；安装器将第一条
+   兼容记录作为最新版本，仅修改日期不会决定更新。
+3. 运行 `python3 scripts/validate_source.py --online`，再提交推送源和文档。
+   Pages 部署前检查下载、字节大小、SHA-256、ZIP CRC、Info.plist、隐私权限声明以及
+   包内无描述文件；不会自动创建二进制 Release。
+4. Pages 部署后运行 `python3 scripts/validate_source.py --live`，确认线上 JSON 与
+   仓库一致，下载仍然可用。
+
+本源采用 [AltStore 源格式](https://faq.altstore.io/developers/make-a-source)，
+[SideStore 同样支持](https://docs.sidestore.io/docs/advanced/app-sources)。
+公开再分发仍受 [LICENSING.md](LICENSING.md) 中未解决的许可边界约束。
 
 参考：[AltStore Classic 与 PAL](https://faq.altstore.io/altstore-pal-v.-altstore-classic)、
 [AltStore 订阅源格式](https://faq.altstore.io/developers/make-a-source)、

@@ -345,11 +345,63 @@ does not verify access, App Group staging, or recovery. Keep a stable account,
 bundle ID, and installation channel for upgrades; export retained backups before
 changing these identities or uninstalling.
 
-An AltStore Classic source can later point at a hosted re-signing IPA with its
-real version, build number, byte size, and App Group permission declaration.
-No source with a placeholder download link or automatic binary release is
-published here. Public redistribution remains subject to the unresolved
-licensing boundary in [LICENSING.md](LICENSING.md).
+### Install and update through a source
+
+AltStore **Classic** and SideStore share this official preview source:
+
+```text
+https://xnu.app/veilpath/source.json
+```
+
+1. Install and configure AltStore Classic or SideStore first. This source is
+   for re-signing installers, not AltStore PAL.
+2. Open the installer's **Sources** screen (under **Browse → Sources** in
+   versions with that layout), tap **+ / Add Source**, paste the URL above,
+   and confirm adding **Veilpath Preview**.
+3. Open Veilpath in the source and choose **Install / Free**. Review the App
+   Group permission and let the installer sign the app with your account.
+4. When a new release is added to the source, refresh the source and use the
+   installer's **My Apps / Updates** screen to update Veilpath. Renewing an
+   existing app's signature is separate from installing a newer version.
+
+Both apps use the same source URL; no GitHub login or developer profile from
+this project is required. Your installer's account, signing, device, and App
+Group requirements still apply. The source currently offers **1.2.0 (3)**.
+It records the IPA's actual version, build, minimum OS, byte size, and requested
+permissions. `minOSVersion: 26.0` is an installation floor, not a claim that
+every later OS is compatible; see [Compatibility](#compatibility). Source and
+download validation do not establish installer-specific runtime compatibility.
+
+The website also links to the source. If an update is missing, refresh Sources
+and check the version shown there; keep the same signing account, bundle ID,
+and installer as the existing installation. Export backups before reinstalling
+or changing these identities. Run the on-device diagnostics after installation.
+
+### Maintaining the source
+
+[`docs/source.json`](docs/source.json) is deployed by the existing GitHub Pages
+workflow. For each owner-approved public release:
+
+1. Publish only the re-signing IPA and its matching source, metadata, checksums,
+   and licensing notices in GitHub Release.
+2. Prepend a new entry to `apps[0].versions`, retaining older entries. Copy
+   `version`, `buildVersion`, `minOSVersion`, and `size` from that public
+   `*-resign.json`; set `date` to the actual ISO 8601 release time and
+   `downloadURL` to the versioned public `*-resign.ipa`. Review permissions
+   against the packaged app if they change. Keep the source identifier, URL,
+   and bundle identifier stable. The first compatible entry is offered as
+   the latest version; dates alone do not control updates.
+3. Run `python3 scripts/validate_source.py --online`, then commit and push the
+   feed and documentation. Pages checks the download, byte size, SHA-256, ZIP
+   CRC, Info.plist, privacy declarations, and absence of provisioning profiles
+   before deployment. It does not automatically create binary releases.
+4. After Pages deployment, run `python3 scripts/validate_source.py --live` to
+   verify the deployed JSON matches the repository and the downloads still work.
+
+The source uses the [AltStore source format](https://faq.altstore.io/developers/make-a-source),
+which [SideStore also supports](https://docs.sidestore.io/docs/advanced/app-sources).
+Public redistribution remains subject to the unresolved licensing boundary in
+[LICENSING.md](LICENSING.md).
 
 References: [AltStore Classic versus PAL](https://faq.altstore.io/altstore-pal-v.-altstore-classic),
 [AltStore source format](https://faq.altstore.io/developers/make-a-source),

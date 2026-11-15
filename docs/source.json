@@ -1,0 +1,43 @@
+{
+  "name": "Veilpath Preview",
+  "identifier": "com.xnu.veilpath.source",
+  "sourceURL": "https://xnu.app/veilpath/source.json",
+  "subtitle": "App storage, verified backups, recoverable caches",
+  "description": "Official Veilpath experimental preview source for AltStore Classic and SideStore. Packages require re-signing with your account and a usable App Group. Source format and downloads are checked; installer-specific runtime validation remains pending. Licensing information: https://github.com/everettjf/veilpath/blob/main/LICENSING.md",
+  "iconURL": "https://xnu.app/veilpath/assets/icon.png",
+  "website": "https://xnu.app/veilpath/",
+  "tintColor": "#C8B68B",
+  "apps": [
+    {
+      "name": "Veilpath",
+      "bundleIdentifier": "com.xnu.veilpath",
+      "developerName": "everettjf",
+      "subtitle": "Browse app data. Keep a recovery copy.",
+      "localizedDescription": "A native iPhone and iPad app data workspace with application names, read-only storage scans and file browsing, verified retained backups, and recoverable cache cleaning. English and Simplified Chinese.\n\nExperimental preview intended for iOS/iPadOS 26 through 27 beta 3; newer systems are unverified. Both backends and the new app-management flows were tested on iPhone 11, iOS 26.0.1. The iOS 27 device evidence covers the older bad_query backend; worse_query and the new flows on iOS 27 remain unverified.\n\nRe-signing must preserve a usable mapping of group.com.xnu.veilpath. After installing, run Settings > Advanced Tools > Diagnostics and Logs. AltStore Classic and SideStore installation and access still need channel-specific device validation. Not an AltStore PAL package.\n\nSource and licensing notices accompany the IPA in GitHub Releases. The repository does not have one open-source license covering the complete work; see LICENSING.md.",
+      "iconURL": "https://xnu.app/veilpath/assets/icon.png",
+      "tintColor": "#C8B68B",
+      "category": "utilities",
+      "screenshots": [
+        "https://xnu.app/veilpath/assets/iphone-app-data.png"
+      ],
+      "versions": [
+        {
+          "version": "1.2.0",
+          "buildVersion": "3",
+          "date": "2026-11-15T00:34:25Z",
+          "localizedDescription": "Applications, Backups, and Settings provide a focused workspace. Unified app details, explicit storage scans, recoverable cache cleanup, grouped backups, and confirmed backup deletion with recovery protection. Experimental preview; re-signing and App Group provisioning required.",
+          "downloadURL": "https://github.com/everettjf/veilpath/releases/download/v1.2.0/Veilpath-1.2.0-3-resign.ipa",
+          "size": 6948488,
+          "minOSVersion": "26.0"
+        }
+      ],
+      "appPermissions": {
+        "entitlements": [
+          "com.apple.security.application-groups"
+        ],
+        "privacy": {}
+      }
+    }
+  ],
+  "news": []
+}

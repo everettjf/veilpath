@@ -2,7 +2,7 @@ name: Deploy GitHub Pages
 on:
   push:
     branches: [main]
-    paths: ["docs/**", ".github/workflows/pages.yml"]
+    paths: ["docs/**", "scripts/validate_source.py", ".github/workflows/pages.yml"]
   workflow_dispatch:
 permissions:
   contents: read
@@ -19,6 +19,8 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
+      - name: Validate AltStore Classic and SideStore source
+        run: python3 scripts/validate_source.py --online
       - name: Validate static site
         run: |
           python3 - <<'PY'

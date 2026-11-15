@@ -32,6 +32,8 @@ explicitly changes that policy.
 - `README.zh-CN.md`: Simplified Chinese documentation.
 - `tests/SandboxAccessTests.swift`: standalone backend and workspace regression checks.
 - `scripts/package.py`: local Release IPA archive, signing, export, and validation.
+- `docs/source.json`: shared AltStore Classic and SideStore preview source.
+- `scripts/validate_source.py`: local source checks and optional public IPA verification.
 
 The Xcode project uses a file-system-synchronized source group. New files placed
 under `Veilpath/` are normally discovered automatically; do not add redundant
@@ -202,6 +204,15 @@ English is the app's source and default language. Simplified Chinese
   signed IPAs private; never attach their profiles, device identifiers, signing
   credentials, or build logs. Preserve the App Group declaration and do not claim
   installer-specific runtime validation merely because packaging succeeds.
+- Keep the shared AltStore Classic/SideStore source at
+  `https://xnu.app/veilpath/source.json`, identifier `com.xnu.veilpath.source`.
+  For an owner-approved public release, prepend its real version/build, release
+  time, byte size, minimum OS, and versioned re-signing IPA URL; retain history
+  and the stable bundle identifier. Never add private signed package links or
+  PAL marketplace fields. Declare the actual App Group and privacy permissions.
+  Run `python3 scripts/validate_source.py --online` before pushing source changes
+  and `--live` after Pages deployment. Source availability and download checks
+  do not prove installer-specific signing, App Group, or runtime compatibility.
 - Do not silently broaden supported OS claims. Update compatibility statements
   only from verified device results.
 - Preserve structured self-test output and schema compatibility. Increment the

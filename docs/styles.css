@@ -93,6 +93,7 @@ nav a:hover, footer a:hover { color: var(--text) }
 .hero h1 em, .section h2 em, .cta h2 em { color: var(--gold); font-weight: 400 }
 .lede { max-width: 610px; color: #b1b1af; font-size: 17px; line-height: 1.75; letter-spacing: .005em }
 code { font-family: var(--mono) }
+#install code { overflow-wrap: anywhere }
 .lede code, .section-heading code { color: #e4ddcc }
 .support-banner { max-width: 620px; margin-top: 28px; padding: 15px 17px; display: grid; grid-template-columns: auto 1fr auto auto; align-items: center; gap: 13px; color: var(--text); text-decoration: none; border: 1px solid rgba(216,196,155,.28); border-radius: 11px; background: linear-gradient(100deg, rgba(216,196,155,.1), rgba(15,17,18,.72)); backdrop-filter: blur(14px); transition: border-color .2s ease, transform .2s ease }
 .support-banner:hover { border-color: rgba(216,196,155,.55); transform: translateY(-2px) }
